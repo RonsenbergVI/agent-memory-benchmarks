@@ -110,3 +110,23 @@ class Callback(ABC):
 
     def on_question_end(self, sample: Sample, qa: QAPair, row: dict) -> None:
         """After one question; may enrich the report row."""
+
+
+class Callbacks(Callback):
+    """Fans every hook out to an ordered list of callbacks."""
+
+    def __init__(self, callbacks: list[Callback]) -> None:
+        """Hold the callbacks in the order they should fire."""
+        self.callbacks = list(callbacks)
+
+    def __getattribute__(self, name: str) -> Any:
+        """Return a fan-out wrapper for hooks, real attributes otherwise."""
+        if name.startswith("on_"):
+            callbacks = object.__getattribute__(self, "callbacks")
+
+            def fan_out(*args: object, **kwargs: object) -> None:
+                for callback in callbacks:
+                    getattr(callback, name)(*args, **kwargs)
+
+            return fan_out
+        return object.__getattribute__(self, name)

@@ -28,7 +28,7 @@ from amb.contracts.run import IngestionRecord, QuestionRecord
 Record = QuestionRecord | IngestionRecord
 
 
-class BaseMetric(ABC):
+class Metric(ABC):
     """A running metric over observation records.
 
     update_state() receives a whole record (a QuestionRecord row, an
@@ -68,7 +68,7 @@ class BaseMetric(ABC):
         self.count = 0
 
 
-class BaseScorer(BaseMetric):
+class Scorer(Metric):
     """A metric that scores a (predicted, gold) pair per observation.
 
     ``predicted_key``/``gold_key`` name the observation fields holding the

@@ -20,9 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__all__ = ["Callback", "DatasetLoader", "Memory", "BaseMetric", "ScoreMetric"]
+__all__ = ["Callback", "Callbacks", "DatasetLoader", "Memory", "Metric", "Scorer"]
 
 from amb.base.callback import Callback
 from amb.base.dataset import DatasetLoader
 from amb.base.memory import Memory
-from amb.base.metric import BaseMetric, ScoreMetric
+from amb.base.metric import Metric, Scorer
