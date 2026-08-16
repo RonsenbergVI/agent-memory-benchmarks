@@ -25,7 +25,7 @@
 Long-term interactive memory for chat assistants, distributed on HuggingFace.
 
 Each instance is one question over its own haystack of chat sessions, so each
-becomes one BenchmarkSample. Variants: `s` (~115k-token haystacks, default),
+becomes one Sample. Variants: `s` (~115k-token haystacks, default),
 `m` (~500 sessions), `oracle` (evidence sessions only).
 """
 

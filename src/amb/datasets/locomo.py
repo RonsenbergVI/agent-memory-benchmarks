@@ -79,7 +79,7 @@ class LocomoLoader(DatasetLoader):
     def load(
         self, variant: str | None = None, limit: int | None = None
     ) -> list[Sample]:
-        """Return LoCoMo conversations normalized into BenchmarkSamples.
+        """Return LoCoMo conversations normalized into list[Sample].
 
         `limit` caps the number of samples, for smoke runs.
         """
