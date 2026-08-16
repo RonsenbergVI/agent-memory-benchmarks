@@ -34,7 +34,7 @@ jobs:
 
       # same command as `make check`, so local and CI cannot drift
       - name: Run pre-commit
-        run: uvx pre-commit run --all-files --show-diff-on-failure
+        run: uvx pre-commit run --all-files
 
   test:
     name: tests
