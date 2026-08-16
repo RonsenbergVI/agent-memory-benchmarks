@@ -76,7 +76,7 @@ def answer_with_memory(
         prompt += f"Today's date: {question_date}\n"
     prompt += f"Question: {question}"
     result = agent.run_sync(prompt)
-    usage = result.usage()
+    usage = result.usage
     return GenerationResult(
         text=result.output.strip(),
         input_tokens=usage.input_tokens or 0,
@@ -115,7 +115,7 @@ def ingest_with_agent(
         toolsets=[toolset],
     )
     result = agent.run_sync(format_session(session))
-    usage = result.usage()
+    usage = result.usage
     return GenerationResult(
         text=result.output.strip(),
         input_tokens=usage.input_tokens or 0,

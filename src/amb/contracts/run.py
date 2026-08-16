@@ -96,7 +96,7 @@ class Run(BaseModel):
     def add_question(self, row: dict | QuestionRecord) -> QuestionRecord:
         """Validate and store one question's records."""
         record = QuestionRecord.model_validate(row)
-        self.ingestion_records.append(record)
+        self.question_records.append(record)
         return record
 
     def add_ingestion(self, stats: dict | IngestionRecord) -> IngestionRecord:
