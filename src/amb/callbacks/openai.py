@@ -26,6 +26,7 @@ from collections.abc import Callable
 
 from amb.base import Callback, Memory
 from amb.contracts import QAPair, Run, Sample
+from amb.constants import TOKEN_TRACKING_KEYS
 from amb.runner import RunConfig
 
 
@@ -43,13 +44,7 @@ class OpenAIUsageTracker(Callback):
     time.
     """
 
-    KEYS = (
-        "llm_input_tokens",
-        "llm_output_tokens",
-        "llm_calls",
-        "embedding_tokens",
-        "embedding_calls",
-    )
+    KEYS = TOKEN_TRACKING_KEYS
 
     def __init__(self) -> None:
         """Start with nothing patched and no sample being measured.
