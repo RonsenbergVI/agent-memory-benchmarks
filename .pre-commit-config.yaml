@@ -6,8 +6,6 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-      - id: check-added-large-files
-        args: ['--maxkb=700']  # Increase the limit to 700 KB
       - id: check-merge-conflict
       - id: check-shebang-scripts-are-executable
       - id: detect-private-key
@@ -41,6 +39,21 @@ repos:
     hooks:
     - id: ty
       args: [--no-default-groups]
+
+  # ================
+  # License
+  # ================
+  # stamps the MIT header from LICENSE onto any file missing it.
+  # The hook rewrites the file rather than only reporting it, so a failing
+  # run leaves the fix in the working tree.
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.6
+    hooks:
+      - id: insert-license
+        types: [python]
+        args:
+          - --license-filepath=LICENSE
+          - --comment-style=#
 
   # ================
   # Docker
