@@ -28,9 +28,10 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.0
     hooks:
-    # Run the linter.
-    - id: ruff
+    # linter.
+    - id: ruff-check
       args: [ --fix, --config=pyproject.toml, --show-fixes ]
+    # formatter
     - id: ruff-format
       args: [--config=pyproject.toml]
 
