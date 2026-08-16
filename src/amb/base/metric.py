@@ -21,18 +21,18 @@
 # SOFTWARE.
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
+from typing import Any, ClassVar
 
-from amb.contracts.run import IngestStats, QuestionRecord
+from amb.contracts.run import IngestionRecord, QuestionRecord
 
-Record = QuestionRecord | IngestStats
+Record = QuestionRecord | IngestionRecord
 
 
 class BaseMetric(ABC):
     """A running metric over observation records.
 
     update_state() receives a whole record (a QuestionRecord row, an
-    IngestStats); the metric grabs the field that applies to it (``key``,
+    IngestionRecord); the metric grabs the field that applies to it (``key``,
     defaulting to its name), accumulates it, and produces the final value on
     result(). Records without the field are ignored. reset_state() starts a
     new scope.

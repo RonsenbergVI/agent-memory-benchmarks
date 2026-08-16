@@ -20,10 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from abc import ABC
+from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import ClassVar
 
-from amb.constants import Dataset
+from amb.constants import DEFAULT_DATA_DIR, Dataset
+from amb.contracts import Sample
 
 
 class DatasetLoader(ABC):

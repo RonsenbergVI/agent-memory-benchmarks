@@ -23,16 +23,17 @@
 from abc import ABC
 
 from amb.base import Memory
-from amb.contracts import MemoryHit, QAPair, Sample
+from amb.contracts import IngestionRecord, MemoryHit, QAPair, Run, Sample, Session
+from amb.runner import RunConfig
 
 
 class Callback(ABC):
     """Base callback: every hook is a no-op; override the ones needed."""
 
-    def on_run_begin(self, config: "RunConfig", data: "RunData") -> None:
+    def on_run_begin(self, config: RunConfig, run: Run) -> None:
         """Before the first sample is loaded."""
 
-    def on_run_end(self, data: "RunData") -> None:
+    def on_run_end(self, run: Run) -> None:
         """After the last sample, before the data is returned."""
 
     def on_sample_begin(self, sample: Sample, system: Memory) -> None:
@@ -69,7 +70,7 @@ class Callback(ABC):
     def on_conversation_begin(self, sample: Sample) -> None:
         """Before the sample's first question."""
 
-    def on_conversation_end(self, sample: Sample, stats: "IngestStats") -> None:
+    def on_conversation_end(self, sample: Sample, stats: IngestionRecord) -> None:
         """After the sample's last question; may enrich its stats record.
 
         The record is already validated by now, so this hook sets attributes
