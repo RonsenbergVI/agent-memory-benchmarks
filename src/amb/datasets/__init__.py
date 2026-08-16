@@ -20,9 +20,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__all__ = ["Callback", "DatasetLoader", "Memory", "BaseMetric", "ScoreMetric"]
+from pathlib import Path
 
-from amb.base.callback import Callback
-from amb.base.dataset import DatasetLoader
-from amb.base.memory import Memory
-from amb.base.metric import BaseMetric, ScoreMetric
+from amb.base import DatasetLoader
+from amb.constants import Dataset
+from amb.datasets.locomo import LocomoLoader
+from amb.datasets.longmemeval import LongMemEvalLoader
+
+LOADERS: dict[Dataset, type[DatasetLoader]] = {
+    Dataset.LOCOMO: LocomoLoader,
+    Dataset.LONGMEMEVAL: LongMemEvalLoader,
+}
+
+
+def get_loader(name: str | Dataset, cache_dir: Path | None = None) -> DatasetLoader:
+    """Build the loader for a dataset, pointed at the given cache."""
+    return LOADERS[Dataset(name)](cache_dir)

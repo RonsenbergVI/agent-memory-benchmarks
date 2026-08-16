@@ -20,9 +20,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__all__ = ["Callback", "DatasetLoader", "Memory", "BaseMetric", "ScoreMetric"]
+from pydantic import BaseModel
 
-from amb.base.callback import Callback
-from amb.base.dataset import DatasetLoader
-from amb.base.memory import Memory
-from amb.base.metric import BaseMetric, ScoreMetric
+
+class Judgment(BaseModel):
+    """An LLM judge's verdict on one predicted answer."""
+
+    correct: bool
+    reasoning: str
+
+
+class GenerationResult(BaseModel):
+    """One model answer plus what it cost to produce."""
+
+    text: str
+    input_tokens: int = 0
+    output_tokens: int = 0

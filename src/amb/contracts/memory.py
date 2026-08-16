@@ -20,9 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__all__ = ["Callback", "DatasetLoader", "Memory", "BaseMetric", "ScoreMetric"]
+from pydantic import BaseModel, Field
 
-from amb.base.callback import Callback
-from amb.base.dataset import DatasetLoader
-from amb.base.memory import Memory
-from amb.base.metric import BaseMetric, ScoreMetric
+
+class MemoryHit(BaseModel):
+    """One piece of context returned by a memory system for a query."""
+
+    content: str
+    score: float | None = None
+    # provenance, when the system can report it — used for retrieval metrics
+    turn_ids: list[str] = Field(default_factory=list)
+    session_ids: list[str] = Field(default_factory=list)
+    metadata: dict = Field(default_factory=dict)
