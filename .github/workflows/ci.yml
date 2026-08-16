@@ -27,7 +27,7 @@ jobs:
 
       # hook environments are expensive to build; key them on the config
       - name: Cache pre-commit hooks
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
