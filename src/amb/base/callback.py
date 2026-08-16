@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 from abc import ABC
+from typing import Any
 
 from amb.base.memory import Memory
 from amb.contracts import IngestionRecord, MemoryHit, QAPair, Run, Sample, Session
@@ -115,7 +116,7 @@ class Callback(ABC):
 class Callbacks(Callback):
     """Fans every hook out to an ordered list of callbacks."""
 
-    def __init__(self, callbacks: list[Callback]) -> None:
+    def __init__(self, callbacks: list[Callback] = []) -> None:
         """Hold the callbacks in the order they should fire."""
         self.callbacks = list(callbacks)
 
