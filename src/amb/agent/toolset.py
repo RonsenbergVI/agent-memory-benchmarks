@@ -25,7 +25,7 @@ from typing import Any
 
 from pydantic_ai.toolsets import FunctionToolset
 
-from amb.base import Memory
+from amb.base import Callbacks, Memory
 from amb.contracts import MemoryHit, QAPair, Sample, Session
 
 
@@ -50,11 +50,11 @@ class SearchToolset(FunctionToolset):
         self.retrieved: list[MemoryHit] = []
         self.num_searches = 0
         self.search_s = 0.0
-        self.callbacks = CallbackList([])
+        self.callbacks = Callbacks()
         self.sample: Sample | None = None
         self.qa: QAPair | None = None
 
-    def observe(self, callbacks: CallbackList, sample: Sample, qa: QAPair) -> None:
+    def observe(self, callbacks: Callbacks, sample: Sample, qa: QAPair) -> None:
         """Bind the run's callbacks, so each search the agent runs is seen.
 
         The Runner calls this on the toolset an integration built: the
@@ -137,10 +137,10 @@ class IngestToolset(FunctionToolset):
         self.session = session
         self.num_writes = 0
         self.write_s = 0.0
-        self.callbacks = CallbackList([])
+        self.callbacks = Callbacks()
         self.sample: Sample | None = None
 
-    def observe(self, callbacks: CallbackList, sample: Sample) -> None:
+    def observe(self, callbacks: Callbacks, sample: Sample) -> None:
         """Bind the run's callbacks, so each write the agent makes is seen."""
         self.callbacks = callbacks
         self.sample = sample
