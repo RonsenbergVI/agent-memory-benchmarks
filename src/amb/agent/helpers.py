@@ -22,6 +22,7 @@
 
 from amb.contracts import MemoryHit
 
+
 def format_context(hits: list[MemoryHit]) -> str:
     """Render retrieved memories as numbered context for the prompt."""
     if not hits:

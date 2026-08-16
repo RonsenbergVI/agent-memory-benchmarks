@@ -23,15 +23,16 @@
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
-from amb.contracts import Judgment, MemoryHit, GenerationResult, Session
 from amb.agent.helpers import format_context
 from amb.agent.prompts import (
-    ANSWER_SYSTEM_PROMPT,
     AGENTIC_ANSWER_SYSTEM_PROMPT,
+    ANSWER_SYSTEM_PROMPT,
     INGEST_SYSTEM_PROMPT,
-    JUDGE_SYSTEM_PROMPT
+    JUDGE_SYSTEM_PROMPT,
 )
 from amb.agent.toolset import IngestToolset, SearchToolset
+from amb.contracts import GenerationResult, Judgment, MemoryHit, Session
+
 
 def answer_question(
     question: str,
@@ -136,4 +137,3 @@ def judge_answer(
         f"Question: {question}\nGold answer: {gold}\nPredicted answer: {prediction}"
     )
     return result.output
-
