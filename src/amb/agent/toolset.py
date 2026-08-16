@@ -54,9 +54,7 @@ class SearchToolset(FunctionToolset):
         self.sample: Sample | None = None
         self.qa: QAPair | None = None
 
-    def observe(
-        self, callbacks: CallbackList, sample: Sample, qa: QAPair
-    ) -> None:
+    def observe(self, callbacks: CallbackList, sample: Sample, qa: QAPair) -> None:
         """Bind the run's callbacks, so each search the agent runs is seen.
 
         The Runner calls this on the toolset an integration built: the
