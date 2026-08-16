@@ -22,7 +22,7 @@
 
 from abc import ABC
 
-from amb.base import Memory
+from amb.base.memory import Memory
 from amb.contracts import IngestionRecord, MemoryHit, QAPair, Run, Sample, Session
 from amb.runner import RunConfig
 

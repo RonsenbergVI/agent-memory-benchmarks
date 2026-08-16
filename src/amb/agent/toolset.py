@@ -26,8 +26,7 @@ from typing import Any
 from pydantic_ai.toolsets import FunctionToolset
 
 from amb.base import Memory
-from amb.contracts import MemoryHit
-from amb.conversation import Sample, QAPair, Session
+from amb.contracts import MemoryHit, QAPair, Sample, Session
 
 
 class SearchToolset(FunctionToolset):

@@ -44,7 +44,7 @@ class RunType(StrEnum):
     AGENT = "agent"
 
 
-TOKEN_TRACKING_KEYS: tuple[str] = (
+TOKEN_TRACKING_KEYS: tuple[str, ...] = (
     "llm_input_tokens",
     "llm_output_tokens",
     "llm_calls",

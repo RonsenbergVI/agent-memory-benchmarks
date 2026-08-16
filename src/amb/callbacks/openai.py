@@ -25,8 +25,8 @@ import threading
 from collections.abc import Callable
 
 from amb.base import Callback, Memory
-from amb.contracts import QAPair, Run, Sample
 from amb.constants import TOKEN_TRACKING_KEYS
+from amb.contracts import QAPair, Run, Sample
 from amb.runner import RunConfig
 
 
