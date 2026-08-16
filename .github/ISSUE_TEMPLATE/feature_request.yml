@@ -1,0 +1,40 @@
+name: Feature / enhancement request
+description: A new dataset, a new metric, or an improvement to the harness itself
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of addition is this?
+      options:
+        - New dataset
+        - New metric / evaluation axis
+        - New question category
+        - Harness improvement (CLI, reporting, plotting, CI)
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What are you proposing?
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why does the benchmark need this?
+      description: >-
+        What gap does it close? See the README's Design principles (multiple axes, no single
+        ranking; reproducibility first) if relevant.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you be able to contribute this yourself?
+      options:
+        - "Yes — I'll open the PR"
+        - "Maybe, with some guidance"
+        - "No, just proposing it"
+    validations:
+      required: true

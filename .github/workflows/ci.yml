@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# a new push to a PR cancels the previous run
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # hook environments are expensive to build; key them on the config
+      - name: Cache pre-commit hooks
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      # same command as `make check`, so local and CI cannot drift
+      - name: Run pre-commit
+        run: uvx pre-commit run --all-files --show-diff-on-failure
+
+  test:
+    name: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          # honours .python-version
+          python-version-file: .python-version
+
+      # --locked fails if uv.lock is stale rather than silently resolving
+      - name: Install the workspace
+        run: uv sync --locked
+
+      - name: Run tests
+        run: uv run pytest
+
+# Integration benchmarks (mem0, graphiti, letta) are deliberately not run
+# here: they need databases and paid API keys. The test suite covers the
+# pipeline end to end with fixtures, and `make smoke` runs the `naive`
+# baseline locally when you want a real dataset in the loop.

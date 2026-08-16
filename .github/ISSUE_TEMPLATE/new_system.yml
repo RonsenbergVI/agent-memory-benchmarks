@@ -1,0 +1,69 @@
+name: New memory system
+description: Propose a memory system for inclusion in the benchmark
+title: "[new system]: "
+labels: ["new-system"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: check the README's [Inclusion criteria](../../README.md#inclusion-criteria)
+        and [Projects in scope](../../README.md#projects-in-scope) — this issue is for proposing
+        *inclusion*. Once agreed, the actual adapter lands as a PR adding `benchmarks/<system>/`
+        (see [Adding a memory system](../../README.md#adding-a-memory-system)).
+  - type: input
+    id: name
+    attributes:
+      label: Project name
+    validations:
+      required: true
+  - type: input
+    id: repo
+    attributes:
+      label: Repository URL
+      placeholder: https://github.com/org/project
+    validations:
+      required: true
+  - type: dropdown
+    id: license
+    attributes:
+      label: License
+      options:
+        - MIT
+        - Apache-2.0
+        - BSD
+        - Other permissive / OSS-adjacent (explain below)
+        - Not permissive, or unsure
+    validations:
+      required: true
+  - type: input
+    id: memory_model
+    attributes:
+      label: Memory model
+      description: One line, e.g. "vector + extraction", "temporal knowledge graph", "hierarchical (OS-style)"
+    validations:
+      required: true
+  - type: checkboxes
+    id: criteria
+    attributes:
+      label: Inclusion criteria
+      description: See the README's Inclusion criteria section for the full wording
+      options:
+        - label: Agent memory is a primary concern of the project, not an afterthought
+        - label: Publicly accessible (OSS, or has a public API)
+        - label: Reasonable maintenance signal in the last 6 months
+        - label: Permissively licensed, or open-core included via its OSS edition only
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else reviewers should know?
+      description: API shape, known limitations, why this project and why now, etc.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you be able to contribute the adapter yourself?
+      options:
+        - "Yes — I'll open the PR"
+        - "Maybe, with some guidance"
+        - "No, just proposing it"
+    validations:
+      required: true

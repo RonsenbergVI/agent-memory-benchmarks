@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in the harness, an integration, or a published result is wrong
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where's the bug?
+      options:
+        - Core harness (src/amb)
+        - A specific integration (benchmarks/<provider>)
+        - A dataset loader
+        - A published result / number in RESULTS.md or README.md
+        - CI workflow
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: component
+    attributes:
+      label: Which one, specifically?
+      description: System name, dataset name, workflow file, run-id, etc. — leave blank if not applicable
+  - type: textarea
+    id: command
+    attributes:
+      label: Command that reproduces it
+      description: The exact `amb ...` / `docker compose ...` invocation, if there is one
+      render: shell
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or output
+      render: shell
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: OS, uv/Python version, Docker version if relevant
