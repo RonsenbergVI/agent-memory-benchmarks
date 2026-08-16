@@ -34,7 +34,7 @@ class TiktokenUsageTracker(Callback):
     wrappers nor the system's API can observe the traffic: the adapter
     computes its spend (letta tokenizes every stored passage and search
     query with tiktoken — exact for embeddings, which bill their input
-    verbatim) and reports it through `MemorySystem.usage_counters()`; this
+    verbatim) and reports it through `Memory.usage_counters()`; this
     callback reads those counters at the same lifecycle boundaries and
     writes the same report fields as OpenAIUsageTracker, so a computed
     system's numbers are identical in shape to a measured one's.
