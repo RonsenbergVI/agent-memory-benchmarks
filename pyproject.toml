@@ -80,6 +80,7 @@ ignore = [
     "E741", # ambigous variable name
     "ANN401",
     "D401",
+    "D104",
     "D211",
     "D213",
     "DOC201",
