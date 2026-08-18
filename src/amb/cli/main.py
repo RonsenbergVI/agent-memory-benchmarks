@@ -22,7 +22,7 @@
 
 import click
 
-from amb import logs
+from amb import logging
 from amb.cli.commands import COMMANDS
 
 
@@ -30,14 +30,14 @@ from amb.cli.commands import COMMANDS
 @click.version_option(package_name="amb", prog_name="amb")
 @click.option(
     "--log-level",
-    type=click.Choice(logs.LEVELS),
+    type=click.Choice(logging.LEVELS),
     default="warning",
     show_default=True,
     help="stderr log level; `debug` traces every question's retrieval",
 )
 def cli(log_level: str) -> None:
     """Agent memory benchmark harness."""
-    logs.configure(log_level)
+    logging.configure(log_level)
 
 
 # commands live one per module under `commands/` and are attached here, so a
