@@ -26,7 +26,8 @@ from pathlib import Path
 import click
 
 from amb import documents
-from amb.reporting import DEFAULT_REPORT_DIR, ComparisonReport
+from amb.constants import DEFAULT_REPORT_DIR
+from amb.reporting import RunReport, ComparisonReport
 
 
 @click.command()
