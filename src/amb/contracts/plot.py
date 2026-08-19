@@ -37,5 +37,3 @@ class Series(BaseModel):
     label: str
     xs: list[float] = Field(default_factory=list)
     ys: list[float] = Field(default_factory=list)
-
-

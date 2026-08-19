@@ -20,7 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from pydantic import BaseModel
 
 from amb.base import Metric, Report
 from amb.constants import DEFAULT_REPORT_DIR
@@ -33,6 +32,7 @@ SUMMARY_COLUMNS = (
     ("retrieval_f1", "F1", "{:.3f}"),
     ("memory_tokens_total", "memory tokens", "{:,.0f}"),
 )
+
 
 class RunReport(Report):
     """The metrics report over one run's raw data.

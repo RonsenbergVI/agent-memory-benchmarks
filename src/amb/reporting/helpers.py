@@ -119,11 +119,11 @@ def collect_points(summaries: list[dict], x: str, y: str) -> list[Point]:
 
 def hues(labels: list[str], c: dict) -> dict[str, str]:
     """Each label's hue, assigned in sorted-name order — the same rule the
-    lines form uses, so a system keeps its colour from chart to chart."""
+    lines form uses, so a system keeps its colour from chart to chart.
+    """
     palette = c["categories"]
     return {
-        label: palette[i % len(palette)]
-        for i, label in enumerate(sorted(set(labels)))
+        label: palette[i % len(palette)] for i, label in enumerate(sorted(set(labels)))
     }
 
 

@@ -21,29 +21,23 @@
 # SOFTWARE.
 
 import math
-import re
-from collections.abc import Callable
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from amb.constants import LIGHT, DARK
+from amb.constants import LIGHT
 from amb.contracts import Point, Series
 from amb.reporting.helpers import (
-    is_ratio,
-    pretty,
-    flatten,
-    available_metrics,
-    collect_series,
-    collect_points,
     hues,
+    human_ticks,
+    is_ratio,
+    pad_axis,
+    pad_limits,
+    place_labels,
+    pretty,
     round_bars,
     styled_axes,
-    human_ticks,
-    place_labels,
-    pad_limits,
-    pad_axis
 )
+
 
 def scatter(
     points: list[Point],
@@ -223,6 +217,7 @@ def bars(
         ax.set_xlim(left=0.0)  # bars are anchored at zero, so the axis is too
         round_bars(fig, ax)
     return _finish(fig, ax, c, x_label, "", title, output, subtitle)
+
 
 def _finish(
     fig: Any,
