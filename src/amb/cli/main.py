@@ -22,7 +22,7 @@
 
 import click
 
-from amb import logging
+from amb import logs as logging
 from amb.cli.commands import COMMANDS
 
 

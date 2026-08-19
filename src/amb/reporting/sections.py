@@ -26,8 +26,8 @@ from amb.base.reporting import Section
 from amb.constants import LATENCY, SUMMARY_ORDER, TOKENS
 from amb.contracts import Block, Figure, Heading, Paragraph, Rule, Table
 from amb.reporting.chart import Chart
-from amb.reporting.groups import RunGroup, precision_pinned
 from amb.reporting.helpers import headline, pretty
+from amb.reporting.report import RunGroup, precision_pinned
 from amb.reporting.run import ComparisonReport
 
 

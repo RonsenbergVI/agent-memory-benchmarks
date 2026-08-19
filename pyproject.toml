@@ -23,9 +23,10 @@ dependencies = [
 [project.scripts]
 amb = "amb.cli:main"
 
-# dbt-style registration: integrations are Memory subclasses registered
-# under this group. The core ships only the naive baseline; real integrations
-# live in benchmarks/<provider>/ as their own packages (amb-mem0, ...).
+# dbt-style registration: integrations are Benchmark (or bare Memory)
+# subclasses registered under this group. The core ships only the naive
+# baseline; real integrations live in benchmarks/<provider>/ as their own
+# workspace packages (mem0, graphiti, letta, fraise).
 [project.entry-points."amb.systems"]
 naive = "amb.memory:NaiveBenchmark"
 

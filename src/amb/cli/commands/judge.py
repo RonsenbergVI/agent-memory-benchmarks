@@ -63,5 +63,7 @@ def judge(run_dir: Path, model: str | None, force: bool) -> None:
             "no predicted answers to grade: this run never generated answers "
             "(direct mode without --model)"
         )
-    report.save(run_dir.parents[3])
+    # variant runs live one level deeper (<root>/<dataset>/<variant>/...),
+    # so the report root sits one more parent up
+    report.save(run_dir.parents[4 if report.run.variant else 3])
     click.echo(f"judged {judged} answers with {judge_model} -> {run_dir}")

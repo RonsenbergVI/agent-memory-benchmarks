@@ -317,6 +317,11 @@ def default_metrics() -> list[Metric]:
     and `search_latency` is what the comparison's p50 column reads.
     """
     return [
+        Sum("ingest.total_s", "ingest_s"),
+        Sum("ingest.total_turns", "num_turns"),
+        Sum("ingest.total_sessions", "num_sessions"),
+        Sum("ingest.questions_dropped", "questions_dropped"),
+        Sum("conversation.total_s", "conversation_s"),
         RetrievalPrecision(),
         RetrievalRecall(),
         RetrievalF1(),
@@ -328,6 +333,8 @@ def default_metrics() -> list[Metric]:
         Mean("judge_accuracy", "judge_correct"),
         LatencyPercentiles("search_latency", "search_s"),
         LatencyPercentiles("answer_latency", "answer_s"),
+        Mean("tokens.input_per_question", "input_tokens"),
+        Mean("tokens.output_per_question", "output_tokens"),
         DictSum("memory_tokens.ingest", "token_usage"),
         Sum("memory_tokens.search_total", "memory_tokens"),
         Count("errors", "error"),

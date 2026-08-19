@@ -1,0 +1,8 @@
+.git
+.venv
+.data
+report
+plots
+**/__pycache__
+# keys reach containers through compose env_file/environment, never the image
+.env
