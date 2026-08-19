@@ -84,6 +84,10 @@ class GroupCharts(Section):
     group: RunGroup
     level: int = 3
     metric_filter: tuple[str, ...] = ()
+    # the group's k-sweep lines, shown before the per-k sets. The same
+    # figures GroupSummary links — planned with identical paths, so the
+    # reports' chart sets deduplicate to one drawing
+    sweeps: list[Chart] = field(default_factory=list, init=False, repr=False)
     # per k: its bar charts and its trade-off scatters, both non-empty only
     sets: list[tuple[int, list[Chart], list[Chart]]] = field(
         default_factory=list, init=False, repr=False
@@ -95,6 +99,24 @@ class GroupCharts(Section):
     def __post_init__(self) -> None:
         """Plan the chart sets, keeping only what the runs have data for."""
         metrics = self.group.metrics(self.metric_filter)
+        planned = [
+            Chart(
+                kind="lines",
+                stem=f"k_{stem}",
+                y=metric,
+                out_dir=self.group.plot_dir,
+                summaries=self.group.summaries,
+                alt=f"Retrieval {pretty(stem)} vs k",
+                title=headline(f"{pretty(metric)} vs k"),
+                subtitle=f"{self.group.label} · {self.group.mode} · "
+                "newest run per system and k",
+            )
+            for stem, metric in sorted(
+                metrics, key=lambda pair: SUMMARY_ORDER.index(pair[0])
+            )
+        ]
+        self.sweeps = [c for c in planned if c.has_data()]
+        self.skipped += len(planned) - len(self.sweeps)
         for k in self.group.ks():
             bars = [self._bars(metric, k) for _, metric in metrics]
             scatters = [
@@ -153,8 +175,9 @@ class GroupCharts(Section):
         )
 
     def charts(self) -> list[Chart]:
-        """Every chart in every k's set."""
-        return [c for _, bars, scatters in self.sets for c in (*bars, *scatters)]
+        """The k-sweep lines, then every chart in every k's set."""
+        per_k = [c for _, bars, scatters in self.sets for c in (*bars, *scatters)]
+        return [*self.sweeps, *per_k]
 
     def blocks(self) -> list[Block]:
         """The group's heading, why its metric set is what it is, then each k."""
@@ -170,8 +193,19 @@ class GroupCharts(Section):
                     "of recall once precision is pinned at 1 (F1 = 2·1·R/(1+R))."
                 )
             )
+        if self.sweeps:
+            blocks.append(
+                Heading(level=self.level + 1, text=f"{self.group.label}: retrieval vs k")
+            )
+            blocks.append(
+                Paragraph(
+                    text="One line per system across the k sweep, newest run "
+                    "per system and k."
+                )
+            )
+            blocks += [Figure(alt=c.alt, path=c.path) for c in self.sweeps]
         for index, (k, bars, scatters) in enumerate(self.sets):
-            if index:
+            if index or self.sweeps:
                 blocks.append(Rule())
             if bars:
                 blocks.append(
