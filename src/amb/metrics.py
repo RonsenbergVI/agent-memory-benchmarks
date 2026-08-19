@@ -20,10 +20,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import re
+import string
 from collections import Counter
 from typing import Any, ClassVar
 
 from amb.base import Metric, Scorer
+
+
+def normalize_answer(text: str) -> str:
+    """Normalize an answer for token comparison (the SQuAD convention).
+
+    Lowercase, strip punctuation and the articles a/an/the, and collapse
+    whitespace, so F1 and exact match measure content rather than form.
+    """
+    text = text.lower()
+    text = "".join(ch for ch in text if ch not in string.punctuation)
+    text = re.sub(r"\b(a|an|the)\b", " ", text)
+    return " ".join(text.split())
+
 
 class Count(Metric):
     """How many observations carried the key at all (e.g. errors)."""
@@ -291,3 +306,46 @@ class TurnF1(RetrievalMetric):
     gold_key = "evidence_turn_ids"
     component = "retrieval_f1"
     name_ = "turn_f1"
+
+
+def default_metrics() -> list[Metric]:
+    """The standard metric set a run is scored with when none is given.
+
+    Session-level retrieval is the comparable headline; turn-level is the
+    stricter bonus. The dotted names land as nested summary sections: the
+    `memory_tokens` section is what the summary's headline cost total reads,
+    and `search_latency` is what the comparison's p50 column reads.
+    """
+    return [
+        RetrievalPrecision(),
+        RetrievalRecall(),
+        RetrievalF1(),
+        TurnPrecision(),
+        TurnRecall(),
+        TurnF1(),
+        AnswerF1(),
+        ExactMatch(),
+        Mean("judge_accuracy", "judge_correct"),
+        LatencyPercentiles("search_latency", "search_s"),
+        LatencyPercentiles("answer_latency", "answer_s"),
+        DictSum("memory_tokens.ingest", "token_usage"),
+        Sum("memory_tokens.search_total", "memory_tokens"),
+        Count("errors", "error"),
+    ]
+
+
+def default_category_metrics() -> list[Metric]:
+    """Fresh instances of the per-question-category metric set.
+
+    A factory because every category accumulates its own state; only
+    row-level metrics belong here, since categories are a property of
+    questions, not of ingestion.
+    """
+    return [
+        RetrievalPrecision(),
+        RetrievalRecall(),
+        RetrievalF1(),
+        AnswerF1(),
+        ExactMatch(),
+        Mean("judge_accuracy", "judge_correct"),
+    ]

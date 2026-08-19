@@ -22,7 +22,7 @@
 
 import click
 
-from amb.base import discover_benchmarks
+from amb.registry import discover_benchmarks
 
 
 @click.command()

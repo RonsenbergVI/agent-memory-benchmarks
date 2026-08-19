@@ -22,10 +22,14 @@
 
 import threading
 import time
+from typing import TYPE_CHECKING
 
-from amb.base import Callback, Memory
+from amb.base.callback import Callback
+from amb.base.memory import Memory
 from amb.contracts import IngestionRecord, MemoryHit, QAPair, Run, Sample, Session
-from amb.runner import RunConfig
+
+if TYPE_CHECKING:
+    from amb.runner import RunConfig
 
 
 class TimingTracker(Callback):
@@ -50,7 +54,7 @@ class TimingTracker(Callback):
         self._lock = threading.Lock()
         self._agentic = False
 
-    def on_run_begin(self, config: RunConfig, run: Run) -> None:
+    def on_run_begin(self, config: "RunConfig", run: Run) -> None:
         """Note the mode: it decides whether search counts are observations.
 
         In direct mode the harness searches exactly once per question, so

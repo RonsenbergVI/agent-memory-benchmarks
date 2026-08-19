@@ -23,11 +23,15 @@
 import inspect
 import threading
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from amb.base import Callback, Memory
+from amb.base.callback import Callback
+from amb.base.memory import Memory
 from amb.constants import TOKEN_TRACKING_KEYS
 from amb.contracts import QAPair, Run, Sample
-from amb.runner import RunConfig
+
+if TYPE_CHECKING:
+    from amb.runner import RunConfig
 
 
 class OpenAIUsageTracker(Callback):
@@ -62,7 +66,7 @@ class OpenAIUsageTracker(Callback):
         counters = getattr(self._local, "counters", None)
         return counters if counters is not None else dict.fromkeys(self.KEYS, 0)
 
-    def on_run_begin(self, config: RunConfig, run: Run) -> None:
+    def on_run_begin(self, config: "RunConfig", run: Run) -> None:
         """Patch the SDK once for the whole run.
 
         Per-sample install/remove breaks under `--workers`: the first

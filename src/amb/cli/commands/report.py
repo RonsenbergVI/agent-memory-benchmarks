@@ -25,9 +25,8 @@ from pathlib import Path
 
 import click
 
-from amb import documents
 from amb.constants import DEFAULT_REPORT_DIR
-from amb.reporting import ComparisonReport
+from amb.reporting import FORMATS, REPORTS, ComparisonReport, build_reports
 
 
 @click.command()
@@ -63,14 +62,14 @@ from amb.reporting import ComparisonReport
     "extra",
     multiple=True,
     metavar="NAME[=PATH]",
-    help=f"write the named report ({', '.join(documents.REPORTS)}), "
+    help=f"write the named report ({', '.join(REPORTS)}), "
     "optionally to PATH instead of its default (repeatable). --output and "
     "--summary are the shorthands for the two built-in ones",
 )
 @click.option(
     "--format",
     "fmt",
-    type=click.Choice(documents.FORMATS),
+    type=click.Choice(FORMATS),
     default="markdown",
     show_default=True,
     help="output format for every generated report",
@@ -119,7 +118,7 @@ def report(  # noqa: PLR0913 - one option per output/filter, all independent
     """Generate the comparison reports from the saved runs.
 
     Named nothing to write, it prints the full table to stdout. Otherwise
-    each requested report is generated from `amb.documents`: the `results`
+    each requested report is generated from `amb.reporting`: the `results`
     report (RESULTS.md) is written whole, since every part of it is derived
     from the runs; the `summary` report (README.md) is spliced into its
     marked section, since hand-written prose surrounds it. Both cover every
@@ -161,7 +160,7 @@ def report(  # noqa: PLR0913 - one option per output/filter, all independent
         click.echo(comparison.to_markdown())
         return
     try:
-        reports = documents.build_reports(
+        reports = build_reports(
             comparison,
             names=tuple(requested),
             paths={n: p for n, p in requested.items() if p is not None},

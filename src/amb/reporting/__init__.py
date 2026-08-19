@@ -20,6 +20,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from amb.reporting.run import ComparisonReport, RunReport
+__all__ = [
+    "FORMATS",
+    "REPORTS",
+    "BenchmarkReport",
+    "ComparisonReport",
+    "RunReport",
+    "build_reports",
+    "get_renderer",
+    "markdown_table",
+    "plan_charts",
+]
 
-__all__ = ["ComparisonReport", "RunReport"]
+from amb.reporting.chart import plan_charts
+from amb.reporting.renderers import FORMATS, get_renderer
+from amb.reporting.report import REPORTS, BenchmarkReport, build_reports
+from amb.reporting.run import ComparisonReport, RunReport, markdown_table

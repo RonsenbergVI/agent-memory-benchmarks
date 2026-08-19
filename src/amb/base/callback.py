@@ -21,17 +21,19 @@
 # SOFTWARE.
 
 from abc import ABC
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from amb.base.memory import Memory
 from amb.contracts import IngestionRecord, MemoryHit, QAPair, Run, Sample, Session
-from amb.runner import RunConfig
+
+if TYPE_CHECKING:
+    from amb.runner import RunConfig
 
 
 class Callback(ABC):
     """Base callback: every hook is a no-op; override the ones needed."""
 
-    def on_run_begin(self, config: RunConfig, run: Run) -> None:
+    def on_run_begin(self, config: "RunConfig", run: Run) -> None:
         """Before the first sample is loaded."""
 
     def on_run_end(self, run: Run) -> None:
