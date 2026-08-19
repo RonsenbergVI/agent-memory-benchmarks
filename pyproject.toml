@@ -23,7 +23,7 @@ dependencies = [
 [project.scripts]
 amb = "amb.cli:main"
 
-# dbt-style registration: integrations are MemorySystem subclasses registered
+# dbt-style registration: integrations are Memory subclasses registered
 # under this group. The core ships only the naive baseline; real integrations
 # live in benchmarks/<provider>/ as their own packages (amb-mem0, ...).
 [project.entry-points."amb.systems"]
