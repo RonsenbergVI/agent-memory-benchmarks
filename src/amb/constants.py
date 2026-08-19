@@ -140,9 +140,9 @@ RESULTS_PLOTS_INTRO = (
     "Every metric is session-level — one exam, every system on it. Written "
     "by `amb plot all` into `plots/<dataset>/`, one directory per dataset "
     "(or `plots/<dataset>/<variant>/` for a dataset whose variants are "
-    "separate experiments). The retrieval-vs-k sweep lines live in the "
-    "[README](README.md#results) — that is the overview; below is the rest "
-    "of the detail, per dataset and per k."
+    "separate experiments). Each dataset's section opens with its "
+    "retrieval-vs-k sweep lines — the same overview the "
+    "[README](README.md#results) shows — followed by the detail per k."
 )
 
 RESULTS_OUTRO = (
