@@ -1,0 +1,38 @@
+services:
+  letta:
+    image: letta/letta:0.16.8
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+    volumes:
+      - letta-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8283/v1/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/letta/Dockerfile
+    image: amb-letta
+    depends_on:
+      letta:
+        condition: service_healthy
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      - LETTA_BASE_URL=http://letta:8283
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system letta --dataset locomo
+    volumes:
+      - ../../data:/amb/data
+      - ../../report:/amb/report
+
+volumes:
+  letta-pgdata:

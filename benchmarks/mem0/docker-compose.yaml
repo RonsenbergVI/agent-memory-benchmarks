@@ -1,0 +1,34 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/mem0/Dockerfile
+    image: amb-mem0
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system mem0 --dataset locomo
+    volumes:
+      - ../../data:/amb/data
+      - ../../report:/amb/report
+
+volumes:
+  qdrant-storage:
