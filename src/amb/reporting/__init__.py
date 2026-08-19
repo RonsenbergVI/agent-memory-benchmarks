@@ -20,6 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from amb.reporting.run import RunReport, ComparisonReport
+from amb.reporting.run import ComparisonReport, RunReport
 
 __all__ = ["ComparisonReport", "RunReport"]

@@ -27,7 +27,7 @@ import click
 
 from amb import documents
 from amb.constants import DEFAULT_REPORT_DIR
-from amb.reporting import RunReport, ComparisonReport
+from amb.reporting import ComparisonReport
 
 
 @click.command()
