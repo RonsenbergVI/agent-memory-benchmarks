@@ -169,9 +169,7 @@ class NaiveIngestToolset(IngestToolset):
         if not cited:
             return "not stored: none of the cited turn ids exist in this session"
         t0 = time.perf_counter()
-        self.naive.store(
-            self.conversation_id, content, cited, self.session.session_id
-        )
+        self.naive.store(self.conversation_id, content, cited, self.session.session_id)
         self.record_write(time.perf_counter() - t0)
         if len(cited) < len(source_turn_ids):
             return "stored, but unknown turn ids were dropped from the citation"

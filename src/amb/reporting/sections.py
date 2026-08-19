@@ -195,7 +195,9 @@ class GroupCharts(Section):
             )
         if self.sweeps:
             blocks.append(
-                Heading(level=self.level + 1, text=f"{self.group.label}: retrieval vs k")
+                Heading(
+                    level=self.level + 1, text=f"{self.group.label}: retrieval vs k"
+                )
             )
             blocks.append(
                 Paragraph(

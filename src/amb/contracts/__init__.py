@@ -39,7 +39,7 @@ __all__ = [
     "Paragraph",
     "Table",
     "Figure",
-    "Rule"
+    "Rule",
 ]
 
 from amb.contracts.agent import GenerationResult, Judgment
