@@ -36,23 +36,22 @@ from pathlib import Path
 
 from amb.base.reporting import Report, Section
 from amb.constants import (
+    DEFAULT_PLOT_DIR,
     GROUP_BY,
+    GUARD,
     RESULTS_INTRO,
     RESULTS_OUTRO,
     RESULTS_PLOTS_INTRO,
     RESULTS_TABLE_INTRO,
+    RETRIEVAL_METRICS,
     SUMMARY_MARKS,
-    DEFAULT_PLOT_DIR,
-    GUARD,
-    RETRIEVAL_METRICS
 )
 from amb.contracts import Block, Heading, Paragraph
 from amb.reporting.chart import Chart
-from amb.reporting.groups import RunGroup, group_runs
 from amb.reporting.helpers import slug
 from amb.reporting.renderers import get_renderer
 from amb.reporting.run import ComparisonReport
-from amb.reporting.sections import ComparisonTable, GroupCharts, GroupSummary, Prose
+
 
 def splice(path: Path, marks: tuple[str, str], block: str, template: str) -> None:
     """Replace the marked region of `path`, creating it when missing.
@@ -74,197 +73,6 @@ def splice(path: Path, marks: tuple[str, str], block: str, template: str) -> Non
         path.write_text(text.rstrip() + "\n\n" + template.format(block=body))
         return
     path.write_text(template.format(block=body))
-
-
-@dataclass
-class BenchmarkReport(Report):
-    """One generated document: its sections, its file, how it is written.
-
-    `marks` decides the write mode. Without them the file is generated
-    whole — everything it says comes from the runs, so there is nothing to
-    preserve. With them only the marked region is rewritten, for a file
-    like README.md whose hand-written prose surrounds the results.
-    """
-
-    name: str
-    path: Path
-    sections: list[Section]
-    marks: tuple[str, str] | None = None
-    template: str = "{block}\n"
-    # the run groups this report covers, one section each — kept for the
-    # CLI's "wrote N section(s)" line
-    groups: list[RunGroup] = field(default_factory=list, repr=False)
-
-    @property
-    def skipped(self) -> int:
-        """Charts its sections planned but dropped for want of data."""
-        return sum(getattr(section, "skipped", 0) for section in self.sections)
-
-    def charts(self) -> list[Chart]:
-        """Every chart this report shows, deduplicated by output path.
-
-        Reports overlap (the summary's sweep lines also appear elsewhere),
-        so the same figure is planned once and drawn once.
-        """
-        seen: dict[str, Chart] = {}
-        for section in self.sections:
-            for chart in section.charts():
-                seen.setdefault(chart.path.as_posix(), chart)
-        return list(seen.values())
-
-    def blocks(self) -> list[Block]:
-        """Every section's blocks, in order."""
-        return [block for section in self.sections for block in section.blocks()]
-
-    def render(self, fmt: str = "markdown") -> str:
-        """Render the whole document in the named format."""
-        return get_renderer(fmt).render(self.blocks())
-
-    def to_markdown(self) -> str:
-        """Render the whole document as markdown."""
-        return self.render("markdown")
-
-    def write(self, fmt: str = "markdown") -> Path:
-        """Write the document to `path` and return it."""
-        text = self.render(fmt)
-        if self.marks is None:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(text)
-        else:
-            splice(self.path, self.marks, text.strip(), self.template)
-        return self.path
-
-
-def results_report(
-    comparison: ComparisonReport,
-    groups: list[RunGroup],
-    *,
-    k: int = 10,
-    stamp: str = "",
-    path: Path = Path("RESULTS.md"),
-    metric_filter: tuple[str, ...] = (),
-) -> BenchmarkReport:
-    """Build RESULTS.md: the full table, then every group's chart detail.
-
-    Written whole rather than spliced — nothing in it is hand-authored, so
-    there is no prose to preserve. `k` is unused here (the file covers
-    every k the runs used); it is in the signature so every report builder
-    is callable the same way.
-    """
-    header: list[Block] = [
-        Heading(level=1, text="Agent Memory Benchmark — Results"),
-        Paragraph(text=RESULTS_INTRO),
-    ]
-    if stamp:
-        header.append(Paragraph(text=stamp))
-    sections: list[Section] = [
-        Prose(header),
-        ComparisonTable(comparison, heading="Every run", intro=RESULTS_TABLE_INTRO),
-        Prose([Heading(level=2, text="Plots"), Paragraph(text=RESULTS_PLOTS_INTRO)]),
-    ]
-    sections += [
-        GroupCharts(group, level=3, metric_filter=metric_filter) for group in groups
-    ]
-    sections.append(Prose([Paragraph(text=RESULTS_OUTRO)]))
-    return BenchmarkReport(name="results", path=path, sections=sections, groups=groups)
-
-
-def summary_report(
-    comparison: ComparisonReport,
-    groups: list[RunGroup],
-    *,
-    k: int = 10,
-    stamp: str = "",
-    path: Path = Path("README.md"),
-    metric_filter: tuple[str, ...] = (),
-) -> BenchmarkReport:
-    """Build the README's results section: one headline per group at `k`.
-
-    Spliced into the file's marked region: README.md is hand-written
-    around it.
-    """
-    intro = f"Newest run per system at k={k} — full detail in [RESULTS.md](RESULTS.md)."
-    lead: list[Block] = [Paragraph(text=stamp)] if stamp else []
-    lead.append(Paragraph(text=intro))
-    sections: list[Section] = [Prose(lead)]
-    sections += [
-        GroupSummary(group, comparison, k=k, level=3, metric_filter=metric_filter)
-        for group in groups
-    ]
-    return BenchmarkReport(
-        name="summary",
-        path=path,
-        sections=sections,
-        marks=SUMMARY_MARKS,
-        template="## Results\n\n{block}\n",
-        groups=groups,
-    )
-
-
-# Every report this repo generates, by name. A new one — an ablation page,
-# a per-provider page — is an entry here plus its builder; both CLI
-# commands pick it up, `amb report` writing it and `amb plot all` drawing
-# the charts it declares.
-REPORTS: dict[str, Callable[..., BenchmarkReport]] = {
-    "results": results_report,
-    "summary": summary_report,
-}
-
-
-def build_reports(
-    comparison: ComparisonReport,
-    *,
-    names: Sequence[str] = (),
-    paths: dict[str, Path] | None = None,
-    k: int = 10,
-    stamp: str = "",
-    dataset: str | None = None,
-    variant: str | None = None,
-    group_by: Sequence[str] = GROUP_BY,
-    metric_filter: tuple[str, ...] = (),
-) -> list[BenchmarkReport]:
-    """Build the named reports (default: all) over the comparison's runs.
-
-    The one entry point both `amb report` and `amb plot all` call, so the
-    documents and the chart set are planned from the same objects and
-    cannot disagree.
-
-    Raises:
-        ValueError: on an unknown report name, or when a group's runs
-            disagree on a guarded identity field.
-    """
-    summaries = comparison.summaries
-    if dataset is not None:
-        summaries = [s for s in summaries if s.get("dataset") == dataset]
-    if variant is not None:
-        summaries = [s for s in summaries if (s.get("variant") or "") == variant]
-    if not summaries:
-        # naming a combination nothing ran is a mistake worth reporting, not
-        # a document with an empty section in it
-        scope = ", ".join(
-            f"{name} {value!r}"
-            for name, value in (("dataset", dataset), ("variant", variant))
-            if value is not None
-        )
-        raise ValueError(f"no runs for {scope}" if scope else "no runs to report")
-    scoped = ComparisonReport(summaries)
-    groups = group_runs(summaries, group_by=group_by)
-
-    selected = tuple(names) or tuple(REPORTS)
-    unknown = [name for name in selected if name not in REPORTS]
-    if unknown:
-        raise ValueError(
-            f"unknown report(s) {', '.join(unknown)}; known: {', '.join(REPORTS)}"
-        )
-    reports = []
-    for name in selected:
-        report = REPORTS[name](
-            scoped, groups, k=k, stamp=stamp, metric_filter=metric_filter
-        )
-        if paths and name in paths:
-            report.path = paths[name]
-        reports.append(report)
-    return reports
 
 
 def precision_pinned(summaries: list[dict]) -> bool:
@@ -384,3 +192,214 @@ def group_runs(
                 )
         groups.append(RunGroup(key=key, summaries=members))
     return groups
+
+
+# -- reports -------------------------------------------------------------
+
+
+class BenchmarkReport(Report):
+    """One generated document: its sections, its file, how it is written.
+
+    `marks` decides the write mode. Without them the file is generated
+    whole — everything it says comes from the runs, so there is nothing to
+    preserve. With them only the marked region is rewritten, for a file
+    like README.md whose hand-written prose surrounds the results.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        path: Path,
+        sections: list[Section],
+        marks: tuple[str, str] | None = None,
+        template: str = "{block}\n",
+        groups: list[RunGroup] | None = None,
+    ) -> None:
+        """Bind the document's sections to the file they are written into."""
+        self.name = name
+        self.path = path
+        self.sections = sections
+        self.marks = marks
+        self.template = template
+        # the run groups this report covers, one section each — kept for the
+        # CLI's "wrote N section(s)" line
+        self.groups = groups or []
+
+    @property
+    def skipped(self) -> int:
+        """Charts its sections planned but dropped for want of data."""
+        return sum(getattr(section, "skipped", 0) for section in self.sections)
+
+    def charts(self) -> list[Chart]:
+        """Every chart this report shows, deduplicated by output path.
+
+        Reports overlap (the summary's sweep lines also appear elsewhere),
+        so the same figure is planned once and drawn once.
+        """
+        seen: dict[str, Chart] = {}
+        for section in self.sections:
+            for chart in section.charts():
+                seen.setdefault(chart.path.as_posix(), chart)
+        return list(seen.values())
+
+    def blocks(self) -> list[Block]:
+        """Every section's blocks, in order."""
+        return [block for section in self.sections for block in section.blocks()]
+
+    def render(self, fmt: str = "markdown") -> str:
+        """Render the whole document in the named format."""
+        return get_renderer(fmt).render(self.blocks())
+
+    def to_markdown(self) -> str:
+        """Render the whole document as markdown."""
+        return self.render("markdown")
+
+    def write(self, fmt: str = "markdown") -> Path:
+        """Write the document to `path` and return it."""
+        text = self.render(fmt)
+        if self.marks is None:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(text)
+        else:
+            splice(self.path, self.marks, text.strip(), self.template)
+        return self.path
+
+
+def results_report(
+    comparison: ComparisonReport,
+    groups: list[RunGroup],
+    *,
+    k: int = 10,
+    stamp: str = "",
+    path: Path = Path("RESULTS.md"),
+    metric_filter: tuple[str, ...] = (),
+) -> BenchmarkReport:
+    """Build RESULTS.md: the full table, then every group's chart detail.
+
+    Written whole rather than spliced — nothing in it is hand-authored, so
+    there is no prose to preserve. `k` is unused here (the file covers
+    every k the runs used); it is in the signature so every report builder
+    is callable the same way.
+    """
+    # imported here: sections use RunGroup/precision_pinned from this
+    # module, so a top-level import would be circular
+    from amb.reporting.sections import ComparisonTable, GroupCharts, Prose
+
+    header: list[Block] = [
+        Heading(level=1, text="Agent Memory Benchmark — Results"),
+        Paragraph(text=RESULTS_INTRO),
+    ]
+    if stamp:
+        header.append(Paragraph(text=stamp))
+    sections: list[Section] = [
+        Prose(header),
+        ComparisonTable(comparison, heading="Every run", intro=RESULTS_TABLE_INTRO),
+        Prose([Heading(level=2, text="Plots"), Paragraph(text=RESULTS_PLOTS_INTRO)]),
+    ]
+    sections += [
+        GroupCharts(group, level=3, metric_filter=metric_filter) for group in groups
+    ]
+    sections.append(Prose([Paragraph(text=RESULTS_OUTRO)]))
+    return BenchmarkReport(name="results", path=path, sections=sections, groups=groups)
+
+
+def summary_report(
+    comparison: ComparisonReport,
+    groups: list[RunGroup],
+    *,
+    k: int = 10,
+    stamp: str = "",
+    path: Path = Path("README.md"),
+    metric_filter: tuple[str, ...] = (),
+) -> BenchmarkReport:
+    """Build the README's results section: one headline per group at `k`.
+
+    Spliced into the file's marked region: README.md is hand-written
+    around it.
+    """
+    # imported here: sections use RunGroup/precision_pinned from this
+    # module, so a top-level import would be circular
+    from amb.reporting.sections import GroupSummary, Prose
+
+    intro = f"Newest run per system at k={k} — full detail in [RESULTS.md](RESULTS.md)."
+    lead: list[Block] = [Paragraph(text=stamp)] if stamp else []
+    lead.append(Paragraph(text=intro))
+    sections: list[Section] = [Prose(lead)]
+    sections += [
+        GroupSummary(group, comparison, k=k, level=3, metric_filter=metric_filter)
+        for group in groups
+    ]
+    return BenchmarkReport(
+        name="summary",
+        path=path,
+        sections=sections,
+        marks=SUMMARY_MARKS,
+        template="## Results\n\n{block}\n",
+        groups=groups,
+    )
+
+
+# Every report this repo generates, by name. A new one — an ablation page,
+# a per-provider page — is an entry here plus its builder; both CLI
+# commands pick it up, `amb report` writing it and `amb plot all` drawing
+# the charts it declares.
+REPORTS: dict[str, Callable[..., BenchmarkReport]] = {
+    "results": results_report,
+    "summary": summary_report,
+}
+
+
+def build_reports(
+    comparison: ComparisonReport,
+    *,
+    names: Sequence[str] = (),
+    paths: dict[str, Path] | None = None,
+    k: int = 10,
+    stamp: str = "",
+    dataset: str | None = None,
+    variant: str | None = None,
+    group_by: Sequence[str] = GROUP_BY,
+    metric_filter: tuple[str, ...] = (),
+) -> list[BenchmarkReport]:
+    """Build the named reports (default: all) over the comparison's runs.
+
+    The one entry point both `amb report` and `amb plot all` call, so the
+    documents and the chart set are planned from the same objects and
+    cannot disagree.
+
+    Raises:
+        ValueError: on an unknown report name, or when a group's runs
+            disagree on a guarded identity field.
+    """
+    summaries = comparison.summaries
+    if dataset is not None:
+        summaries = [s for s in summaries if s.get("dataset") == dataset]
+    if variant is not None:
+        summaries = [s for s in summaries if (s.get("variant") or "") == variant]
+    if not summaries:
+        # naming a combination nothing ran is a mistake worth reporting, not
+        # a document with an empty section in it
+        scope = ", ".join(
+            f"{name} {value!r}"
+            for name, value in (("dataset", dataset), ("variant", variant))
+            if value is not None
+        )
+        raise ValueError(f"no runs for {scope}" if scope else "no runs to report")
+    scoped = ComparisonReport(summaries)
+    groups = group_runs(summaries, group_by=group_by)
+
+    selected = tuple(names) or tuple(REPORTS)
+    unknown = [name for name in selected if name not in REPORTS]
+    if unknown:
+        raise ValueError(
+            f"unknown report(s) {', '.join(unknown)}; known: {', '.join(REPORTS)}"
+        )
+    reports = []
+    for name in selected:
+        report = REPORTS[name](
+            scoped, groups, k=k, stamp=stamp, metric_filter=metric_filter
+        )
+        if paths and name in paths:
+            report.path = paths[name]
+        reports.append(report)
+    return reports

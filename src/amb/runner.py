@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from loguru import logger
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
 from tqdm import tqdm
 
 from amb.base import Benchmark, Callback, Callbacks, Memory
@@ -38,7 +38,7 @@ from amb.constants import DEFAULT_DATA_DIR, DEFAULT_REPORT_DIR, RunType
 from amb.contracts import IngestionRecord, QAPair, Run, Sample, Session
 
 
-class RunConfig(BaseSettings):
+class RunConfig(BaseModel):
     """Everything one benchmark run needs, all of it from the CLI.
 
     These are the run's arguments, not the system's: memory-system
@@ -348,6 +348,10 @@ class Runner:
             len(sample.conversation.sessions),
             sample.conversation.num_turns,
         )
+        # the empty-ingest early return above deliberately skips this, so
+        # the timer charges a truthful zero there; here the clock must start
+        # or TimingTracker.on_ingest_end overwrites ingest_s with 0.0
+        self.callbacks.on_ingest_begin(sample, system)
         t0 = time.perf_counter()
         agent_stats: dict = {}
         if self.config.mode == "agentic":
@@ -461,6 +465,10 @@ class Runner:
                 toolset = self.benchmark.create_search_toolset(
                     system, sample.conversation.conversation_id, k=cfg.k
                 )
+                # the agent's searches are the harness's only view of
+                # retrieval here: they must report through the same hooks
+                # as the searches the harness drives itself
+                toolset.observe(self.callbacks, sample, qa)
                 assert cfg.model is not None  # guaranteed by run()
                 t0 = time.perf_counter()
                 generation = answer_with_memory(
@@ -476,12 +484,15 @@ class Runner:
                 row["num_searches"] = toolset.num_searches
                 row["num_hits"] = len(hits)
             else:
+                self.callbacks.on_search_begin(sample, qa)
                 t0 = time.perf_counter()
                 hits = system.search(
                     sample.conversation.conversation_id, qa.question, k=cfg.k
                 )
-                row["search_s"] = time.perf_counter() - t0
+                elapsed = time.perf_counter() - t0
+                row["search_s"] = elapsed
                 row["num_hits"] = len(hits)
+                self.callbacks.on_search(sample, qa, hits, elapsed)
 
             # raw retrieval data at every level available. Session ids are
             # the comparable headline (every system can attest a memory's

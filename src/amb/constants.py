@@ -45,7 +45,7 @@ class RunType(StrEnum):
     """The benchmark run type."""
 
     DIRECT = "direct"
-    AGENT = "agent"
+    AGENTIC = "agentic"
 
 
 TOKEN_TRACKING_KEYS: tuple[str, ...] = (
@@ -117,7 +117,6 @@ LATENCY = "search_latency.p50_s"
 # The order the headline (README) charts are shown in: F1 first, since it is
 # the metric the summary table ranks systems by.
 SUMMARY_ORDER = ("f1", "recall", "precision")
-
 
 
 RESULTS_INTRO = (
