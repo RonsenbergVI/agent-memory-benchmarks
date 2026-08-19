@@ -20,31 +20,39 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__all__ = [
-    "Judgment",
-    "GenerationResult",
-    "Turn",
-    "Session",
-    "Conversation",
-    "QAPair",
-    "Sample",
-    "MemoryHit",
-    "QuestionRecord",
-    "IngestionRecord",
-    "Run",
-    "Point",
-    "Series",
-    "Block",
-    "Heading",
-    "Paragraph",
-    "Table",
-    "Figure",
-    "Rule"
-]
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
-from amb.contracts.agent import GenerationResult, Judgment
-from amb.contracts.conversation import Conversation, QAPair, Sample, Session, Turn
-from amb.contracts.document import Block, Figure, Heading, Paragraph, Rule, Table
-from amb.contracts.memory import MemoryHit
-from amb.contracts.plot import Point, Series
-from amb.contracts.run import IngestionRecord, QuestionRecord, Run
+from amb.contracts import Block
+
+if TYPE_CHECKING:
+    from amb.reporting.chart import Chart
+
+
+class Report(ABC):
+    """A document derived from run data, renderable as markdown."""
+
+    @abstractmethod
+    def to_markdown(self) -> str:
+        """Render the report as markdown text."""
+
+
+class Renderer(ABC):
+    """Serializes a block tree into one output format."""
+
+    @abstractmethod
+    def render(self, blocks: Sequence[Block]) -> str:
+        """Return the document text for `blocks`."""
+
+
+class Section(ABC):
+    """One part of a report: the charts it shows and the blocks it renders."""
+
+    @abstractmethod
+    def charts(self) -> list["Chart"]:
+        """Every chart this section links, and only those."""
+
+    @abstractmethod
+    def blocks(self) -> list[Block]:
+        """This section's document tree."""

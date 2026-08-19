@@ -20,10 +20,41 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from abc import ABC, abstractmethod
+from collections.abc import Sequence
+from pathlib import Path
 
-class Report(ABC):
+from pydantic import BaseModel
 
-    @abstractmethod
-    def to_markdown(self) -> str:
-        """Render `table` as a markdown table."""
+
+class Heading(BaseModel):
+    """A heading at `level` (1 = document title)."""
+
+    level: int
+    text: str
+
+
+class Paragraph(BaseModel):
+    """A block of prose."""
+
+    text: str
+
+
+class Table(BaseModel):
+    """A table of already-formatted cells."""
+
+    header: Sequence[str]
+    rows: Sequence[Sequence[str]]
+
+
+class Figure(BaseModel):
+    """An image, linked at `path` relative to the document."""
+
+    alt: str
+    path: Path
+
+
+class Rule(BaseModel):
+    """A divider between two sibling sections."""
+
+
+Block = Heading | Paragraph | Table | Figure | Rule

@@ -50,7 +50,7 @@ def scatter(
     baseline: float | None = None,
     dark: bool = False,
 ) -> Path:
-    """Render the trade-off scatter and write it to `output`.
+    r"""Render the trade-off scatter and write it to `output`.
 
     Each system keeps the hue it wears on every other chart (sorted-name
     assignment); identity still rests on the direct labels, the hue is
@@ -66,8 +66,8 @@ def scatter(
     """
     fig, ax, c = styled_axes(dark)
 
-    hues = hues([p.label for p in points], c)
-    colors = [hues[p.label] for p in points]
+    hue_map = hues([p.label for p in points], c)
+    colors = [hue_map[p.label] for p in points]
     xs, ys = [p.x for p in points], [p.y for p in points]
     # a soft halo under each dot, then the dot itself: >=8px, its system's
     # hue, 2px surface ring so overlaps stay legible
@@ -132,7 +132,7 @@ def lines(
             f"{len(series)} systems exceed the {len(LIGHT['categories'])}-hue "
             "categorical palette; filter or facet instead"
         )
-    fig, ax, c = _styled_axes(dark)
+    fig, ax, c = styled_axes(dark)
 
     for line, color in zip(series, c["categories"], strict=False):
         ax.plot(
@@ -171,7 +171,11 @@ def lines(
             place_labels(
                 ax,
                 [
-                    Point(f"{line.label}  {line.ys[-1]:.2f}", line.xs[-1], line.ys[-1])
+                    Point(
+                        label=f"{line.label}  {line.ys[-1]:.2f}",
+                        x=line.xs[-1],
+                        y=line.ys[-1],
+                    )
                     for line in swept
                 ],
                 color=c["text"],

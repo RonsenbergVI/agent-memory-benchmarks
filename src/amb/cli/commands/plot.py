@@ -24,10 +24,9 @@ from pathlib import Path
 
 import click
 
-from amb import documents, plotting
 from amb.constants import DEFAULT_REPORT_DIR
-from amb.documents import headline
-from amb.reporting import ComparisonReport
+from amb.reporting import ComparisonReport, build_reports, helpers, plan_charts, plots
+from amb.reporting.helpers import headline
 
 
 @click.group()
@@ -107,7 +106,7 @@ def scatter(  # noqa: PLR0913 - one option per axis/filter, all independent
         raise click.ClickException(f"no runs to plot under {directory}/")
 
     if list_metrics:
-        click.echo("\n".join(plotting.available_metrics(summaries)))
+        click.echo("\n".join(helpers.available_metrics(summaries)))
         return
 
     # points from different datasets are not comparable on one pair of axes
@@ -126,9 +125,9 @@ def scatter(  # noqa: PLR0913 - one option per axis/filter, all independent
             " pass --k to pick one"
         )
 
-    points = plotting.collect_points(summaries, x_metric, y_metric)
+    points = helpers.collect_points(summaries, x_metric, y_metric)
     if not points:
-        available = plotting.available_metrics(summaries)
+        available = helpers.available_metrics(summaries)
         raise click.ClickException(
             f"no run has both {x_metric!r} and {y_metric!r}. Available:\n  "
             + "\n  ".join(available)
@@ -138,13 +137,13 @@ def scatter(  # noqa: PLR0913 - one option per axis/filter, all independent
     subtitle = str(datasets.pop())
     if k_value is not None:
         subtitle += f" · k={k_value}"
-    written = plotting.scatter(
+    written = plots.scatter(
         points,
         x_label=x_metric,
         y_label=y_metric,
         output=output,
         title=title
-        or headline(f"{plotting.pretty(y_metric)} vs {plotting.pretty(x_metric)}"),
+        or headline(f"{helpers.pretty(y_metric)} vs {helpers.pretty(x_metric)}"),
         subtitle=subtitle,
         dark=dark,
     )
@@ -226,19 +225,19 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
             "pass --mode to pick one"
         )
 
-    series = plotting.collect_series(summaries, metric)
+    series = helpers.collect_series(summaries, metric)
     if not series:
-        available = plotting.available_metrics(summaries)
+        available = helpers.available_metrics(summaries)
         raise click.ClickException(
             f"no run reports {metric!r}. Available:\n  " + "\n  ".join(available)
         )
 
-    written = plotting.lines(
+    written = plots.lines(
         series,
         x_label="k (hits requested per query)",
         y_label=metric,
         output=output,
-        title=title or headline(f"{plotting.pretty(metric)} vs k"),
+        title=title or headline(f"{helpers.pretty(metric)} vs k"),
         subtitle=f"{datasets.pop()} · {modes.pop()}",
         dark=dark,
     )
@@ -331,7 +330,7 @@ def draw_all(  # noqa: PLR0913 - one option per filter, all independent
     if not comparison.summaries:
         raise click.ClickException(f"no runs to plot under {directory}/")
     try:
-        reports = documents.build_reports(
+        reports = build_reports(
             comparison,
             dataset=dataset,
             variant=variant,
@@ -340,7 +339,7 @@ def draw_all(  # noqa: PLR0913 - one option per filter, all independent
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    charts = documents.plan_charts(reports)
+    charts = plan_charts(reports)
     if out is not None:
         # chart filenames are not namespaced by dataset, so collapsing two
         # sets into one directory would have them overwrite each other
@@ -351,7 +350,7 @@ def draw_all(  # noqa: PLR0913 - one option per filter, all independent
                 f"chart sets ({', '.join(sets)}); pass --dataset/--variant to "
                 "pick one, or drop --out to write each into its own directory"
             )
-        charts = documents.plan_charts(reports, out=out)
+        charts = plan_charts(reports, out=out)
     if k is not None:
         # the sweep charts (k is None) span every k, so they always apply
         charts = [chart for chart in charts if chart.k in (None, k)]

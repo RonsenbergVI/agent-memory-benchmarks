@@ -20,10 +20,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import json
+from collections import defaultdict
+from collections.abc import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from amb.base import Metric, Report
 from amb.constants import DEFAULT_REPORT_DIR
 from amb.contracts import Run
+from amb.metrics import default_category_metrics, default_metrics
+
+if TYPE_CHECKING:
+    from pydantic_ai.models import Model
 
 # the summary table's columns: (summary key, column label, format)
 SUMMARY_COLUMNS = (
@@ -34,18 +43,35 @@ SUMMARY_COLUMNS = (
 )
 
 
+def markdown_table(header: list[str], rows: list[list[str]]) -> str:
+    """Render a header and formatted rows as a GitHub markdown table."""
+    lines = [
+        "| " + " | ".join(header) + " |",
+        "|" + "|".join(" --- " for _ in header) + "|",
+    ]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
+    return "\n".join(lines)
+
+
 class RunReport(Report):
     """The metrics report over one run's raw data.
 
-    Consumes the RunData a benchmark returned; the metrics are an input,
+    Consumes the Run a benchmark returned; the metrics are an input,
     defaulting to the standard set. `metric_set` holds instances (reset
     before each pass); `category_metric_set` is a factory because every
     question category needs its own instances.
     """
 
-    run: Run
-    metric_set: list[Metric] | None = None
-    category_metric_set: Callable[[], list[Metric]] | None = None
+    def __init__(
+        self,
+        run: Run,
+        metric_set: list[Metric] | None = None,
+        category_metric_set: Callable[[], list[Metric]] | None = None,
+    ) -> None:
+        """Bind the run's raw data to the metrics that will score it."""
+        self.run = run
+        self.metric_set = metric_set
+        self.category_metric_set = category_metric_set
 
     def summary(self) -> dict:
         """Score the run: one pass of every record through the metric set.
@@ -58,13 +84,13 @@ class RunReport(Report):
         )
         for metric in metric_set:
             metric.reset_state()
-        for observation in (*self.data.ingest_stats, *self.data.rows):
+        for observation in (*self.run.ingestion_records, *self.run.question_records):
             for metric in metric_set:
                 metric.update_state(observation)
 
         category_factory = self.category_metric_set or default_category_metrics
-        by_category: dict[str, list[metrics.Metric]] = {}
-        for row in self.data.rows:
+        by_category: dict[str, list[Metric]] = {}
+        for row in self.run.question_records:
             bucket = by_category.setdefault(
                 row.category or "uncategorized", category_factory()
             )
@@ -72,33 +98,33 @@ class RunReport(Report):
                 metric.update_state(row)
 
         summary: dict = {
-            "run_id": self.data.run_id,
-            "system": self.data.system,
-            "system_version": self.data.system_version,
-            "dataset": self.data.dataset,
-            "variant": self.data.variant,
-            "mode": self.data.mode,
-            "k": self.data.k,
-            "model": self.data.model,
-            "judge_model": self.data.judge_model,
-            "num_samples": len(self.data.ingest_stats),
-            "num_questions": len(self.data.rows),
+            "run_id": self.run.run_id,
+            "system": self.run.system,
+            "system_version": self.run.system_version,
+            "dataset": self.run.dataset,
+            "variant": self.run.variant,
+            "mode": self.run.mode,
+            "k": self.run.k,
+            "model": self.run.model,
+            "judge_model": self.run.judge_model,
+            "num_samples": len(self.run.ingestion_records),
+            "num_questions": len(self.run.question_records),
         }
         # the memory system's own models and any remaining explicit --param
         # overrides: part of identity, so variants coexist as rows
-        if self.data.ingestion_model:
-            summary["ingestion_model"] = self.data.ingestion_model
-        if self.data.embedding_model:
-            summary["embedding_model"] = self.data.embedding_model
-        if self.data.system_params:
-            summary["system_params"] = self.data.system_params
-        if self.data.max_turns is not None:
+        if self.run.ingestion_model:
+            summary["ingestion_model"] = self.run.ingestion_model
+        if self.run.embedding_model:
+            summary["embedding_model"] = self.run.embedding_model
+        if self.run.system_params:
+            summary["system_params"] = self.run.system_params
+        if self.run.max_turns is not None:
             # marks a truncated run: only part of the corpus was ingested, so
             # these scores are not full-run numbers
-            summary["max_turns"] = self.data.max_turns
-        if self.data.sample_seed is not None:
+            summary["max_turns"] = self.run.max_turns
+        if self.run.sample_seed is not None:
             # which conversations were drawn is part of what was measured
-            summary["sample_seed"] = self.data.sample_seed
+            summary["sample_seed"] = self.run.sample_seed
         for metric in metric_set:
             if metric.count or metric.report_when_empty:
                 self._place(summary, metric.name, metric.result())
@@ -142,7 +168,7 @@ class RunReport(Report):
         from amb.agent import judge_answer
 
         judged = 0
-        for row in self.data.rows:
+        for row in self.run.question_records:
             if not row.predicted_answer or not row.gold_answer:
                 continue
             if row.judge_correct is not None and not force:
@@ -154,7 +180,7 @@ class RunReport(Report):
             row.judge_reasoning = judgment.reasoning
             judged += 1
         if judged:
-            self.data.judge_model = str(model)
+            self.run.judge_model = str(model)
         return judged
 
     # -- persistence -----------------------------------------------------
@@ -170,10 +196,10 @@ class RunReport(Report):
         a different experiment per variant, and without this level they'd
         share one directory and silently collide in `--latest`.
         """
-        parts = [self.data.dataset]
-        if self.data.variant:
-            parts.append(self.data.variant)
-        parts += [self.data.system, self.data.mode, self.data.run_id]
+        parts = [self.run.dataset]
+        if self.run.variant:
+            parts.append(self.run.variant)
+        parts += [self.run.system, self.run.mode, self.run.run_id]
         return (root or DEFAULT_REPORT_DIR).joinpath(*parts)
 
     def save(self, root: Path | None = None) -> Path:
@@ -181,11 +207,11 @@ class RunReport(Report):
         out = self.run_dir(root)
         out.mkdir(parents=True, exist_ok=True)
         with (out / "results.jsonl").open("w") as sink:
-            for row in self.data.rows:
+            for row in self.run.question_records:
                 sink.write(json.dumps(row.model_dump(exclude_none=True)) + "\n")
         (out / "ingest.json").write_text(
             json.dumps(
-                [s.model_dump(exclude_none=True) for s in self.data.ingest_stats],
+                [s.model_dump(exclude_none=True) for s in self.run.ingestion_records],
                 indent=2,
             )
         )
@@ -203,7 +229,7 @@ class RunReport(Report):
         ingest_path = run_dir / "ingest.json"
         ingest = json.loads(ingest_path.read_text()) if ingest_path.exists() else []
         return cls(
-            RunData(
+            Run(
                 run_id=summary["run_id"],
                 system=summary["system"],
                 dataset=summary["dataset"],
@@ -218,9 +244,22 @@ class RunReport(Report):
                 max_turns=summary.get("max_turns"),
                 sample_seed=summary.get("sample_seed"),
                 system_version=summary.get("system_version"),
-                rows=rows,
-                ingest_stats=ingest,
+                question_records=rows,
+                ingestion_records=ingest,
             )
+        )
+
+    # -- rendering ---------------------------------------------------------
+
+    def to_markdown(self) -> str:
+        """Render the run's summary as a two-column markdown table.
+
+        Nested sections (dotted metric names, by_category) are shown as
+        their dict text — the cross-run tables live on ComparisonReport.
+        """
+        return markdown_table(
+            ["field", "value"],
+            [[key, str(value)] for key, value in self.summary().items()],
         )
 
 
@@ -356,7 +395,7 @@ class ComparisonReport(Report):
                 newest[system].get("run_id") or ""
             ):
                 newest[system] = s
-        header = ["system", "version", *(label for _, label, _ in self.SUMMARY_COLUMNS)]
+        header = ["system", "version", *(label for _, label, _ in SUMMARY_COLUMNS)]
         header += ["p50 search (s)"]
         ranked = sorted(
             newest.values(),
@@ -367,7 +406,7 @@ class ComparisonReport(Report):
             cells = [str(s.get("system", "?")), str(s.get("system_version") or "")]
             cells += [
                 fmt.format(s[key]) if key in s else ""
-                for key, _, fmt in self.SUMMARY_COLUMNS
+                for key, _, fmt in SUMMARY_COLUMNS
             ]
             latency = s.get("search_latency", {})
             cells += [f"{latency.get('p50_s', 0):.4f}" if latency else ""]

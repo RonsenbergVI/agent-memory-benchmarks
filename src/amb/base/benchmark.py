@@ -22,7 +22,8 @@
 
 from typing import TYPE_CHECKING, ClassVar
 
-from amb.base import Callback, Memory
+from amb.base.callback import Callback, Callbacks
+from amb.base.memory import Memory
 from amb.callbacks import OpenAIUsageTracker
 from amb.contracts import Sample, Session
 
@@ -64,9 +65,17 @@ class Benchmark:
         """Whether this system exposes both halves of its tool surface."""
         return bool(cls.search_toolset_class and cls.ingest_toolset_class)
 
-    def create_memory(self) -> Memory:
+    def create_system(self) -> Memory:
         """Build the memory system, applying any `--param` overrides."""
         return self.system_class(**{**self.default_params, **self.params})
+
+    def create_callbacks(self) -> Callbacks:
+        """Build one fresh instance of each declared callback, in order.
+
+        The harness's own core callbacks are not this factory's to attach —
+        the Runner prepends those, so an override here cannot drop them.
+        """
+        return Callbacks([cls() for cls in self.callback_classes])
 
     def create_search_toolset(
         self, system: Memory, conversation_id: str, k: int = 10

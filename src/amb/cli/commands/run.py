@@ -25,9 +25,9 @@ from pathlib import Path
 
 import click
 
-from amb.base import get_benchmark
-from amb.base.dataset import DEFAULT_DATA_DIR
-from amb.reporting import DEFAULT_REPORT_DIR, RunReport
+from amb.constants import DEFAULT_DATA_DIR, DEFAULT_REPORT_DIR
+from amb.registry import get_benchmark
+from amb.reporting import RunReport
 from amb.runner import RunConfig, Runner
 
 

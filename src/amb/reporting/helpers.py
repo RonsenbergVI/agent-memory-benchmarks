@@ -20,6 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import re
+from collections.abc import Callable
+from typing import Any
+
+from amb.constants import DARK, LIGHT
 from amb.contracts import Point, Series
 
 
@@ -41,6 +46,16 @@ def pretty(name: str) -> str:
     text = name.replace(".", " ").replace("_", " ")
     text = text.replace("f1", "F1")
     return re.sub(r"\bp(\d+) s\b", r"p\1 (s)", text)
+
+
+def headline(text: str) -> str:
+    """Sentence-case a chart or section title: first letter up, rest untouched."""
+    return text[:1].upper() + text[1:]
+
+
+def slug(value: str) -> str:
+    """Filesystem-safe form of a group-key value, for directory names."""
+    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "unnamed"
 
 
 def flatten(summary: dict, prefix: str = "") -> dict[str, float]:
@@ -118,8 +133,10 @@ def collect_points(summaries: list[dict], x: str, y: str) -> list[Point]:
 
 
 def hues(labels: list[str], c: dict) -> dict[str, str]:
-    """Each label's hue, assigned in sorted-name order — the same rule the
-    lines form uses, so a system keeps its colour from chart to chart.
+    """Each label's hue, assigned in sorted-name order.
+
+    The same rule the lines form uses, so a system keeps its colour from
+    chart to chart.
     """
     palette = c["categories"]
     return {

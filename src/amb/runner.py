@@ -23,7 +23,6 @@
 import random
 import time
 import traceback
-from abc import ABC
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,9 +32,11 @@ from loguru import logger
 from pydantic_settings import BaseSettings
 from tqdm import tqdm
 
-from amb.base import Callbacks, Memory
-from amb.constants import RunType, DEFAULT_REPORT_DIR
-from amb.contracts import QAPair, Run, Sample, Session
+from amb.base import Benchmark, Callback, Callbacks, Memory
+from amb.callbacks import TimingTracker
+from amb.constants import DEFAULT_DATA_DIR, DEFAULT_REPORT_DIR, RunType
+from amb.contracts import IngestionRecord, QAPair, Run, Sample, Session
+
 
 class RunConfig(BaseSettings):
     """Everything one benchmark run needs, all of it from the CLI.
@@ -43,6 +44,7 @@ class RunConfig(BaseSettings):
     These are the run's arguments, not the system's: memory-system
     parameters (`--param`) belong to the Benchmark that is being run.
     """
+
     dataset: str
     variant: str | None = None
     mode: RunType = RunType.DIRECT  # "direct": the harness drives ingest and search;
@@ -73,6 +75,7 @@ def draw_samples[T](samples: list[T], limit: int | None, seed: int) -> list[T]:
     chosen = random.Random(seed).sample(samples, limit)
     order = {id(sample): i for i, sample in enumerate(samples)}
     return sorted(chosen, key=lambda sample: order[id(sample)])
+
 
 class Runner:
     """Executes one benchmark under one run config.
@@ -156,9 +159,7 @@ class Runner:
                 budget = 0
         return chosen
 
-    def select_questions(
-        self, sample: Sample, sessions: list[Session]
-    ) -> list[QAPair]:
+    def select_questions(self, sample: Sample, sessions: list[Session]) -> list[QAPair]:
         """Questions to ask: the answerable ones, capped by `--questions`.
 
         The unanswerable are removed *before* the cap, so `--questions 10`
@@ -252,7 +253,12 @@ class Runner:
             sample_seed=cfg.sample_seed,
             system_version=probe.version(),
         )
-        self.callbacks = self.benchmark.create_callbacks()
+        # core callbacks first, so no benchmark override can drop the
+        # harness's own measurements
+        self.callbacks = Callbacks(
+            [cls() for cls in self.core_callback_classes]
+            + self.benchmark.create_callbacks().callbacks
+        )
         self.callbacks.on_run_begin(cfg, data)
         samples = self.load_samples()
         if cfg.workers <= 1:
@@ -265,7 +271,9 @@ class Runner:
             # order so output is deterministic regardless of scheduling.
             with ThreadPoolExecutor(max_workers=cfg.workers) as pool:
                 shards = [
-                    data.model_copy(update={"rows": [], "ingest_stats": []})
+                    data.model_copy(
+                        update={"question_records": [], "ingestion_records": []}
+                    )
                     for _ in samples
                 ]
                 futures = [
@@ -275,8 +283,8 @@ class Runner:
                 for future in futures:
                     future.result()
             for shard in shards:
-                data.rows.extend(shard.rows)
-                data.ingest_stats.extend(shard.ingest_stats)
+                data.question_records.extend(shard.question_records)
+                data.ingestion_records.extend(shard.ingestion_records)
         self.callbacks.on_run_end(data)
         return data
 
@@ -306,9 +314,7 @@ class Runner:
             except Exception:
                 traceback.print_exc()
 
-    def ingestion(
-        self, system: Memory, sample: Sample, data: Run
-    ) -> IngestionRecord:
+    def ingestion(self, system: Memory, sample: Sample, data: Run) -> IngestionRecord:
         """Feed the sample's sessions into the memory system, timed.
 
         `max_turns` truncates the conversation for smoke runs. Returns the
@@ -333,7 +339,7 @@ class Runner:
             if dropped:
                 stats["questions_dropped"] = dropped
             self.callbacks.on_ingest_end(sample, system, stats)
-            return data.add_ingest(stats)
+            return data.add_ingestion(stats)
         log.debug(
             "{}: ingesting {} sessions / {} turns (of {} / {})",
             sample.sample_id,
@@ -377,7 +383,7 @@ class Runner:
             len(sample.qa),
         )
         self.callbacks.on_ingest_end(sample, system, stats)
-        return data.add_ingest(stats)
+        return data.add_ingestion(stats)
 
     def _agent_ingestion(
         self, system: Memory, sample: Sample, sessions: list[Session]
@@ -414,9 +420,7 @@ class Runner:
             totals["agent_output_tokens"] += generation.output_tokens
         return totals
 
-    def conversation(
-        self, system: Memory, sample: Sample, data: Run
-    ) -> None:
+    def conversation(self, system: Memory, sample: Sample, data: Run) -> None:
         """Ask every benchmark question against the ingested memory.
 
         Produces one raw data row per question.
@@ -439,9 +443,7 @@ class Runner:
             row.get("evidence_turn_ids"),
         )
 
-    def _run_question(
-        self, system: Memory, sample: Sample, qa: QAPair
-    ) -> dict:
+    def _run_question(self, system: Memory, sample: Sample, qa: QAPair) -> dict:
         cfg = self.config
         row = {
             "sample_id": sample.sample_id,

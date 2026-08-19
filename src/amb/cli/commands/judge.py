@@ -58,7 +58,7 @@ def judge(run_dir: Path, model: str | None, force: bool) -> None:
             "this run recorded no answer model; pass --model to pick the judge"
         )
     judged = report.judge(judge_model, force=force)
-    if not judged and not any(r.predicted_answer for r in report.run.rows):
+    if not judged and not any(r.predicted_answer for r in report.run.question_records):
         raise click.ClickException(
             "no predicted answers to grade: this run never generated answers "
             "(direct mode without --model)"

@@ -20,13 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from pydantic import BaseModel
-
-from dataclasses import dataclass
 from importlib.metadata import EntryPoint, entry_points
+
+from pydantic import BaseModel, ConfigDict
 
 from amb.base import Benchmark, Memory
 from amb.constants import ENTRY_POINT_GROUP
+
 
 class BenchmarkSpec(BaseModel):
     """A registered integration, loaded lazily.
@@ -34,6 +34,9 @@ class BenchmarkSpec(BaseModel):
     Lazy loading means listing systems does not require every integration's
     SDK to be importable.
     """
+
+    # EntryPoint is not a pydantic-aware type, so it is held as-is
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
     entry_point: EntryPoint
