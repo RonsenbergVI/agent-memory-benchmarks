@@ -2,6 +2,13 @@
   "packages": {
     ".": {
       "release-type": "python",
+      "component": "python",
+      "tag-separator": "/",
+      "changelog-path": "CHANGELOG.md",
+      "versioning": "prerelease",
+      "prerelease": true,
+      "prerelease-type": "alpha",
+      "bump-minor-pre-major": true,
       "extra-files": [
         "benchmarks/fraise/pyproject.toml",
         "benchmarks/graphiti/pyproject.toml",
