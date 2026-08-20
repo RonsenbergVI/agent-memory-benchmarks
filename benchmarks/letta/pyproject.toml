@@ -10,7 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "amb",
     # computes the server-side embedding spend (see src/memory.py)
-    "tiktoken>=0.8",
+    "tiktoken>=0.13.0",
     "letta-client>=1.12,<2",
 ]
 
