@@ -12,7 +12,7 @@ dependencies = [
     "fraise-sdk>=0.1.0a1,<0.2",
     # for the SDK's OpenAIEmbedder (the published alpha declares no
     # `openai` extra yet) and the usage tracker
-    "openai>=2,<3",
+    "openai>=3.1.0,<4",
 ]
 
 # every integration ships its module as `src` — SDKs own the pretty names
