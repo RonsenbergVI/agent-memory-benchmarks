@@ -35,7 +35,7 @@
 ## Results / report hygiene
 
 - [ ] This PR does **not** hand-edit `report/`, `plots/`, `RESULTS.md`, or `README.md`. Those
-      are only ever written by `amb report` / `amb plots`, and only committed by the release CI
+      are only ever written by `amb report` / `amb plot all`, and only committed by the release CI
       workflow, never by hand
 - [ ] If this changes what a metric measures, existing numbers in `RESULTS.md` may now be stale —
       noted below, or flagged for a re-run

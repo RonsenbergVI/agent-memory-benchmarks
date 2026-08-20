@@ -1,17 +1,17 @@
 # MIT License
-
+#
 # Copyright (c) 2026 René-Jean Corneille
-
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,18 +21,22 @@
 # SOFTWARE.
 
 from abc import ABC
+from typing import TYPE_CHECKING, Any
 
-from amb.base import Memory
-from amb.contracts import MemoryHit, QAPair, Sample
+from amb.base.memory import Memory
+from amb.contracts import IngestionRecord, MemoryHit, QAPair, Run, Sample, Session
+
+if TYPE_CHECKING:
+    from amb.runner import RunConfig
 
 
 class Callback(ABC):
     """Base callback: every hook is a no-op; override the ones needed."""
 
-    def on_run_begin(self, config: "RunConfig", data: "RunData") -> None:
+    def on_run_begin(self, config: "RunConfig", run: Run) -> None:
         """Before the first sample is loaded."""
 
-    def on_run_end(self, data: "RunData") -> None:
+    def on_run_end(self, run: Run) -> None:
         """After the last sample, before the data is returned."""
 
     def on_sample_begin(self, sample: Sample, system: Memory) -> None:
@@ -69,7 +73,7 @@ class Callback(ABC):
     def on_conversation_begin(self, sample: Sample) -> None:
         """Before the sample's first question."""
 
-    def on_conversation_end(self, sample: Sample, stats: "IngestStats") -> None:
+    def on_conversation_end(self, sample: Sample, stats: IngestionRecord) -> None:
         """After the sample's last question; may enrich its stats record.
 
         The record is already validated by now, so this hook sets attributes
@@ -109,3 +113,23 @@ class Callback(ABC):
 
     def on_question_end(self, sample: Sample, qa: QAPair, row: dict) -> None:
         """After one question; may enrich the report row."""
+
+
+class Callbacks(Callback):
+    """Fans every hook out to an ordered list of callbacks."""
+
+    def __init__(self, callbacks: list[Callback] = []) -> None:
+        """Hold the callbacks in the order they should fire."""
+        self.callbacks = list(callbacks)
+
+    def __getattribute__(self, name: str) -> Any:
+        """Return a fan-out wrapper for hooks, real attributes otherwise."""
+        if name.startswith("on_"):
+            callbacks = object.__getattribute__(self, "callbacks")
+
+            def fan_out(*args: object, **kwargs: object) -> None:
+                for callback in callbacks:
+                    getattr(callback, name)(*args, **kwargs)
+
+            return fan_out
+        return object.__getattribute__(self, name)
