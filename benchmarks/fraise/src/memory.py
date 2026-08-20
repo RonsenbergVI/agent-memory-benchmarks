@@ -50,11 +50,15 @@ without a volume and each `up` starts empty.
 import json
 import os
 import re
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from amb.base import Memory
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
+
+if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletionMessageParam
+    from openai.types.chat.completion_create_params import ResponseFormat
 
 # gpt-5-mini is a reasoning model: its hidden reasoning tokens draw from the
 # same completion budget as the visible JSON, and reasoning length is not
@@ -280,14 +284,15 @@ class FraiseMemory(Memory):
         transcript = f"Conversation{timestamp}\n" + "\n".join(
             f"{turn.turn_id} | {turn.speaker}: {turn.text}" for turn in session.turns
         )
-        response = self._openai.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
-                {"role": "user", "content": transcript},
-            ],
-            max_completion_tokens=EXTRACTION_MAX_COMPLETION_TOKENS,
-            response_format={
+        messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
+            {"role": "user", "content": transcript},
+        ]
+        # the literal is a valid ResponseFormatJSONSchema; the cast bridges
+        # the nested-schema dict the checker cannot narrow into the TypedDict
+        response_format = cast(
+            "ResponseFormat",
+            {
                 "type": "json_schema",
                 "json_schema": {
                     "name": "memories",
@@ -296,18 +301,31 @@ class FraiseMemory(Memory):
                 },
             },
         )
+        # setup() builds self._openai only when a model is set, so the
+        # extraction path implies one
+        assert self.model is not None
+        response = self._openai.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            max_completion_tokens=EXTRACTION_MAX_COMPLETION_TOKENS,
+            response_format=response_format,
+        )
         choice = response.choices[0]
-        try:
-            return json.loads(choice.message.content)["memories"]
-        except json.JSONDecodeError:
-            logger.bind(scope="fraise").warning(
-                "{}/{}: extraction response unparseable (finish_reason={}); "
-                "skipping this session's facts",
-                conversation_id,
-                session.session_id,
-                choice.finish_reason,
-            )
-            return []
+        # a refusal or empty completion has content=None — the same class of
+        # malformed response as unparseable JSON, so it takes the same exit
+        if choice.message.content is not None:
+            try:
+                return json.loads(choice.message.content)["memories"]
+            except json.JSONDecodeError:
+                pass
+        logger.bind(scope="fraise").warning(
+            "{}/{}: extraction response unparseable (finish_reason={}); "
+            "skipping this session's facts",
+            conversation_id,
+            session.session_id,
+            choice.finish_reason,
+        )
+        return []
 
     def recall_hits(
         self,
