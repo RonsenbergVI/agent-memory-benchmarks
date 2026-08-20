@@ -62,9 +62,6 @@ def _ing(ingest_s: float = 0.0, num_turns: int = 0, **fields: Any) -> IngestionR
     )
 
 
-# --- the Metric base lifecycle -------------------------------------------------
-
-
 def test_key_defaults_to_name() -> None:
     metric = Sum("num_turns")
     assert metric.key == "num_turns"
@@ -100,9 +97,6 @@ def test_report_when_empty_defaults() -> None:
     assert Count.report_when_empty is True
 
 
-# --- Mean ----------------------------------------------------------------------
-
-
 def test_mean_hand_computed() -> None:
     metric = Mean("mean_search", "search_s")
     for latency in (1.0, 2.0, 6.0):
@@ -135,9 +129,6 @@ def test_mean_counts_falsy_but_present_booleans() -> None:
     assert metric.result() == pytest.approx(2 / 3)
 
 
-# --- Sum -----------------------------------------------------------------------
-
-
 def test_sum_hand_computed() -> None:
     metric = Sum("ingest.total_s", "ingest_s")
     metric.update_state(_ing(ingest_s=1.5))
@@ -156,9 +147,6 @@ def test_sum_reset_starts_a_new_scope() -> None:
     assert metric.result() == 0
     metric.update_state(_ing(num_turns=4))
     assert metric.result() == 4
-
-
-# --- DictSum -------------------------------------------------------------------
 
 
 def test_dictsum_merges_dicts_keywise() -> None:
@@ -183,9 +171,6 @@ def test_dictsum_reset_clears_totals() -> None:
     assert metric.result() == {}
 
 
-# --- Count ---------------------------------------------------------------------
-
-
 def test_count_counts_records_carrying_the_field() -> None:
     metric = Count("errors", "error")
     metric.update_state(_q(error="boom"))
@@ -206,9 +191,6 @@ def test_count_reset_returns_to_zero() -> None:
     metric.update_state(_q(error="boom"))
     metric.reset_state()
     assert metric.result() == 0
-
-
-# --- ValueCounts ---------------------------------------------------------------
 
 
 def test_value_counts_per_distinct_value() -> None:
@@ -232,9 +214,6 @@ def test_value_counts_reset_forgets_everything() -> None:
     metric.reset_state()
     assert metric.count == 0
     assert metric.result() == {}
-
-
-# --- LatencyPercentiles --------------------------------------------------------
 
 
 def test_percentiles_nearest_rank_hand_computed() -> None:
@@ -269,9 +248,6 @@ def test_percentile_static_empty_list_is_zero() -> None:
     assert LatencyPercentiles.percentile([], 50) == 0.0
 
 
-# --- normalize_answer ----------------------------------------------------------
-
-
 def test_normalize_answer_squad_convention() -> None:
     assert normalize_answer("The Quick,  Brown Fox!") == "quick brown fox"
 
@@ -283,9 +259,6 @@ def test_normalize_answer_strips_articles_after_punctuation() -> None:
 
 def test_normalize_answer_all_punctuation_is_empty() -> None:
     assert normalize_answer("...") == ""
-
-
-# --- AnswerF1 / ExactMatch scoring ---------------------------------------------
 
 
 def test_answer_f1_identical_after_normalization() -> None:
@@ -328,9 +301,6 @@ def test_exact_match_different_answers() -> None:
     assert ExactMatch().score("42", "43") == 0.0
 
 
-# --- the Scorer guard and macro-averaging --------------------------------------
-
-
 def test_scorer_default_pair_keys() -> None:
     assert Scorer.predicted_key == "predicted_answer"
     assert Scorer.gold_key == "gold_answer"
@@ -369,9 +339,6 @@ def test_answer_f1_macro_averages_across_records() -> None:
     metric.reset_state()
     assert metric.count == 0
     assert metric.result() == 0.0
-
-
-# --- retrieval and turn precision/recall/f1 ------------------------------------
 
 
 def test_retrieval_scores_hand_computed() -> None:
@@ -513,9 +480,6 @@ def test_retrieval_metric_wiring(cls, name, predicted_key, gold_key, component) 
     assert cls.predicted_key == predicted_key
     assert cls.gold_key == gold_key
     assert cls.component == component
-
-
-# --- the default metric sets ---------------------------------------------------
 
 
 def test_default_metric_names_are_unique() -> None:

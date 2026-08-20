@@ -1,0 +1,46 @@
+# Config for actions/labeler — path-based area labels.
+# https://github.com/actions/labeler
+
+area:benchmarks:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/**
+
+memory:fraise:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/fraise/**
+
+memory:graphiti:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/graphiti/**
+
+memory:letta:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/letta/**
+
+memory:mem0:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/mem0/**
+
+memory:package:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/**
+
+area:docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "*.md"
+
+area:ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - Makefile
+          - .pre-commit-config.yaml
+          - docker-compose*
+          - tests/**

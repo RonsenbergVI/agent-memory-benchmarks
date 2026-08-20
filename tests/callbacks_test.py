@@ -64,9 +64,6 @@ def _zeros() -> dict:
     return dict.fromkeys(TOKEN_TRACKING_KEYS, 0)
 
 
-# -- TimingTracker ----------------------------------------------------------
-
-
 def test_ingest_end_books_elapsed_seconds(perf_clock, fake_memory_class):
     tracker = TimingTracker()
     sample = _sample()
@@ -217,9 +214,6 @@ def test_sample_end_drops_the_samples_clocks(perf_clock, fake_memory_class):
     assert stats["ingest_s"] == 0.0
 
 
-# -- TiktokenUsageTracker ---------------------------------------------------
-
-
 def test_ingest_token_usage_is_the_counter_delta(fake_memory_class):
     tracker = TiktokenUsageTracker()
     sample = _sample()
@@ -323,9 +317,6 @@ def test_tiktoken_marks_are_thread_local_per_worker(fake_memory_class):
     tracker.on_ingest_end(_sample("main"), main_memory, stats)
     assert worker_usage["llm_input_tokens"] == 3
     assert stats["token_usage"]["llm_input_tokens"] == 7
-
-
-# -- OpenAIUsageTracker -----------------------------------------------------
 
 
 def _chat_response(prompt: int, completion: int) -> SimpleNamespace:
