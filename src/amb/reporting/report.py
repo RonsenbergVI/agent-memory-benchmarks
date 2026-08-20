@@ -194,9 +194,6 @@ def group_runs(
     return groups
 
 
-# -- reports -------------------------------------------------------------
-
-
 class BenchmarkReport(Report):
     """One generated document: its sections, its file, how it is written.
 
