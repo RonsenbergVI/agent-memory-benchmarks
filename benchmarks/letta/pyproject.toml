@@ -11,7 +11,7 @@ dependencies = [
     "amb",
     # computes the server-side embedding spend (see src/memory.py)
     "tiktoken>=0.8",
-    "letta-client>=1.12,<2",
+    "letta-client>=1.12.1,<2",
 ]
 
 [project.entry-points."amb.systems"]
