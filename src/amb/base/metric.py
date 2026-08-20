@@ -1,17 +1,17 @@
 # MIT License
-
+#
 # Copyright (c) 2026 René-Jean Corneille
-
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,18 +21,18 @@
 # SOFTWARE.
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
+from typing import Any, ClassVar
 
-from amb.contracts.run import IngestStats, QuestionRecord
+from amb.contracts.run import IngestionRecord, QuestionRecord
 
-Record = QuestionRecord | IngestStats
+Record = QuestionRecord | IngestionRecord
 
 
-class BaseMetric(ABC):
+class Metric(ABC):
     """A running metric over observation records.
 
     update_state() receives a whole record (a QuestionRecord row, an
-    IngestStats); the metric grabs the field that applies to it (``key``,
+    IngestionRecord); the metric grabs the field that applies to it (``key``,
     defaulting to its name), accumulates it, and produces the final value on
     result(). Records without the field are ignored. reset_state() starts a
     new scope.
@@ -68,7 +68,7 @@ class BaseMetric(ABC):
         self.count = 0
 
 
-class BaseScorer(BaseMetric):
+class Scorer(Metric):
     """A metric that scores a (predicted, gold) pair per observation.
 
     ``predicted_key``/``gold_key`` name the observation fields holding the

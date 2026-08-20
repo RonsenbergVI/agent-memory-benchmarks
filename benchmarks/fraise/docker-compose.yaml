@@ -1,0 +1,28 @@
+services:
+  fraise:
+    image: ghcr.io/ronsenbergvi/fraise:0.1.0-beta.7
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9876/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/fraise/Dockerfile
+    image: amb-fraise
+    depends_on:
+      fraise:
+        condition: service_healthy
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      - FRAISE_BASE_URL=http://fraise:9876
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system fraise --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../report:/amb/report
