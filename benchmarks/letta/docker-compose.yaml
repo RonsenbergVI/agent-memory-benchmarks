@@ -31,7 +31,7 @@ services:
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
     command: run --system letta --dataset locomo
     volumes:
-      - ../../data:/amb/data
+      - ../../.data:/amb/.data
       - ../../report:/amb/report
 
 volumes:
