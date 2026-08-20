@@ -72,6 +72,8 @@ EXTRACTION_MAX_COMPLETION_TOKENS = 16000
 
 DEFAULT_INGESTION_MODEL = "gpt-5-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+# every recall walks the graph two hops from a match by default
+DEFAULT_RECALL_DEPTH = 2
 
 EXTRACTION_SYSTEM_PROMPT = """\
 You are an assistant with a long-term memory. You have just had the
@@ -119,7 +121,7 @@ class FraiseMemory(Memory):
         model: str | None = DEFAULT_INGESTION_MODEL,
         embedding_model: str | None = DEFAULT_EMBEDDING_MODEL,
         embedding_dimensions: int | str | None = None,
-        depth: int | str | None = None,
+        depth: int | str | None = DEFAULT_RECALL_DEPTH,
         **params: object,
     ) -> None:
         """Point the adapter at a fraise server and pin its ingestion models."""
@@ -134,8 +136,9 @@ class FraiseMemory(Memory):
         self.embedding_dimensions = (
             int(embedding_dimensions) if embedding_dimensions else None
         )
-        # graph-walk depth on recall (--param depth=N); unset leaves the
-        # server's own default in place, same as the model params above
+        # graph-walk depth on recall, 2 by default (--param depth=N);
+        # an explicit --param depth=none restores the server's own default,
+        # same idiom as the model params above
         self.depth = int(depth) if depth else None
         # (conversation, stored value) -> (turn_ids, session_id): hits return
         # only the value, so provenance is restored from what we stored
@@ -341,9 +344,9 @@ class FraiseMemory(Memory):
 
         `query` is the embed text: with an embedder the raw phrase (not the
         keyword bag) is encoded and seeds the vector index; without one the
-        client ignores it. `self.depth`, when set, bounds how many graph
-        hops a match may walk to pull in related facts (`--param depth=N`);
-        unset leaves the server's own default depth in place.
+        client ignores it. `self.depth` bounds how many graph hops a match
+        may walk to pull in related facts — 2 by default, `--param depth=N`
+        to change it, `--param depth=none` for the server's own default.
         """
         result = self.client.recall(
             *keywords,
