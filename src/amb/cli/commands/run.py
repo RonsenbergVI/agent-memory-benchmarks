@@ -25,7 +25,7 @@ from pathlib import Path
 
 import click
 
-from amb.constants import DEFAULT_DATA_DIR, DEFAULT_REPORT_DIR
+from amb.constants import DEFAULT_DATA_DIR, DEFAULT_RUNS_DIR
 from amb.registry import get_benchmark
 from amb.reporting import RunReport
 from amb.runner import RunConfig, Runner
@@ -155,12 +155,12 @@ PARAM = ParamType()
     help="dataset cache directory",
 )
 @click.option(
-    "--report-dir",
+    "--runs-dir",
     "out",
     type=click.Path(path_type=Path),
-    default=DEFAULT_REPORT_DIR,
+    default=DEFAULT_RUNS_DIR,
     show_default=True,
-    help="where this run's report is written",
+    help="where this run's data is written",
 )
 @click.option(
     "--param",

@@ -36,8 +36,9 @@ with the same models. Override with ``--param model=...`` /
 
 import asyncio
 import os
+from collections.abc import Coroutine
 from datetime import UTC, datetime
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from amb.base import Memory
 from amb.contracts import MemoryHit, Session
@@ -117,7 +118,7 @@ class GraphitiMemory(Memory):
             )
         return clients
 
-    def _await(self, coro: object) -> object:
+    def _await[T](self, coro: Coroutine[Any, Any, T]) -> T:
         return self._loop.run_until_complete(coro)
 
     @staticmethod
@@ -137,7 +138,7 @@ class GraphitiMemory(Memory):
         result = self._await(
             self.client.add_episode(
                 name=f"{conversation_id}:{session.session_id}",
-                episode_body=session.as_text(),
+                episode_body=str(session),
                 source=EpisodeType.message,
                 source_description="benchmark conversation session",
                 reference_time=self._reference_time(session),

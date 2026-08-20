@@ -25,4 +25,4 @@ services:
     command: run --system fraise --dataset locomo
     volumes:
       - ../../.data:/amb/.data
-      - ../../report:/amb/report
+      - ../../runs:/amb/runs

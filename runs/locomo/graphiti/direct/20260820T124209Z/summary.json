@@ -1,0 +1,72 @@
+{
+  "run_id": "20260820T124209Z",
+  "system": "graphiti",
+  "system_version": "0.29.3",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 3,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 189,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "max_turns": 100,
+  "ingest": {
+    "total_s": 867.3684046490001,
+    "total_turns": 1000,
+    "total_sessions": 48,
+    "questions_dropped": 1670
+  },
+  "conversation": {
+    "total_s": 45.277723246999784
+  },
+  "retrieval_precision": 0.5206093189964157,
+  "retrieval_recall": 0.8584229390681004,
+  "retrieval_f1": 0.6232974910394273,
+  "search_latency": {
+    "p50_s": 0.2220384910000348,
+    "p95_s": 0.28376704700008304,
+    "p99_s": 0.5025496250000288
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 927,
+      "embedding_tokens": 26054,
+      "llm_calls": 387,
+      "llm_input_tokens": 749687,
+      "llm_output_tokens": 50926
+    },
+    "search_total": 2159
+  },
+  "errors": 0,
+  "memory_tokens_total": 828826.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.4333333333333333,
+      "retrieval_recall": 0.8,
+      "retrieval_f1": 0.5333333333333333
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.5952380952380951,
+      "retrieval_recall": 0.738095238095238,
+      "retrieval_f1": 0.6369047619047618
+    },
+    "open-domain": {
+      "retrieval_precision": 0.43749999999999994,
+      "retrieval_recall": 0.75,
+      "retrieval_f1": 0.5291666666666666
+    },
+    "single-hop": {
+      "retrieval_precision": 0.5251141552511417,
+      "retrieval_recall": 0.9041095890410958,
+      "retrieval_f1": 0.6392694063926939
+    },
+    "temporal": {
+      "retrieval_precision": 0.5104166666666666,
+      "retrieval_recall": 0.890625,
+      "retrieval_f1": 0.6296874999999997
+    }
+  }
+}

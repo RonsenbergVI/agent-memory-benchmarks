@@ -1,0 +1,50 @@
+{
+  "run_id": "20260820T124202Z",
+  "system": "mem0",
+  "system_version": "2.0.18",
+  "dataset": "longmemeval",
+  "variant": "oracle",
+  "mode": "direct",
+  "k": 5,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 20,
+  "num_questions": 20,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "ingest": {
+    "total_s": 3562.3527832170003,
+    "total_turns": 561,
+    "total_sessions": 48
+  },
+  "conversation": {
+    "total_s": 18.089835884000536
+  },
+  "retrieval_precision": 1.0,
+  "retrieval_recall": 0.9199999999999999,
+  "retrieval_f1": 0.9452380952380952,
+  "search_latency": {
+    "p50_s": 1.0337737429999834,
+    "p95_s": 1.2642360119998557,
+    "p99_s": 1.3033411969997815
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 144,
+      "embedding_tokens": 190056,
+      "llm_calls": 48,
+      "llm_input_tokens": 548289,
+      "llm_output_tokens": 223304
+    },
+    "search_total": 516
+  },
+  "errors": 0,
+  "memory_tokens_total": 962165.0,
+  "by_category": {
+    "temporal-reasoning": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 0.9199999999999999,
+      "retrieval_f1": 0.9452380952380952
+    }
+  }
+}

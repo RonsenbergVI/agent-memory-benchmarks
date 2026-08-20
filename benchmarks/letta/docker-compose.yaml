@@ -32,7 +32,7 @@ services:
     command: run --system letta --dataset locomo
     volumes:
       - ../../.data:/amb/.data
-      - ../../report:/amb/report
+      - ../../runs:/amb/runs
 
 volumes:
   letta-pgdata:

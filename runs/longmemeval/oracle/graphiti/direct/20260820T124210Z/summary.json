@@ -1,0 +1,50 @@
+{
+  "run_id": "20260820T124210Z",
+  "system": "graphiti",
+  "system_version": "0.29.3",
+  "dataset": "longmemeval",
+  "variant": "oracle",
+  "mode": "direct",
+  "k": 1,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 20,
+  "num_questions": 20,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "ingest": {
+    "total_s": 1429.3707212089998,
+    "total_turns": 561,
+    "total_sessions": 48
+  },
+  "conversation": {
+    "total_s": 5.64475928000013
+  },
+  "retrieval_precision": 1.0,
+  "retrieval_recall": 0.45999999999999996,
+  "retrieval_f1": 0.6226190476190474,
+  "search_latency": {
+    "p50_s": 0.24021768700004031,
+    "p95_s": 0.5247939159999078,
+    "p99_s": 0.7641348500000049
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 1044,
+      "embedding_tokens": 38500,
+      "llm_calls": 397,
+      "llm_input_tokens": 1136370,
+      "llm_output_tokens": 84743
+    },
+    "search_total": 381
+  },
+  "errors": 0,
+  "memory_tokens_total": 1259994.0,
+  "by_category": {
+    "temporal-reasoning": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 0.45999999999999996,
+      "retrieval_f1": 0.6226190476190474
+    }
+  }
+}

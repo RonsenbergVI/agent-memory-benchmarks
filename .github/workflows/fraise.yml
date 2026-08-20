@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 # one benchmark run at a time; a second trigger queues rather than
-# interleaving report/ artifacts and the final commit
+# interleaving runs/ artifacts and the final commit
 concurrency:
   group: benchmark
 
@@ -68,11 +68,11 @@ jobs:
             --k ${{ matrix.k }}
           docker compose -f benchmarks/fraise/docker-compose.yaml down -v
 
-      - name: Upload run reports
+      - name: Upload run data
         uses: actions/upload-artifact@v4
         with:
-          name: report-fraise-locomo-direct-k${{ matrix.k }}
-          path: report/
+          name: runs-fraise-locomo-direct-k${{ matrix.k }}
+          path: runs/
           if-no-files-found: error
 
   longmemeval:
@@ -121,11 +121,11 @@ jobs:
             --k ${{ matrix.k }}
           docker compose -f benchmarks/fraise/docker-compose.yaml down -v
 
-      - name: Upload run reports
+      - name: Upload run data
         uses: actions/upload-artifact@v4
         with:
-          name: report-fraise-longmemeval-direct-k${{ matrix.k }}
-          path: report/
+          name: runs-fraise-longmemeval-direct-k${{ matrix.k }}
+          path: runs/
           if-no-files-found: error
 
   publish:
@@ -133,9 +133,10 @@ jobs:
     needs: [locomo, longmemeval]
     runs-on: ubuntu-latest
     steps:
+
       - uses: actions/checkout@v4
         with:
-          # results land on main regardless of which ref triggered the run
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
           ref: main
 
       - name: Install uv
@@ -146,11 +147,11 @@ jobs:
       - name: Install the workspace
         run: uv sync --locked
 
-      - name: Collect run reports
+      - name: Collect run data
         uses: actions/download-artifact@v4
         with:
-          pattern: report-*
-          path: report
+          pattern: runs-*
+          path: runs
           merge-multiple: true
 
       - name: Regenerate plots and reports
@@ -161,7 +162,7 @@ jobs:
           [ "${{ github.ref_type }}" = "tag" ] && tag="--tag $GITHUB_REF_NAME"
           # both commands read the same report objects, so neither needs to
           # be told which datasets or variants exist: the (dataset, variant)
-          # groups are discovered from report/ itself, which holds every run
+          # groups are discovered from runs/ itself, which holds every run
           # ever committed to main (checkout brings the full tree, not just
           # this run's artifacts). `amb plot all` draws exactly the charts the
           # documents link — every k the runs used, one directory per group
@@ -175,7 +176,7 @@ jobs:
       # commits as github-actions[bot] and skips cleanly when nothing
       # changed; pushes to the checked-out branch (main)
       - name: Commit results to main
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "results: fraise benchmark run for ${{ github.ref_name }}"
-          file_pattern: "report plots RESULTS.md README.md"
+          file_pattern: "runs plots RESULTS.md README.md"
