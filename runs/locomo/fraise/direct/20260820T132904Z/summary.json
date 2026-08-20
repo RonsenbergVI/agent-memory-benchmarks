@@ -1,0 +1,75 @@
+{
+  "run_id": "20260820T132904Z",
+  "system": "fraise",
+  "system_version": "0.1.0-beta.7",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 3,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 189,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "max_turns": 100,
+  "ingest": {
+    "total_s": 2456.521020237,
+    "total_turns": 1000,
+    "total_sessions": 48,
+    "questions_dropped": 1670
+  },
+  "conversation": {
+    "total_s": 49.0995352909996
+  },
+  "retrieval_precision": 0.625448028673835,
+  "retrieval_recall": 0.881720430107527,
+  "retrieval_f1": 0.700000000000001,
+  "turn_precision": 0.2618279569892476,
+  "turn_recall": 0.6250000000000001,
+  "turn_f1": 0.3571684587813619,
+  "search_latency": {
+    "p50_s": 0.24723983900003077,
+    "p95_s": 0.34260932400002275,
+    "p99_s": 0.5179094730000315
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 967,
+      "embedding_tokens": 33862,
+      "llm_calls": 48,
+      "llm_input_tokens": 46356,
+      "llm_output_tokens": 176294
+    },
+    "search_total": 2159
+  },
+  "errors": 0,
+  "memory_tokens_total": 258671.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.5666666666666667,
+      "retrieval_recall": 0.8,
+      "retrieval_f1": 0.6333333333333333
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.613095238095238,
+      "retrieval_recall": 0.6607142857142856,
+      "retrieval_f1": 0.5904761904761904
+    },
+    "open-domain": {
+      "retrieval_precision": 0.35416666666666663,
+      "retrieval_recall": 0.59375,
+      "retrieval_f1": 0.4291666666666667
+    },
+    "single-hop": {
+      "retrieval_precision": 0.6872146118721459,
+      "retrieval_recall": 0.9726027397260274,
+      "retrieval_f1": 0.7762557077625567
+    },
+    "temporal": {
+      "retrieval_precision": 0.6328125000000002,
+      "retrieval_recall": 0.953125,
+      "retrieval_f1": 0.7338541666666664
+    }
+  }
+}
