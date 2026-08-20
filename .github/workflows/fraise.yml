@@ -176,7 +176,7 @@ jobs:
       # commits as github-actions[bot] and skips cleanly when nothing
       # changed; pushes to the checked-out branch (main)
       - name: Commit results to main
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "results: fraise benchmark run for ${{ github.ref_name }}"
           file_pattern: "report plots RESULTS.md README.md"
