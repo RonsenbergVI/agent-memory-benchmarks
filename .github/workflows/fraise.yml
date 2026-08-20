@@ -133,9 +133,10 @@ jobs:
     needs: [locomo, longmemeval]
     runs-on: ubuntu-latest
     steps:
+
       - uses: actions/checkout@v4
         with:
-          # results land on main regardless of which ref triggered the run
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
           ref: main
 
       - name: Install uv
