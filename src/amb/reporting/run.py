@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from amb.base import Metric, Report
-from amb.constants import DEFAULT_REPORT_DIR
+from amb.constants import DEFAULT_RUNS_DIR
 from amb.contracts import Run
 from amb.metrics import default_category_metrics, default_metrics
 
@@ -200,7 +200,7 @@ class RunReport(Report):
         if self.run.variant:
             parts.append(self.run.variant)
         parts += [self.run.system, self.run.mode, self.run.run_id]
-        return (root or DEFAULT_REPORT_DIR).joinpath(*parts)
+        return (root or DEFAULT_RUNS_DIR).joinpath(*parts)
 
     def save(self, root: Path | None = None) -> Path:
         """Write rows, ingest stats, and the summary; return the directory."""
@@ -324,7 +324,7 @@ class ComparisonReport(Report):
         Identity is read from each file's content, not from the directory
         layout.
         """
-        root = root or DEFAULT_REPORT_DIR
+        root = root or DEFAULT_RUNS_DIR
         summaries = []
         for path in sorted(root.rglob("summary.json")):
             data = json.loads(path.read_text())

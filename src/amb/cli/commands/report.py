@@ -25,7 +25,7 @@ from pathlib import Path
 
 import click
 
-from amb.constants import DEFAULT_REPORT_DIR
+from amb.constants import DEFAULT_RUNS_DIR
 from amb.reporting import FORMATS, REPORTS, ComparisonReport, build_reports
 
 
@@ -34,9 +34,9 @@ from amb.reporting import FORMATS, REPORTS, ComparisonReport, build_reports
     "--dir",
     "directory",
     type=click.Path(path_type=Path),
-    default=DEFAULT_REPORT_DIR,
+    default=DEFAULT_RUNS_DIR,
     show_default=True,
-    help="directory of run reports",
+    help="directory of run data",
 )
 @click.option(
     "--latest", is_flag=True, help="only the newest run per dataset x system x models"

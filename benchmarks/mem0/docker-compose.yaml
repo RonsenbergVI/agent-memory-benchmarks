@@ -28,7 +28,7 @@ services:
     command: run --system mem0 --dataset locomo
     volumes:
       - ../../.data:/amb/.data
-      - ../../report:/amb/report
+      - ../../runs:/amb/runs
 
 volumes:
   qdrant-storage:
