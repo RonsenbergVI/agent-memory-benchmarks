@@ -185,9 +185,6 @@ def test_run_round_trips_through_model_dump():
     assert rebuilt == run
 
 
-# --- MemoryHit ----------------------------------------------------------------
-
-
 def test_memory_hit_defaults():
     hit = MemoryHit(content="Alice moved to Paris in May.")
     assert hit.content == "Alice moved to Paris in May."
@@ -229,9 +226,6 @@ def test_memory_hit_default_lists_are_per_instance():
     first.session_ids.append("s1")
     assert second.turn_ids == []
     assert second.session_ids == []
-
-
-# --- document: the Block union ------------------------------------------------
 
 
 def test_heading_fields():

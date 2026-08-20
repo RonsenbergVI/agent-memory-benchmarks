@@ -28,8 +28,6 @@ from amb.cli.commands import COMMANDS
 from amb.cli.commands.run import PARAM, ParamType, run
 from amb.cli.main import cli, main
 
-# --- ParamType.coerce -------------------------------------------------------
-
 
 @pytest.mark.parametrize(
     "raw, expected",
@@ -62,9 +60,6 @@ def test_coerce(raw, expected):
     assert coerced == expected
     # 1 == True and 1000 == 1000.0, so the type must match too
     assert type(coerced) is type(expected)
-
-
-# --- ParamType.convert ------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -144,9 +139,6 @@ def test_run_requires_system_and_dataset():
     assert "Missing option" in result.output
 
 
-# --- command registration ---------------------------------------------------
-
-
 @pytest.mark.parametrize("command", COMMANDS, ids=lambda c: str(c.name))
 def test_command_attached_to_group(command):
     assert cli.commands[str(command.name)] is command
@@ -158,9 +150,6 @@ def test_group_has_no_commands_beyond_the_registry():
 
 def test_main_is_the_group():
     assert main is cli
-
-
-# --- help smokes ------------------------------------------------------------
 
 
 def _help_paths() -> list[tuple[str, ...]]:
