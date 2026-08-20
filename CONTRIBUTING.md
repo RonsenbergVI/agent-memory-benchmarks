@@ -49,7 +49,7 @@ A dataset is a loader in core — one module, one enum value, one registry entry
 4. **`tests/datasets/<name>_test.py`** — pin the schema mapping with a small raw-payload fixture (no network), like the existing dataset tests.
 5. **Workflows** — each framework workflow gets a new job for the dataset (one job per dataset, plain-value matrix), mirroring the existing jobs in `fraise.yml`.
 
-Variants are identity: a dataset run with `--variant` lands under `report/<dataset>/<variant>/...` and is grouped as its own experiment in every table and chart — use variants for differently-shaped haystacks, not for scope (that's what `--limit`/`--turns`/`--questions` are for).
+Variants are identity: a dataset run with `--variant` lands under `runs/<dataset>/<variant>/...` and is grouped as its own experiment in every table and chart — use variants for differently-shaped haystacks, not for scope (that's what `--limit`/`--turns`/`--questions` are for).
 
 ## Extending the evaluation
 

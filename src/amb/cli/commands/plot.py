@@ -24,7 +24,7 @@ from pathlib import Path
 
 import click
 
-from amb.constants import DEFAULT_REPORT_DIR
+from amb.constants import DEFAULT_RUNS_DIR
 from amb.reporting import ComparisonReport, build_reports, helpers, plan_charts, plots
 from amb.reporting.helpers import headline
 
@@ -60,9 +60,9 @@ def plot() -> None:
     "--dir",
     "directory",
     type=click.Path(path_type=Path),
-    default=DEFAULT_REPORT_DIR,
+    default=DEFAULT_RUNS_DIR,
     show_default=True,
-    help="directory of run reports",
+    help="directory of run data",
 )
 @click.option(
     "--output",
@@ -168,9 +168,9 @@ def scatter(  # noqa: PLR0913 - one option per axis/filter, all independent
     "--dir",
     "directory",
     type=click.Path(path_type=Path),
-    default=DEFAULT_REPORT_DIR,
+    default=DEFAULT_RUNS_DIR,
     show_default=True,
-    help="directory of run reports",
+    help="directory of run data",
 )
 @click.option(
     "--output",
@@ -269,9 +269,9 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
     "--dir",
     "directory",
     type=click.Path(path_type=Path),
-    default=DEFAULT_REPORT_DIR,
+    default=DEFAULT_RUNS_DIR,
     show_default=True,
-    help="directory of run reports",
+    help="directory of run data",
 )
 @click.option(
     "--out",

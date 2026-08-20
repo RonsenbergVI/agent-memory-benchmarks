@@ -36,7 +36,7 @@ dict) to bypass all of it and point at other backends.
 """
 
 import os
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from amb.base import Memory
 from amb.contracts import MemoryHit, Session
@@ -77,7 +77,7 @@ class Mem0Memory(Memory):
         """Build the mem0 client, wiring it to Qdrant when one is configured."""
         from mem0 import Memory
 
-        config = self._config
+        config: dict[str, Any] | None = self._config
         if config is None:
             config = {
                 "llm": {

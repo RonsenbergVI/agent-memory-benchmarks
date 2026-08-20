@@ -32,7 +32,7 @@ services:
     command: run --system graphiti --dataset locomo
     volumes:
       - ../../.data:/amb/.data
-      - ../../report:/amb/report
+      - ../../runs:/amb/runs
 
 volumes:
   neo4j-data:

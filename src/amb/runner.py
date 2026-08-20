@@ -34,7 +34,7 @@ from tqdm import tqdm
 
 from amb.base import Benchmark, Callback, Callbacks, Memory
 from amb.callbacks import TimingTracker
-from amb.constants import DEFAULT_DATA_DIR, DEFAULT_REPORT_DIR, RunType
+from amb.constants import DEFAULT_DATA_DIR, DEFAULT_RUNS_DIR, RunType
 from amb.contracts import IngestionRecord, QAPair, Run, Sample, Session
 
 
@@ -65,7 +65,7 @@ class RunConfig(BaseModel):
     # judge itself is an evaluation step, not part of the run loop)
     judge_model: str | None = None  # judge model, pydantic-ai id
     data_dir: Path = DEFAULT_DATA_DIR  # dataset cache
-    out: Path = DEFAULT_REPORT_DIR  # where run reports are written
+    out: Path = DEFAULT_RUNS_DIR  # where run data is written
 
 
 def draw_samples[T](samples: list[T], limit: int | None, seed: int) -> list[T]:
