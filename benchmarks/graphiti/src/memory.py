@@ -137,7 +137,7 @@ class GraphitiMemory(Memory):
         result = self._await(
             self.client.add_episode(
                 name=f"{conversation_id}:{session.session_id}",
-                episode_body=session.as_text(),
+                episode_body=str(session),
                 source=EpisodeType.message,
                 source_description="benchmark conversation session",
                 reference_time=self._reference_time(session),
