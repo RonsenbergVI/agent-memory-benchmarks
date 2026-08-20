@@ -2,6 +2,12 @@
 # package ecosystems to update and where the package manifests are located.
 # Please see the documentation for all configuration options:
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# `labels` mirrors what .github/labeler.yaml would apply from the changed
+# paths — dependabot PRs skip the labeler job (their runs get a read-only
+# token). Setting it replaces dependabot's default labels, and the labels
+# must already exist in the repo. The root uv entry keeps the defaults:
+# no labeler glob covers the root manifest/lock.
 
 version: 2
 updates:
@@ -20,35 +26,49 @@ updates:
     commit-message:
       prefix: "deps: "
       prefix-development: "deps: "
+    labels:
+      - area:ci
 
   - package-ecosystem: uv
-    directory: /benchmark/fraise
+    directory: /benchmarks/fraise
     schedule:
       interval: daily
     commit-message:
       prefix: "deps: "
       prefix-development: "deps: "
+    labels:
+      - area:benchmarks
+      - memory:fraise
 
   - package-ecosystem: uv
-    directory: /benchmark/graphiti
+    directory: /benchmarks/graphiti
     schedule:
       interval: daily
     commit-message:
       prefix: "deps: "
       prefix-development: "deps: "
+    labels:
+      - area:benchmarks
+      - memory:graphiti
 
   - package-ecosystem: uv
-    directory: /benchmark/letta
+    directory: /benchmarks/letta
     schedule:
       interval: daily
     commit-message:
       prefix: "deps: "
       prefix-development: "deps: "
+    labels:
+      - area:benchmarks
+      - memory:letta
 
   - package-ecosystem: uv
-    directory: /benchmark/mem0
+    directory: /benchmarks/mem0
     schedule:
       interval: daily
     commit-message:
       prefix: "deps: "
       prefix-development: "deps: "
+    labels:
+      - area:benchmarks
+      - memory:mem0
