@@ -159,6 +159,9 @@ jobs:
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
       # same command as `make check`, so local and CI cannot drift
+
+      - name: Install the workspace
+        run: uv sync --locked --all-extras
       - name: Run pre-commit
         run: uvx pre-commit run --all-files
   test:
@@ -176,7 +179,7 @@ jobs:
 
       # --locked fails if uv.lock is stale rather than silently resolving
       - name: Install the workspace
-        run: uv sync --locked
+        run: uv sync --locked --all-extras
 
       - name: Run tests
         run: uv run pytest
