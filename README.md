@@ -41,7 +41,7 @@ Pre-alpha. Methodology is being defined and the test harness is in development. 
 ## Results
 
 <!-- amb:summary -->
-Results from commit `38a4bac`, run 2026-08-20.
+Results from commit `08fbea4`, run 2026-08-20.
 
 Newest run per system at k=10 — full detail in [RESULTS.md](RESULTS.md).
 
@@ -49,6 +49,7 @@ Newest run per system at k=10 — full detail in [RESULTS.md](RESULTS.md).
 
 | system | version | precision | recall | F1 | memory tokens | p50 search (s) |
 | --- | --- | --- | --- | --- | --- | --- |
+| letta | 0.16.8 | 0.331 | 0.996 | 0.483 | 53,735 | 0.3367 |
 | graphiti | 0.29.3 | 0.276 | 0.971 | 0.420 | 908,236 | 0.2662 |
 
 ![Retrieval F1 vs k](plots/locomo/k_f1.png)
@@ -61,6 +62,7 @@ Newest run per system at k=10 — full detail in [RESULTS.md](RESULTS.md).
 
 | system | version | precision | recall | F1 | memory tokens | p50 search (s) |
 | --- | --- | --- | --- | --- | --- | --- |
+| letta | 0.16.8 | 1.000 | 0.947 | 0.963 | 163,633 | 0.4024 |
 | graphiti | 0.29.3 | 1.000 | 0.897 | 0.933 | 1,276,025 | 0.3192 |
 
 ![Retrieval recall vs k](plots/longmemeval/oracle/k_recall.png)
