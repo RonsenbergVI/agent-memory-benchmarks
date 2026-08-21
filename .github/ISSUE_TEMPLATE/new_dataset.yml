@@ -70,7 +70,7 @@ body:
     attributes:
       label: Would you be able to contribute this yourself?
       options:
-        - "Yes â€” I'll open the PR"
+        - "Yes, I'll open the PR"
         - "Maybe, with some guidance"
         - "No, just proposing it"
     validations:
