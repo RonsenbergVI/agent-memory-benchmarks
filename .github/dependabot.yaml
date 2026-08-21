@@ -3,19 +3,20 @@
 # Please see the documentation for all configuration options:
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 #
-# `labels` mirrors what .github/labeler.yaml would apply from the changed
-# paths — dependabot PRs skip the labeler job (their runs get a read-only
-# token). Setting it replaces dependabot's default labels, and the labels
-# must already exist in the repo. The root uv entry keeps the defaults:
-# no labeler glob covers the root manifest/lock.
+# One uv entry covers the whole workspace: dependabot scans from the
+# directory that holds uv.lock, bumps member dependencies inside their own
+# pyprojects, and regenerates the shared lock in the same PR. Per-member
+# entries would update a member manifest without the lock (members have
+# none of their own) and fail CI's `uv sync --locked` — never add them.
+# Release attribution is by path, so a bump touching
+# benchmarks/<name>/pyproject.toml still lands in that package's release
+# PR; the release-please config gives `deps:` commits a Dependencies
+# changelog section so the bumps show up in release notes.
 #
-# Under release-please's always-bump-minor versioning any conventional
-# commit is releasable, so prefixes don't gate releases — they pick the
-# changelog section. The benchmark entries use `fix(deps):` so SDK bumps
-# appear under the release's bug fixes instead of vanishing (`deps` has no
-# changelog section); merging that package's release PR re-benchmarks the
-# system against the new SDK. Root uv and github-actions bumps stay
-# `deps:` — harness dependency noise doesn't belong in release notes.
+# The github-actions entry sets `labels` to mirror what .github/labeler.yaml
+# would apply — dependabot PRs skip the labeler job (their runs get a
+# read-only token), and the labels must already exist in the repo. The uv
+# entry keeps dependabot's default labels.
 
 version: 2
 updates:
@@ -36,47 +37,3 @@ updates:
       prefix-development: "deps: "
     labels:
       - area:ci
-
-  - package-ecosystem: uv
-    directory: /benchmarks/fraise
-    schedule:
-      interval: daily
-    commit-message:
-      prefix: "fix(deps): "
-      prefix-development: "fix(deps): "
-    labels:
-      - area:benchmarks
-      - memory:fraise
-
-  - package-ecosystem: uv
-    directory: /benchmarks/graphiti
-    schedule:
-      interval: daily
-    commit-message:
-      prefix: "fix(deps): "
-      prefix-development: "fix(deps): "
-    labels:
-      - area:benchmarks
-      - memory:graphiti
-
-  - package-ecosystem: uv
-    directory: /benchmarks/letta
-    schedule:
-      interval: daily
-    commit-message:
-      prefix: "fix(deps): "
-      prefix-development: "fix(deps): "
-    labels:
-      - area:benchmarks
-      - memory:letta
-
-  - package-ecosystem: uv
-    directory: /benchmarks/mem0
-    schedule:
-      interval: daily
-    commit-message:
-      prefix: "fix(deps): "
-      prefix-development: "fix(deps): "
-    labels:
-      - area:benchmarks
-      - memory:mem0
