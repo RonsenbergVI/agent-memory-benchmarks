@@ -4,6 +4,7 @@
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug fixes" },
+    { "type": "deps", "section": "Dependencies" },
     { "type": "perf", "section": "Performance" },
     { "type": "refactor", "section": "Maintenance" },
     { "type": "build", "section": "Maintenance" },
