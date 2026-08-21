@@ -48,7 +48,7 @@ jobs:
       # the fraise image lives on ghcr; login makes the pull work whether
       # the package is public or private to this owner
       - name: Log in to ghcr
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -98,7 +98,7 @@ jobs:
       # the fraise image lives on ghcr; login makes the pull work whether
       # the package is public or private to this owner
       - name: Log in to ghcr
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

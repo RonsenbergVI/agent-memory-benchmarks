@@ -81,6 +81,7 @@ The following systems are tracked. Inclusion criteria: agent memory is a primary
 | Mem0 | [mem0ai/mem0](https://github.com/mem0ai/mem0) | Python | Apache-2.0 | Vector + extraction | 🟢 |
 | Letta | [letta-ai/letta](https://github.com/letta-ai/letta) | Python | Apache-2.0 | Hierarchical (OS-style) | 🟢 |
 | Graphiti | [getzep/graphiti](https://github.com/getzep/graphiti) | Python | Apache-2.0 | Temporal knowledge graph | 🟢 |
+| Fraise | [RonsenbergVI/fraise](https://github.com/RonsenbergVI/fraise) | Python | MIT | Temporal knowledge graph + vector / text hybrid search | 🟢 |
 | Cognee | [topoteretes/cognee](https://github.com/topoteretes/cognee) | Python | Apache-2.0 | Graph + vector hybrid | ❓ |
 | Memary | [kingjulio8238/memary](https://github.com/kingjulio8238/memary) | Python | MIT | Knowledge graph | ❓ |
 

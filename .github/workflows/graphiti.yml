@@ -166,7 +166,7 @@ jobs:
       # commits as github-actions[bot] and skips cleanly when nothing
       # changed; pushes to the checked-out branch (main)
       - name: Commit results to main
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "results: graphiti benchmark run for ${{ github.ref_name }}"
           file_pattern: "runs plots RESULTS.md README.md"

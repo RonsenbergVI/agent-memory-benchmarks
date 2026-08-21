@@ -17,6 +17,7 @@
       "release-type": "python",
       "component": "python",
       "tag-separator": "/",
+      "include-component-in-tag": false,
       "changelog-path": "CHANGELOG.md",
       "versioning": "prerelease",
       "prerelease": true,
