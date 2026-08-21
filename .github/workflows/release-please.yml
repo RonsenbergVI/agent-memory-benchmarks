@@ -15,7 +15,13 @@ jobs:
       # Keeps a release PR open against main, accumulating conventional
       # commits into a changelog and a version bump. Merging that PR tags
       # the release; nothing is published until then.
+      #
+      # token MUST be a PAT (or GitHub App token), not the default
+      # GITHUB_TOKEN: GitHub suppresses workflow triggers from events
+      # created with GITHUB_TOKEN, so a tag it pushes never starts the
+      # benchmark workflows (observed: letta/v0.1.0 fired nothing).
       - uses: googleapis/release-please-action@v4
         with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
