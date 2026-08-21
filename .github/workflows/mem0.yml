@@ -2,7 +2,10 @@ name: Benchmark mem0
 
 on:
   push:
-    tags: ["v*"]
+    # micro is always 0 under the major.minor release scheme; the
+    # strict patterns keep a hand-pushed patch or prerelease tag from
+    # starting paid benchmark runs
+    tags: ["v[0-9]+.[0-9]+.0", "mem0/v[0-9]+.[0-9]+.0"]
   workflow_dispatch:
 
 # one mem0 benchmark run at a time; a second trigger queues rather than
@@ -160,7 +163,7 @@ jobs:
           # two cannot drift apart.
           uv run amb plot all
           uv run amb report --latest --k "$SUMMARY_K" \
-            --output RESULTS.md --summary README.md \
+            --output RESULTS.md \
             --commit "$GITHUB_SHA" $tag
 
       # commits as github-actions[bot] and skips cleanly when nothing
@@ -169,4 +172,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "results: mem0 benchmark run for ${{ github.ref_name }}"
-          file_pattern: "runs plots RESULTS.md README.md"
+          file_pattern: "runs plots RESULTS.md"

@@ -141,6 +141,31 @@ jobs:
              "breaking": "breaking-change"}
           ignored_types: "[]"
 
+  hygiene:
+    name: Results hygiene
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # full history: the three-dot diff below needs the merge base with
+      # the PR's target branch
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # runs/, plots/, and RESULTS.md are only ever written by `amb report`
+      # / `amb plot all` and only committed by the benchmark workflows'
+      # publish job (which pushes to main directly, so this check never
+      # sees it) — a PR touching them is hand-editing generated results
+      - name: Fail if generated results were edited
+        run: |
+          changed=$(git diff --name-only \
+            origin/${{ github.base_ref }}...HEAD -- RESULTS.md runs/ plots/)
+          if [ -n "$changed" ]; then
+            echo "::error::Generated results are written only by the release CI (amb report / amb plot all), never in a PR:"
+            echo "$changed"
+            exit 1
+          fi
+
   lint:
     name: Pre-commit Hooks
     runs-on: ubuntu-latest
