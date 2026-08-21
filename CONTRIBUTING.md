@@ -2,6 +2,21 @@
 
 Development commands live in the Makefile (`make help`); run `make check` before committing and `make smoke` after touching the run loop. The harness itself is covered by `uv run pytest` (fixture-based, no network).
 
+## How benchmark runs start
+
+Benchmark workflows never run on push or PR — every run spends real API money, so starting one is always deliberate. There are two triggers:
+
+- **Releases (the normal path).** Conventional commits on main accumulate into release-please PRs, one per package: the harness (the root package) and each `benchmarks/<name>`, attributed by the paths a commit touches. Merging a release PR cuts the tag, and the tag starts the runs:
+
+  - a harness release tags `v<version>`, which every system's workflow listens for — a harness change can affect every measurement, so everything reruns;
+  - a memory release tags `<name>/v<version>`, which only that system's workflow listens for — nothing else is re-spent.
+
+  Only `fix:`/`feat:` (and breaking) commits open a release PR. Dependabot's `fix(deps):` bumps under `benchmarks/<name>` therefore queue that system for a rerun; the release PR sits open, accumulating changes, until merging it is worth the spend.
+
+- **Manually.** `workflow_dispatch` runs any benchmark workflow from the Actions tab without a release; the published results carry the triggering commit but no tag.
+
+Every workflow ends in a publish job that regenerates the plots and documents from every run ever committed to main (not just this run's artifacts) and pushes the result back to main. Runs integrate incrementally: reports keep the latest run per (dataset, variant, system, mode, k, …) identity, so a single-system rerun replaces that system's rows and leaves everyone else's standing.
+
 ## Adding a memory framework
 
 A framework is a workspace package under `benchmarks/<name>/` — no core changes. Use `benchmarks/fraise/` as the reference; the naive baseline in `src/amb/memory.py` is the minimal in-core example of the same contracts.
@@ -16,7 +31,7 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
    amb = { workspace = true }
    ```
 
-   Keep the `# x-release-please-version` comment on the version line — release-please bumps it in lockstep with the root package. The root workspace picks up `benchmarks/*` automatically; run `uv lock` after adding the package.
+   The package is its own release-please unit (step 7): its release PR bumps this version natively, no annotation comment needed. The root workspace picks up `benchmarks/*` automatically; run `uv lock` after adding the package.
 
 2. **`benchmarks/<name>/src/memory.py`** — subclass `amb.base.Memory`: set the `name`, `description`, and `sdk_dist` class attributes and implement `ingest_session` and `search` (plus `setup`/`teardown` for connect/cleanup and `stats()` for footprint numbers). Two contracts matter more than they look:
 
@@ -31,21 +46,22 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
 
 5. **`benchmarks/<name>/Dockerfile` + `docker-compose.yaml`** — copy an existing pair. The Dockerfile is `uv sync --package <name>` from the repo root; compose adds whatever server/database the system needs, volume-mounts `../../.data:/amb/.data` and `../../report:/amb/report`, and passes keys via `env_file: ../../.env` — never bake keys into the image.
 
-6. **`.github/workflows/<name>.yml`** — copy `fraise.yml` and swap the framework name and compose path (drop the ghcr login if the image isn't on ghcr). One job per dataset; matrices hold plain values only.
+6. **`.github/workflows/<name>.yml`** — copy `fraise.yml` and swap the framework name and compose path (drop the ghcr login if the image isn't on ghcr). One job per dataset; matrices hold plain values only. Trigger on `tags: ["v*", "<name>/v*"]`: a harness release reruns every system, the package's own tag only this one.
 
 7. **Repo plumbing** — three configs track packages by name and must learn the new one:
 
-   - `.github/release-please-config.json` — the version annotation from step 1 only works if the file is registered: add `benchmarks/<name>/pyproject.toml` to `extra-files`, plus a typed entry that bumps the package's pin in the lockfile — without it the release PR leaves `uv.lock` stale and fails CI's `uv sync --locked`:
+   - `.github/release-please-config.json` — add a package entry under `packages`, copied from an existing `benchmarks/*` one: `component: <name>`, plus an `extra-files` entry that bumps the package's pin in the lockfile (the leading slash makes the path repo-root-relative — without this entry the release PR leaves `uv.lock` stale and fails CI's `uv sync --locked`):
 
      ```json
      {
        "type": "toml",
-       "path": "uv.lock",
+       "path": "/uv.lock",
        "jsonpath": "$.package[?(@.name=='<name>')].version"
      }
      ```
 
-   - `.github/dependabot.yaml` — a `package-ecosystem: uv` block for `directory: /benchmarks/<name>`, copied from an existing one (daily schedule, `deps:` commit prefix, labels `area:benchmarks` + `memory:<name>`).
+     Seed `.github/.release-please-manifest.json` with the package's current version. Releases are per-package: commits touching `benchmarks/<name>` accumulate in the package's own release PR, and merging it tags `<name>/v<version>`, which reruns only this system's benchmark (step 6).
+   - `.github/dependabot.yaml` — a `package-ecosystem: uv` block for `directory: /benchmarks/<name>`, copied from an existing one (daily schedule, labels `area:benchmarks` + `memory:<name>`). Keep the `fix(deps):` commit prefix — it makes SDK bumps releasable, so merging the package's release PR re-benchmarks the system against the new SDK.
    - `.github/labeler.yaml` — a `memory:<name>` entry globbing `benchmarks/<name>/**`, so PRs touching the integration get labeled. Create the `memory:<name>` label in the repo as well (`gh label create`): dependabot silently ignores labels that don't exist.
 
 Check it landed: `uv run amb systems` lists the entry point, and `docker compose -f benchmarks/<name>/docker-compose.yaml run --build --rm benchmark run --system <name> --dataset locomo --limit 1 --turns 40 --questions 5` runs the whole pipeline on one conversation.

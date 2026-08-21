@@ -2,7 +2,7 @@ name: Benchmark letta
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*", "letta/v*"]
   workflow_dispatch:
 
 # one letta benchmark run at a time; a second trigger queues rather than

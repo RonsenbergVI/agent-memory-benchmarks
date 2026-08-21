@@ -2,7 +2,7 @@ name: Benchmark graphiti
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*", "graphiti/v*"]
   workflow_dispatch:
 
 # one graphiti benchmark run at a time; a second trigger queues rather than

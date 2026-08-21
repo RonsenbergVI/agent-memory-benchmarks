@@ -2,7 +2,7 @@ name: Benchmark mem0
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*", "mem0/v*"]
   workflow_dispatch:
 
 # one mem0 benchmark run at a time; a second trigger queues rather than

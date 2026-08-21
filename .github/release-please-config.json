@@ -25,33 +25,61 @@
       "bump-minor-pre-major": true,
       "release-as": "0.1.0-alpha.1",
       "extra-files": [
-        "benchmarks/fraise/pyproject.toml",
-        "benchmarks/graphiti/pyproject.toml",
-        "benchmarks/letta/pyproject.toml",
-        "benchmarks/mem0/pyproject.toml",
         {
           "type": "toml",
           "path": "uv.lock",
           "jsonpath": "$.package[?(@.name=='amb')].version"
-        },
+        }
+      ]
+    },
+    "benchmarks/fraise": {
+      "release-type": "python",
+      "component": "fraise",
+      "tag-separator": "/",
+      "bump-minor-pre-major": true,
+      "extra-files": [
         {
           "type": "toml",
-          "path": "uv.lock",
+          "path": "/uv.lock",
           "jsonpath": "$.package[?(@.name=='fraise')].version"
-        },
+        }
+      ]
+    },
+    "benchmarks/graphiti": {
+      "release-type": "python",
+      "component": "graphiti",
+      "tag-separator": "/",
+      "bump-minor-pre-major": true,
+      "extra-files": [
         {
           "type": "toml",
-          "path": "uv.lock",
+          "path": "/uv.lock",
           "jsonpath": "$.package[?(@.name=='graphiti')].version"
-        },
+        }
+      ]
+    },
+    "benchmarks/letta": {
+      "release-type": "python",
+      "component": "letta",
+      "tag-separator": "/",
+      "bump-minor-pre-major": true,
+      "extra-files": [
         {
           "type": "toml",
-          "path": "uv.lock",
+          "path": "/uv.lock",
           "jsonpath": "$.package[?(@.name=='letta')].version"
-        },
+        }
+      ]
+    },
+    "benchmarks/mem0": {
+      "release-type": "python",
+      "component": "mem0",
+      "tag-separator": "/",
+      "bump-minor-pre-major": true,
+      "extra-files": [
         {
           "type": "toml",
-          "path": "uv.lock",
+          "path": "/uv.lock",
           "jsonpath": "$.package[?(@.name=='mem0')].version"
         }
       ]

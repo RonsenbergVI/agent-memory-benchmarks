@@ -8,6 +8,12 @@
 # token). Setting it replaces dependabot's default labels, and the labels
 # must already exist in the repo. The root uv entry keeps the defaults:
 # no labeler glob covers the root manifest/lock.
+#
+# Prefixes are deliberate: the benchmark entries use `fix(deps):` so an SDK
+# bump is releasable — it lands in that package's release-please PR, and
+# merging that PR re-benchmarks the system against the new SDK. The root uv
+# and github-actions entries stay `deps:` (non-releasing), so harness/CI
+# bumps never cut a release on their own.
 
 version: 2
 updates:
@@ -34,8 +40,8 @@ updates:
     schedule:
       interval: daily
     commit-message:
-      prefix: "deps: "
-      prefix-development: "deps: "
+      prefix: "fix(deps): "
+      prefix-development: "fix(deps): "
     labels:
       - area:benchmarks
       - memory:fraise
@@ -45,8 +51,8 @@ updates:
     schedule:
       interval: daily
     commit-message:
-      prefix: "deps: "
-      prefix-development: "deps: "
+      prefix: "fix(deps): "
+      prefix-development: "fix(deps): "
     labels:
       - area:benchmarks
       - memory:graphiti
@@ -56,8 +62,8 @@ updates:
     schedule:
       interval: daily
     commit-message:
-      prefix: "deps: "
-      prefix-development: "deps: "
+      prefix: "fix(deps): "
+      prefix-development: "fix(deps): "
     labels:
       - area:benchmarks
       - memory:letta
@@ -67,8 +73,8 @@ updates:
     schedule:
       interval: daily
     commit-message:
-      prefix: "deps: "
-      prefix-development: "deps: "
+      prefix: "fix(deps): "
+      prefix-development: "fix(deps): "
     labels:
       - area:benchmarks
       - memory:mem0

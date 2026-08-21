@@ -2,7 +2,7 @@ name: Benchmark fraise
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*", "fraise/v*"]
   workflow_dispatch:
 
 # one benchmark run at a time; a second trigger queues rather than
