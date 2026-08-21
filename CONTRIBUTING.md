@@ -11,7 +11,7 @@ Benchmark workflows never run on push or PR — every run spends real API money,
   - a harness release tags `v<version>`, which every system's workflow listens for — a harness change can affect every measurement, so everything reruns;
   - a memory release tags `<name>/v<version>`, which only that system's workflow listens for — nothing else is re-spent.
 
-  Only `fix:`/`feat:` (and breaking) commits open a release PR. Dependabot's `fix(deps):` bumps under `benchmarks/<name>` therefore queue that system for a rerun; the release PR sits open, accumulating changes, until merging it is worth the spend.
+  Versioning is major.minor only (`always-bump-minor`): any conventional commit opens or refreshes its package's release PR, and every release bumps the minor. Dependabot's `fix(deps):` bumps under `benchmarks/<name>` therefore queue that system for a rerun; the release PR sits open, accumulating changes, until merging it is worth the spend.
 
 - **Manually.** `workflow_dispatch` runs any benchmark workflow from the Actions tab without a release; the published results carry the triggering commit but no tag.
 
@@ -44,7 +44,7 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
 
 4. **`benchmarks/<name>/src/benchmark.py`** — subclass `amb.base.Benchmark`: set `name` and `system_class`, plus `search_toolset_class` / `ingest_toolset_class` (both present = agentic mode supported), `default_params`, and `callback_classes`. Override the factory hooks (`create_system`, `create_search_toolset`, `create_ingest_toolset`, `before_sample`, `after_sample`) only when the system needs objects built its own way.
 
-5. **`benchmarks/<name>/Dockerfile` + `docker-compose.yaml`** — copy an existing pair. The Dockerfile is `uv sync --package <name>` from the repo root; compose adds whatever server/database the system needs, volume-mounts `../../.data:/amb/.data` and `../../report:/amb/report`, and passes keys via `env_file: ../../.env` — never bake keys into the image.
+5. **`benchmarks/<name>/Dockerfile` + `docker-compose.yaml`** — copy an existing pair. The Dockerfile is `uv sync --package <name>` from the repo root; compose adds whatever server/database the system needs, volume-mounts `../../.data:/amb/.data` and `../../runs:/amb/runs`, and passes keys via `env_file: ../../.env` — never bake keys into the image.
 
 6. **`.github/workflows/<name>.yml`** — copy `fraise.yml` and swap the framework name and compose path (drop the ghcr login if the image isn't on ghcr). One job per dataset; matrices hold plain values only. Trigger on `tags: ["v*", "<name>/v*"]`: a harness release reruns every system, the package's own tag only this one.
 
@@ -60,8 +60,8 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
      }
      ```
 
-     Seed `.github/.release-please-manifest.json` with the package's current version. Releases are per-package: commits touching `benchmarks/<name>` accumulate in the package's own release PR, and merging it tags `<name>/v<version>`, which reruns only this system's benchmark (step 6).
-   - `.github/dependabot.yaml` — a `package-ecosystem: uv` block for `directory: /benchmarks/<name>`, copied from an existing one (daily schedule, labels `area:benchmarks` + `memory:<name>`). Keep the `fix(deps):` commit prefix — it makes SDK bumps releasable, so merging the package's release PR re-benchmarks the system against the new SDK.
+     Seed `.github/.release-please-manifest.json` with `0.0.0`, so the package's first release lands as `0.1.0`. Releases are per-package: commits touching `benchmarks/<name>` accumulate in the package's own release PR, and merging it tags `<name>/v<version>`, which reruns only this system's benchmark (step 6).
+   - `.github/dependabot.yaml` — a `package-ecosystem: uv` block for `directory: /benchmarks/<name>`, copied from an existing one (daily schedule, `fix(deps):` commit prefix, labels `area:benchmarks` + `memory:<name>`). Under `always-bump-minor` any commit is releasable, so the prefix picks the changelog section, not the release: `fix(deps):` files SDK bumps under the release's bug fixes (`deps` has no changelog section), and merging the package's release PR re-benchmarks the system against the new SDK.
    - `.github/labeler.yaml` — a `memory:<name>` entry globbing `benchmarks/<name>/**`, so PRs touching the integration get labeled. Create the `memory:<name>` label in the repo as well (`gh label create`): dependabot silently ignores labels that don't exist.
 
 Check it landed: `uv run amb systems` lists the entry point, and `docker compose -f benchmarks/<name>/docker-compose.yaml run --build --rm benchmark run --system <name> --dataset locomo --limit 1 --turns 40 --questions 5` runs the whole pipeline on one conversation.
