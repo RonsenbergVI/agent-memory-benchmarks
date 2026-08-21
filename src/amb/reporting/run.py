@@ -43,6 +43,18 @@ SUMMARY_COLUMNS = (
 )
 
 
+def run_date(run_id: str | None) -> str:
+    """A run's date, read off its timestamp id (YYYY-MM-DD, or '').
+
+    Rows in a comparison can come from different runs, so freshness is
+    per row — the newest overall date in a chart subtitle can't say when
+    each system last ran.
+    """
+    if run_id and len(run_id) >= 8 and run_id[:8].isdigit():
+        return f"{run_id[:4]}-{run_id[4:6]}-{run_id[6:8]}"
+    return ""
+
+
 def markdown_table(header: list[str], rows: list[list[str]]) -> str:
     """Render a header and formatted rows as a GitHub markdown table."""
     lines = [
@@ -395,7 +407,8 @@ class ComparisonReport(Report):
                 newest[system].get("run_id") or ""
             ):
                 newest[system] = s
-        header = ["system", "version", *(label for _, label, _ in SUMMARY_COLUMNS)]
+        header = ["system", "version", "last run"]
+        header += [label for _, label, _ in SUMMARY_COLUMNS]
         header += ["p50 search (s)"]
         ranked = sorted(
             newest.values(),
@@ -403,7 +416,11 @@ class ComparisonReport(Report):
         )
         rows = []
         for s in ranked:
-            cells = [str(s.get("system", "?")), str(s.get("system_version") or "")]
+            cells = [
+                str(s.get("system", "?")),
+                str(s.get("system_version") or ""),
+                run_date(s.get("run_id")),
+            ]
             cells += [
                 fmt.format(s[key]) if key in s else ""
                 for key, _, fmt in SUMMARY_COLUMNS
