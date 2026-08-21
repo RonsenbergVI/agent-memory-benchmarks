@@ -1,0 +1,77 @@
+name: New dataset proposal
+description: Propose a dataset for inclusion in the benchmark
+title: "[new dataset]: "
+labels: ["new-dataset"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: check the README's [Inclusion criteria](../../README.md#inclusion-criteria)
+        and [Projects in scope](../../README.md#projects-in-scope) â€” this issue is for proposing
+        *inclusion*. Once agreed, the actual dataset integration lands as a PR adding
+        `benchmarks/<dataset>/` (see [Adding a memory system](../../README.md#adding-a-memory-system)).
+  - type: input
+    id: name
+    attributes:
+      label: Dataset name
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source URL
+      placeholder: https://github.com/org/dataset or paper link
+    validations:
+      required: true
+  - type: dropdown
+    id: license
+    attributes:
+      label: License
+      options:
+        - MIT
+        - Apache-2.0
+        - BSD
+        - CC-BY / CC-BY-SA
+        - Other permissive / OSS-adjacent (explain below)
+        - Not permissive, or unsure
+    validations:
+      required: true
+  - type: dropdown
+    id: retrieval_scoring
+    attributes:
+      label: Ground-truth format â€” does it support retrieval scoring?
+      options:
+        - "Yes"
+        - "No"
+        - "Partial"
+    validations:
+      required: true
+  - type: input
+    id: multi_session
+    attributes:
+      label: Multi-session structure
+      description: One line, e.g. "single long conversation", "N discrete sessions per user", "none"
+    validations:
+      required: true
+  - type: textarea
+    id: failure_mode
+    attributes:
+      label: What distinct failure mode does this dataset add?
+      description: What does this surface that existing datasets in the benchmark don't already cover?
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else reviewers should know?
+      description: Dataset size, collection method, known limitations, why this dataset and why now, etc.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you be able to contribute this yourself?
+      options:
+        - "Yes, I'll open the PR"
+        - "Maybe, with some guidance"
+        - "No, just proposing it"
+    validations:
+      required: true
