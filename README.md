@@ -1,7 +1,5 @@
 # Agent Memory Benchmark
 
-An open benchmark and reference for evaluating AI agent memory systems
-
 <div align="center">
 
 [![CI](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/ci.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/ci.yml)
@@ -17,6 +15,8 @@ An open benchmark and reference for evaluating AI agent memory systems
 **[Results](#results) · [Quickstart](#quickstart) · [Why this exists](#why-this-exists) · [Methodology](#methodology) · [Projects in scope](#projects-in-scope) · [Contributing](#contributing)**
 
 </div>
+
+An open benchmark and reference for evaluating AI agent memory systems
 
 ## Results
 
