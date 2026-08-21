@@ -2,6 +2,8 @@
 
 An open benchmark and reference for evaluating AI agent memory systems
 
+<div align="center">
+
 [![CI](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/ci.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/RonsenbergVI/agent-memory-benchmarks?filter=v*)](https://github.com/RonsenbergVI/agent-memory-benchmarks/releases)
 [![License](https://img.shields.io/github/license/RonsenbergVI/agent-memory-benchmarks)](LICENSE)
@@ -13,6 +15,8 @@ An open benchmark and reference for evaluating AI agent memory systems
 [![Benchmark mem0](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml)
 
 **[Results](#results) · [Quickstart](#quickstart) · [Why this exists](#why-this-exists) · [Methodology](#methodology) · [Projects in scope](#projects-in-scope) · [Contributing](#contributing)**
+
+</div>
 
 ## Results
 
