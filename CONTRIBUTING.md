@@ -64,6 +64,21 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
    - `.github/dependabot.yaml` — a `package-ecosystem: uv` block for `directory: /benchmarks/<name>`, copied from an existing one (daily schedule, `fix(deps):` commit prefix, labels `area:benchmarks` + `memory:<name>`). Under `always-bump-minor` any commit is releasable, so the prefix picks the changelog section, not the release: `fix(deps):` files SDK bumps under the release's bug fixes (`deps` has no changelog section), and merging the package's release PR re-benchmarks the system against the new SDK.
    - `.github/labeler.yaml` — a `memory:<name>` entry globbing `benchmarks/<name>/**`, so PRs touching the integration get labeled. Create the `memory:<name>` label in the repo as well (`gh label create`): dependabot silently ignores labels that don't exist.
 
+7. **Repo plumbing** — three configs track packages by name and must learn the new one:
+
+   - `.github/release-please-config.json` — the version annotation from step 1 only works if the file is registered: add `benchmarks/<name>/pyproject.toml` to `extra-files`, plus a typed entry that bumps the package's pin in the lockfile — without it the release PR leaves `uv.lock` stale and fails CI's `uv sync --locked`:
+
+     ```json
+     {
+       "type": "toml",
+       "path": "uv.lock",
+       "jsonpath": "$.package[?(@.name=='<name>')].version"
+     }
+     ```
+
+   - `.github/dependabot.yaml` — a `package-ecosystem: uv` block for `directory: /benchmarks/<name>`, copied from an existing one (daily schedule, `deps:` commit prefix, labels `area:benchmarks` + `memory:<name>`).
+   - `.github/labeler.yaml` — a `memory:<name>` entry globbing `benchmarks/<name>/**`, so PRs touching the integration get labeled. Create the `memory:<name>` label in the repo as well (`gh label create`): dependabot silently ignores labels that don't exist.
+
 Check it landed: `uv run amb systems` lists the entry point, and `docker compose -f benchmarks/<name>/docker-compose.yaml run --build --rm benchmark run --system <name> --dataset locomo --limit 1 --turns 40 --questions 5` runs the whole pipeline on one conversation.
 
 External packages work too: anything installed in the environment that registers the `amb.systems` entry point shows up in `amb systems`.
