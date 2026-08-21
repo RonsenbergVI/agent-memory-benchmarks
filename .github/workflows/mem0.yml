@@ -24,16 +24,13 @@ env:
 # its own jobs here later (with the driving-model env).
 jobs:
   locomo:
-    name: mem0 / locomo / direct / k${{ matrix.k }} / t${{ matrix.turns }} / q${{ matrix.questions }}
+    name: mem0 / locomo / direct / k${{ matrix.k }}
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
         k: [1, 3, 5, 10]
-        # turns ingested / questions asked, per conversation
-        turns: [100]
-        questions: [20]
     steps:
       - uses: actions/checkout@v4
 
@@ -56,7 +53,6 @@ jobs:
           docker compose -f benchmarks/mem0/docker-compose.yaml \
             run --build --rm benchmark run --system mem0 \
             --dataset locomo --mode direct \
-            --turns ${{ matrix.turns }} --questions ${{ matrix.questions }} \
             --k ${{ matrix.k }}
           docker compose -f benchmarks/mem0/docker-compose.yaml down -v
 
@@ -72,16 +68,14 @@ jobs:
           retention-days: 5
 
   longmemeval:
-    name: mem0 / longmemeval / direct / k${{ matrix.k }} / ${{ matrix.variant }} / l${{ matrix.limit }}
+    name: mem0 / longmemeval / direct / k${{ matrix.k }} / ${{ matrix.variant }}
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
         k: [1, 3, 5, 10]
         variant: [oracle]
-        # conversations run
-        limit: [20]
     steps:
       - uses: actions/checkout@v4
 
@@ -104,7 +98,7 @@ jobs:
           docker compose -f benchmarks/mem0/docker-compose.yaml \
             run --build --rm benchmark run --system mem0 \
             --dataset longmemeval --mode direct \
-            --variant ${{ matrix.variant }} --limit ${{ matrix.limit }} \
+            --variant ${{ matrix.variant }} \
             --k ${{ matrix.k }}
           docker compose -f benchmarks/mem0/docker-compose.yaml down -v
 
@@ -172,7 +166,7 @@ jobs:
       # commits as github-actions[bot] and skips cleanly when nothing
       # changed; pushes to the checked-out branch (main)
       - name: Commit results to main
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "results: mem0 benchmark run for ${{ github.ref_name }}"
           file_pattern: "runs plots RESULTS.md README.md"
