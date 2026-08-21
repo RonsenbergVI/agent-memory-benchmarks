@@ -46,6 +46,16 @@ from amb.contracts import MemoryHit, Session
 DEFAULT_INGESTION_MODEL = "gpt-5-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 
+# gpt-5-mini is a reasoning model: its hidden reasoning tokens share the
+# completion budget (max_output_tokens) with the visible JSON, and
+# reasoning length is not deterministic call to call. graphiti-core's
+# 16384 default has been exhausted in practice on an entity-summary batch
+# — the JSON came back cut off mid-string (~300 chars), all retries
+# truncated the same way, and the whole run died. 4x that is headroom,
+# not a target: unused budget costs nothing. Same lesson as fraise's
+# EXTRACTION_MAX_COMPLETION_TOKENS.
+LLM_MAX_TOKENS = 65536
+
 
 class GraphitiMemory(Memory):
     """Graphiti: a temporal knowledge graph over Neo4j."""
@@ -107,8 +117,11 @@ class GraphitiMemory(Memory):
         if self.model:
             from graphiti_core.llm_client import LLMConfig, OpenAIClient
 
+            # max_tokens goes on the client, not the LLMConfig — graphiti's
+            # base client reads only its own constructor parameter
             clients["llm_client"] = OpenAIClient(
-                config=LLMConfig(model=self.model, small_model=self.model)
+                config=LLMConfig(model=self.model, small_model=self.model),
+                max_tokens=LLM_MAX_TOKENS,
             )
         if self.embedding_model:
             from graphiti_core.embedder import OpenAIEmbedder, OpenAIEmbedderConfig
@@ -202,9 +215,25 @@ class GraphitiMemory(Memory):
         return hits
 
     def teardown(self) -> None:
-        """Close the graphiti client and its event loop."""
+        """Close the graphiti client, its openai clients, and the event loop.
+
+        The AsyncOpenAI instances inside graphiti's llm/embedder/reranker
+        hold httpx pools bound to this loop; left open, their finalizers
+        fire after the loop is closed and every sample ends in a spray of
+        "RuntimeError: Event loop is closed". Closing them (and draining
+        async generators) before the loop is the whole fix.
+        """
         self._episodes.clear()
         try:
             self._await(self.client.close())
+            for owner in ("llm_client", "embedder", "cross_encoder"):
+                inner = getattr(getattr(self.client, owner, None), "client", None)
+                close = getattr(inner, "close", None)
+                if close is not None:
+                    try:
+                        self._await(close())
+                    except Exception:  # noqa: BLE001 - best-effort cleanup
+                        pass
+            self._await(self._loop.shutdown_asyncgens())
         finally:
             self._loop.close()
