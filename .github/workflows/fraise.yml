@@ -2,7 +2,10 @@ name: Benchmark fraise
 
 on:
   push:
-    tags: ["v*"]
+    # micro is always 0 under the major.minor release scheme; the
+    # strict patterns keep a hand-pushed patch or prerelease tag from
+    # starting paid benchmark runs
+    tags: ["v[0-9]+.[0-9]+.0", "fraise/v[0-9]+.[0-9]+.0"]
   workflow_dispatch:
 
 # one benchmark run at a time; a second trigger queues rather than
@@ -65,7 +68,7 @@ jobs:
           docker compose -f benchmarks/fraise/docker-compose.yaml down -v
 
       - name: Upload run data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: runs-fraise-locomo-direct-k${{ matrix.k }}
           path: runs/
@@ -116,7 +119,7 @@ jobs:
           docker compose -f benchmarks/fraise/docker-compose.yaml down -v
 
       - name: Upload run data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: runs-fraise-longmemeval-direct-k${{ matrix.k }}
           path: runs/
@@ -142,7 +145,7 @@ jobs:
         run: uv sync --locked
 
       - name: Collect run data
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: runs-*
           path: runs
@@ -164,7 +167,7 @@ jobs:
           # two cannot drift apart.
           uv run amb plot all
           uv run amb report --latest --k "$SUMMARY_K" \
-            --output RESULTS.md --summary README.md \
+            --output RESULTS.md \
             --commit "$GITHUB_SHA" $tag
 
       # commits as github-actions[bot] and skips cleanly when nothing
@@ -173,4 +176,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "results: fraise benchmark run for ${{ github.ref_name }}"
-          file_pattern: "runs plots RESULTS.md README.md"
+          file_pattern: "runs plots RESULTS.md"
