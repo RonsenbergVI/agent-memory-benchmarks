@@ -11,7 +11,7 @@ Benchmark workflows never run on push or PR — every run spends real API money,
   - a harness release tags `v<version>`, which every system's workflow listens for — a harness change can affect every measurement, so everything reruns;
   - a memory release tags `<name>/v<version>`, which only that system's workflow listens for — nothing else is re-spent.
 
-  Versioning is major.minor only (`always-bump-minor`): any conventional commit opens or refreshes its package's release PR, and every release bumps the minor. Dependabot's `fix(deps):` bumps under `benchmarks/<name>` therefore queue that system for a rerun; the release PR sits open, accumulating changes, until merging it is worth the spend.
+  Versioning is major.minor only (`always-bump-minor`): any conventional commit opens or refreshes its package's release PR, and every release bumps the minor. Dependabot's `fix(deps):` bumps under `benchmarks/<name>` therefore queue that system for a rerun; the release PR sits open, accumulating changes, until merging it is worth the spend. The harness release ignores commits that only touch `tests/`, `runs/`, `plots/`, or the issue templates (`exclude-paths` in the release-please config — release-please can only exclude directories, not single files, so other root files still parse toward the harness release PR). Merging the release PR is always the spend gate: an open PR queued by a docs commit costs nothing until you merge it.
 
 - **Manually.** `workflow_dispatch` runs any benchmark workflow from the Actions tab without a release; the published results carry the triggering commit but no tag.
 
