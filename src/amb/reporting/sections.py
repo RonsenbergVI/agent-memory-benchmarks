@@ -250,10 +250,28 @@ class GroupSummary(Section):
     level: int = 3
     metric_filter: tuple[str, ...] = ()
     lines: list[Chart] = field(default_factory=list, init=False, repr=False)
+    # the compact table at `k`, rendered as a figure: the README embeds an
+    # image from plots/, where CI blocks hand edits, instead of markdown
+    # numbers anyone could quietly change (the exact numbers stay in
+    # RESULTS.md, which is guarded the same way)
+    summary: Chart | None = field(default=None, init=False, repr=False)
     skipped: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
-        """Plan the sweep charts, keeping only what the runs have data for."""
+        """Plan the table and sweep charts, keeping what runs have data for."""
+        table = Chart(
+            kind="table",
+            stem=f"summary_k{self.k}",
+            y="retrieval_f1",
+            k=self.k,
+            out_dir=self.group.plot_dir,
+            summaries=self.group.summaries,
+            alt=f"Cross-system summary at k={self.k}",
+            title=headline(f"summary at k={self.k}"),
+            subtitle=f"{self.group.label} · {self.group.mode} · "
+            f"newest run per system{self._run_stamp()}",
+        )
+        self.summary = table if table.has_data() else None
         planned = [
             Chart(
                 kind="lines",
@@ -272,20 +290,30 @@ class GroupSummary(Section):
             )
         ]
         self.lines = [c for c in planned if c.has_data()]
-        self.skipped = len(planned) - len(self.lines)
+        self.skipped = len(planned) - len(self.lines) + (0 if self.summary else 1)
+
+    def _run_stamp(self) -> str:
+        """The newest run's date, carried inside the image where it can't drift."""
+        newest = max((s.get("run_id") or "" for s in self.group.summaries), default="")
+        if len(newest) < 8 or not newest[:8].isdigit():
+            return ""
+        return f" · run {newest[:4]}-{newest[4:6]}-{newest[6:8]}"
 
     def charts(self) -> list[Chart]:
-        """The group's k-sweep charts."""
-        return list(self.lines)
+        """The group's summary table figure and its k-sweep charts."""
+        return ([self.summary] if self.summary else []) + list(self.lines)
 
     def blocks(self) -> list[Block]:
-        """Heading, the compact table at `k`, then the sweep charts."""
-        header, rows = self.comparison.summary_table(
-            self.k, dataset=self.group.dataset, variant=self.group.variant or None
-        )
-        blocks: list[Block] = [
-            Heading(level=self.level, text=self.group.label),
-            Table(header=header, rows=rows),
-        ]
+        """Heading, the table figure at `k`, then the sweep charts."""
+        blocks: list[Block] = [Heading(level=self.level, text=self.group.label)]
+        if self.summary:
+            blocks.append(Figure(alt=self.summary.alt, path=self.summary.path))
+        else:
+            # no run at this k: fall back to the markdown table rather than
+            # linking an image that was never drawn
+            header, rows = self.comparison.summary_table(
+                self.k, dataset=self.group.dataset, variant=self.group.variant or None
+            )
+            blocks.append(Table(header=header, rows=rows))
         blocks += [Figure(alt=c.alt, path=c.path) for c in self.lines]
         return blocks

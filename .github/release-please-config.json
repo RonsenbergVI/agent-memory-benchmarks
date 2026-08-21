@@ -19,39 +19,89 @@
       "tag-separator": "/",
       "include-component-in-tag": false,
       "changelog-path": "CHANGELOG.md",
-      "versioning": "prerelease",
-      "prerelease": true,
-      "prerelease-type": "alpha",
-      "bump-minor-pre-major": true,
-      "release-as": "0.1.0-alpha.1",
+      "versioning": "always-bump-minor",
+      "exclude-paths": [
+        ".claude",
+        ".data",
+        ".dockerignore",
+        ".github/.release-please-manifest.json",
+        ".github/ISSUE_TEMPLATE",
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/dependabot.yaml",
+        ".github/labeler.yaml",
+        ".github/release-please-config.json",
+        ".gitignore",
+        ".pre-commit-config.yaml",
+        ".python-version",
+        "AGENTS.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "METHODOLOGY.md",
+        "Makefile",
+        "README.md",
+        "RESULTS.md",
+        "plots",
+        "runs",
+        "tests",
+        "uv.lock"
+      ],
       "extra-files": [
-        "benchmarks/fraise/pyproject.toml",
-        "benchmarks/graphiti/pyproject.toml",
-        "benchmarks/letta/pyproject.toml",
-        "benchmarks/mem0/pyproject.toml",
         {
           "type": "toml",
           "path": "uv.lock",
           "jsonpath": "$.package[?(@.name=='amb')].version"
-        },
+        }
+      ]
+    },
+    "benchmarks/fraise": {
+      "release-type": "python",
+      "component": "fraise",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
         {
           "type": "toml",
-          "path": "uv.lock",
+          "path": "/uv.lock",
           "jsonpath": "$.package[?(@.name=='fraise')].version"
-        },
+        }
+      ]
+    },
+    "benchmarks/graphiti": {
+      "release-type": "python",
+      "component": "graphiti",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
         {
           "type": "toml",
-          "path": "uv.lock",
+          "path": "/uv.lock",
           "jsonpath": "$.package[?(@.name=='graphiti')].version"
-        },
+        }
+      ]
+    },
+    "benchmarks/letta": {
+      "release-type": "python",
+      "component": "letta",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
         {
           "type": "toml",
-          "path": "uv.lock",
+          "path": "/uv.lock",
           "jsonpath": "$.package[?(@.name=='letta')].version"
-        },
+        }
+      ]
+    },
+    "benchmarks/mem0": {
+      "release-type": "python",
+      "component": "mem0",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
         {
           "type": "toml",
-          "path": "uv.lock",
+          "path": "/uv.lock",
           "jsonpath": "$.package[?(@.name=='mem0')].version"
         }
       ]

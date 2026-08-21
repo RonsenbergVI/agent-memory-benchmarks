@@ -34,8 +34,9 @@
 
 ## Results / report hygiene
 
-- [ ] This PR does **not** hand-edit `report/`, `plots/`, `RESULTS.md`, or `README.md`. Those
-      are only ever written by `amb report` / `amb plot all`, and only committed by the release CI
-      workflow, never by hand
+- [ ] This PR does **not** hand-edit `runs/`, `plots/`, or `RESULTS.md`. Those are only ever
+      written by `amb report` / `amb plot all`, and only committed by the release CI workflow,
+      never by hand (CI enforces this). README.md is hand-written — its results section embeds
+      images from `plots/` by stable path and needs no machine edits
 - [ ] If this changes what a metric measures, existing numbers in `RESULTS.md` may now be stale —
       noted below, or flagged for a re-run
