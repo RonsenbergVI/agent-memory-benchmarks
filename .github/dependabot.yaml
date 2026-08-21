@@ -8,6 +8,14 @@
 # token). Setting it replaces dependabot's default labels, and the labels
 # must already exist in the repo. The root uv entry keeps the defaults:
 # no labeler glob covers the root manifest/lock.
+#
+# Under release-please's always-bump-minor versioning any conventional
+# commit is releasable, so prefixes don't gate releases — they pick the
+# changelog section. The benchmark entries use `fix(deps):` so SDK bumps
+# appear under the release's bug fixes instead of vanishing (`deps` has no
+# changelog section); merging that package's release PR re-benchmarks the
+# system against the new SDK. Root uv and github-actions bumps stay
+# `deps:` — harness dependency noise doesn't belong in release notes.
 
 version: 2
 updates:
@@ -34,8 +42,8 @@ updates:
     schedule:
       interval: daily
     commit-message:
-      prefix: "deps: "
-      prefix-development: "deps: "
+      prefix: "fix(deps): "
+      prefix-development: "fix(deps): "
     labels:
       - area:benchmarks
       - memory:fraise
@@ -45,8 +53,8 @@ updates:
     schedule:
       interval: daily
     commit-message:
-      prefix: "deps: "
-      prefix-development: "deps: "
+      prefix: "fix(deps): "
+      prefix-development: "fix(deps): "
     labels:
       - area:benchmarks
       - memory:graphiti
@@ -56,8 +64,8 @@ updates:
     schedule:
       interval: daily
     commit-message:
-      prefix: "deps: "
-      prefix-development: "deps: "
+      prefix: "fix(deps): "
+      prefix-development: "fix(deps): "
     labels:
       - area:benchmarks
       - memory:letta
@@ -67,8 +75,8 @@ updates:
     schedule:
       interval: daily
     commit-message:
-      prefix: "deps: "
-      prefix-development: "deps: "
+      prefix: "fix(deps): "
+      prefix-development: "fix(deps): "
     labels:
       - area:benchmarks
       - memory:mem0

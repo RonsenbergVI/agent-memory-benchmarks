@@ -41,7 +41,7 @@ class Chart:
     that budget itself, so its identity travels with it.
     """
 
-    kind: str  # bars | lines | scatter
+    kind: str  # bars | lines | scatter | table
     stem: str
     y: str
     out_dir: Path
@@ -86,8 +86,20 @@ class Chart:
                 return helpers.collect_series(scoped, self.y)
             case "scatter":
                 return helpers.collect_points(scoped, self.x or "", self.y)
+            case "table":
+                _, rows = self._table()
+                return rows
             case _:
                 raise ValueError(f"unknown chart kind {self.kind!r}")
+
+    def _table(self) -> tuple[list[str], list[list[str]]]:
+        """The summary table this chart renders — the README headline rows."""
+        # imported here: run.py owns the table shape and imports nothing
+        # from this module, but the reporting package initializes run
+        # before chart, so a top-level import would be circular
+        from amb.reporting.run import ComparisonReport
+
+        return ComparisonReport(self.scoped()).summary_table(self.k or 10)
 
     def has_data(self) -> bool:
         """Whether any run in scope reports what this chart plots.
@@ -149,6 +161,16 @@ class Chart:
                     subtitle=subtitle,
                     better=self.better,
                     baseline=floor,
+                    dark=dark,
+                )
+            case "table":
+                header, rows = self._table()
+                return plots.table(
+                    header,
+                    rows,
+                    output=self.path,
+                    title=self.title,
+                    subtitle=self.subtitle,
                     dark=dark,
                 )
             case _:
