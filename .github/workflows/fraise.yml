@@ -166,6 +166,7 @@ jobs:
           # — and `amb report` writes the documents that link them, so the
           # two cannot drift apart.
           uv run amb plot all
+          uv run amb plot all --dark
           uv run amb report --latest --k "$SUMMARY_K" \
             --output RESULTS.md \
             --commit "$GITHUB_SHA" $tag
