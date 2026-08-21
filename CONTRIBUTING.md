@@ -11,7 +11,7 @@ Benchmark workflows never run on push or PR — every run spends real API money,
   - a harness release tags `v<version>`, which every system's workflow listens for — a harness change can affect every measurement, so everything reruns;
   - a memory release tags `<name>/v<version>`, which only that system's workflow listens for — nothing else is re-spent.
 
-  Versioning is major.minor only (`always-bump-minor`): any conventional commit opens or refreshes its package's release PR, and every release bumps the minor. Dependabot's `fix(deps):` bumps under `benchmarks/<name>` therefore queue that system for a rerun; the release PR sits open, accumulating changes, until merging it is worth the spend. The harness release ignores commits that only touch `tests/`, `runs/`, `plots/`, or the issue templates (`exclude-paths` in the release-please config — release-please can only exclude directories, not single files, so other root files still parse toward the harness release PR). Merging the release PR is always the spend gate: an open PR queued by a docs commit costs nothing until you merge it.
+  Versioning is major.minor only (`always-bump-minor`): any conventional commit opens or refreshes its package's release PR, and every release bumps the minor. A Dependabot `deps:` bump that touches `benchmarks/<name>/pyproject.toml` (delivered by the workspace-aware root entry, lockfile included) therefore queues that system for a rerun; the release PR sits open, accumulating changes, until merging it is worth the spend. The harness release ignores commits that only touch `tests/`, `runs/`, `plots/`, or the issue templates (`exclude-paths` in the release-please config — release-please can only exclude directories, not single files, so other root files still parse toward the harness release PR). Merging the release PR is always the spend gate: an open PR queued by a docs commit costs nothing until you merge it.
 
 - **Manually.** `workflow_dispatch` runs any benchmark workflow from the Actions tab without a release; the published results carry the triggering commit but no tag.
 
@@ -48,7 +48,7 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
 
 6. **`.github/workflows/<name>.yml`** — copy `fraise.yml` and swap the framework name and compose path (drop the ghcr login if the image isn't on ghcr). One job per dataset; matrices hold plain values only. Trigger on `tags: ["v*", "<name>/v*"]`: a harness release reruns every system, the package's own tag only this one.
 
-7. **Repo plumbing** — three configs track packages by name and must learn the new one:
+7. **Repo plumbing** — two configs track packages by name and must learn the new one. Dependabot needs nothing: its root `uv` entry is workspace-aware — it bumps member dependencies and regenerates `uv.lock` in the same PR — so per-member entries are never added (they would change the manifest without the lock and fail `uv sync --locked`).
 
    - `.github/release-please-config.json` — add a package entry under `packages`, copied from an existing `benchmarks/*` one: `component: <name>`, plus an `extra-files` entry that bumps the package's pin in the lockfile (the leading slash makes the path repo-root-relative — without this entry the release PR leaves `uv.lock` stale and fails CI's `uv sync --locked`):
 
@@ -61,22 +61,6 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
      ```
 
      Seed `.github/.release-please-manifest.json` with `0.0.0`, so the package's first release lands as `0.1.0`. Releases are per-package: commits touching `benchmarks/<name>` accumulate in the package's own release PR, and merging it tags `<name>/v<version>`, which reruns only this system's benchmark (step 6).
-   - `.github/dependabot.yaml` — a `package-ecosystem: uv` block for `directory: /benchmarks/<name>`, copied from an existing one (daily schedule, `fix(deps):` commit prefix, labels `area:benchmarks` + `memory:<name>`). Under `always-bump-minor` any commit is releasable, so the prefix picks the changelog section, not the release: `fix(deps):` files SDK bumps under the release's bug fixes (`deps` has no changelog section), and merging the package's release PR re-benchmarks the system against the new SDK.
-   - `.github/labeler.yaml` — a `memory:<name>` entry globbing `benchmarks/<name>/**`, so PRs touching the integration get labeled. Create the `memory:<name>` label in the repo as well (`gh label create`): dependabot silently ignores labels that don't exist.
-
-7. **Repo plumbing** — three configs track packages by name and must learn the new one:
-
-   - `.github/release-please-config.json` — the version annotation from step 1 only works if the file is registered: add `benchmarks/<name>/pyproject.toml` to `extra-files`, plus a typed entry that bumps the package's pin in the lockfile — without it the release PR leaves `uv.lock` stale and fails CI's `uv sync --locked`:
-
-     ```json
-     {
-       "type": "toml",
-       "path": "uv.lock",
-       "jsonpath": "$.package[?(@.name=='<name>')].version"
-     }
-     ```
-
-   - `.github/dependabot.yaml` — a `package-ecosystem: uv` block for `directory: /benchmarks/<name>`, copied from an existing one (daily schedule, `deps:` commit prefix, labels `area:benchmarks` + `memory:<name>`).
    - `.github/labeler.yaml` — a `memory:<name>` entry globbing `benchmarks/<name>/**`, so PRs touching the integration get labeled. Create the `memory:<name>` label in the repo as well (`gh label create`): dependabot silently ignores labels that don't exist.
 
 Check it landed: `uv run amb systems` lists the entry point, and `docker compose -f benchmarks/<name>/docker-compose.yaml run --build --rm benchmark run --system <name> --dataset locomo --limit 1 --turns 40 --questions 5` runs the whole pipeline on one conversation.
