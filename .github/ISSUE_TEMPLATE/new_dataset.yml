@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Before filing: check the README's [Inclusion criteria](../../README.md#inclusion-criteria)
-        and [Projects in scope](../../README.md#projects-in-scope) — this issue is for proposing
+        and [Projects in scope](../../README.md#projects-in-scope) â€” this issue is for proposing
         *inclusion*. Once agreed, the actual dataset integration lands as a PR adding
         `benchmarks/<dataset>/` (see [Adding a memory system](../../README.md#adding-a-memory-system)).
   - type: input
@@ -39,7 +39,7 @@ body:
   - type: dropdown
     id: retrieval_scoring
     attributes:
-      label: Ground-truth format — does it support retrieval scoring?
+      label: Ground-truth format â€” does it support retrieval scoring?
       options:
         - "Yes"
         - "No"
@@ -70,9 +70,8 @@ body:
     attributes:
       label: Would you be able to contribute this yourself?
       options:
-        - "Yes — I'll open the PR"
+        - "Yes â€” I'll open the PR"
         - "Maybe, with some guidance"
         - "No, just proposing it"
     validations:
       required: true
-
