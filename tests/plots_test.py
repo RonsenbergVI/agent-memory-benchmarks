@@ -66,6 +66,12 @@ def test_table_chart_ranks_and_renders(tmp_path: Path) -> None:
     assert path == tmp_path / "summary_k10.png"
     assert path is not None
     assert path.stat().st_size > 0
+    # the dark render lands beside the light one, never over it — the
+    # README serves the pair through <picture>
+    dark = chart.draw(dark=True)
+    assert dark == tmp_path / "summary_k10_dark.png"
+    assert dark is not None
+    assert dark.stat().st_size > 0
 
 
 def test_table_chart_without_runs_at_k_has_no_data(tmp_path: Path) -> None:

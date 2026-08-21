@@ -127,12 +127,16 @@ class Chart:
         data = self.data()
         if not data:
             return None
+        # dark renders land beside the light ones (`<stem>_dark.png`): the
+        # README serves them through <picture> for dark-mode readers, and
+        # the publish job regenerates both variants together
+        output = self.out_dir / f"{self.stem}_dark.png" if dark else self.path
         match self.kind:
             case "bars":
                 return plots.bars(
                     data,
                     x_label=self.y,
-                    output=self.path,
+                    output=output,
                     title=self.title,
                     subtitle=self.subtitle,
                     dark=dark,
@@ -142,7 +146,7 @@ class Chart:
                     data,
                     x_label="k (hits requested per query)",
                     y_label=self.y,
-                    output=self.path,
+                    output=output,
                     title=self.title,
                     subtitle=self.subtitle,
                     dark=dark,
@@ -156,7 +160,7 @@ class Chart:
                     data,
                     x_label=self.x or "",
                     y_label=self.y,
-                    output=self.path,
+                    output=output,
                     title=self.title,
                     subtitle=subtitle,
                     better=self.better,
@@ -168,7 +172,7 @@ class Chart:
                 return plots.table(
                     header,
                     rows,
-                    output=self.path,
+                    output=output,
                     title=self.title,
                     subtitle=self.subtitle,
                     dark=dark,
