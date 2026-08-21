@@ -28,7 +28,17 @@ from amb.contracts import Block, Figure, Heading, Paragraph, Rule, Table
 from amb.reporting.chart import Chart
 from amb.reporting.helpers import headline, pretty
 from amb.reporting.report import RunGroup, precision_pinned
-from amb.reporting.run import ComparisonReport
+from amb.reporting.run import ComparisonReport, run_date
+
+
+def freshness(summaries: list[dict]) -> str:
+    """`· run YYYY-MM-DD` of the newest run in scope, or "" without one.
+
+    Every chart subtitle carries it, so a saved image dates itself — a
+    screenshot or a stale README embed can't pass off old numbers as new.
+    """
+    stamp = run_date(max((s.get("run_id") or "" for s in summaries), default=""))
+    return f" · run {stamp}" if stamp else ""
 
 
 @dataclass
@@ -109,7 +119,7 @@ class GroupCharts(Section):
                 alt=f"Retrieval {pretty(stem)} vs k",
                 title=headline(f"{pretty(metric)} vs k"),
                 subtitle=f"{self.group.label} · {self.group.mode} · "
-                "newest run per system and k",
+                f"newest run per system and k{freshness(self.group.summaries)}",
             )
             for stem, metric in sorted(
                 metrics, key=lambda pair: SUMMARY_ORDER.index(pair[0])
@@ -134,6 +144,10 @@ class GroupCharts(Section):
             if bars or scatters:
                 self.sets.append((k, bars, scatters))
 
+    def _at_k(self, k: int) -> list[dict]:
+        """The group's runs at one k — what that k's charts actually show."""
+        return [s for s in self.group.summaries if s.get("k") == k]
+
     def _bars(self, metric: str, k: int) -> Chart:
         """One metric's system comparison at `k`."""
         stem = metric.removeprefix("retrieval_")
@@ -147,7 +161,7 @@ class GroupCharts(Section):
             alt=f"Session-level {pretty(stem)} by system",
             title=headline(f"{pretty(metric)} by system"),
             subtitle=f"{self.group.label} · {self.group.mode} · k={k} · "
-            "newest run per system",
+            f"newest run per system{freshness(self._at_k(k))}",
         )
 
     def _scatter(self, x: str, y: str, stem: str, k: int) -> Chart:
@@ -162,7 +176,8 @@ class GroupCharts(Section):
             summaries=self.group.summaries,
             alt=f"{headline(pretty(y))} vs {pretty(x)}",
             title=headline(f"{pretty(y)} vs {pretty(x)}"),
-            subtitle=f"{self.group.label} · {self.group.mode} · k={k}",
+            subtitle=f"{self.group.label} · {self.group.mode} · k={k}"
+            f"{freshness(self._at_k(k))}",
             better=(
                 r"$\downarrow$ faster, $\leftarrow$ cheaper"
                 if stem == "tokens_latency"
@@ -269,7 +284,7 @@ class GroupSummary(Section):
             alt=f"Cross-system summary at k={self.k}",
             title=headline(f"summary at k={self.k}"),
             subtitle=f"{self.group.label} · {self.group.mode} · "
-            f"newest run per system{self._run_stamp()}",
+            f"newest run per system{freshness(self.group.summaries)}",
         )
         self.summary = table if table.has_data() else None
         planned = [
@@ -282,7 +297,7 @@ class GroupSummary(Section):
                 alt=f"Retrieval {pretty(stem)} vs k",
                 title=headline(f"{pretty(metric)} vs k"),
                 subtitle=f"{self.group.label} · {self.group.mode} · "
-                "newest run per system and k",
+                f"newest run per system and k{freshness(self.group.summaries)}",
             )
             for stem, metric in sorted(
                 self.group.metrics(self.metric_filter),
@@ -291,13 +306,6 @@ class GroupSummary(Section):
         ]
         self.lines = [c for c in planned if c.has_data()]
         self.skipped = len(planned) - len(self.lines) + (0 if self.summary else 1)
-
-    def _run_stamp(self) -> str:
-        """The newest run's date, carried inside the image where it can't drift."""
-        newest = max((s.get("run_id") or "" for s in self.group.summaries), default="")
-        if len(newest) < 8 or not newest[:8].isdigit():
-            return ""
-        return f" · run {newest[:4]}-{newest[4:6]}-{newest[6:8]}"
 
     def charts(self) -> list[Chart]:
         """The group's summary table figure and its k-sweep charts."""
