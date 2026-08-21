@@ -223,6 +223,74 @@ def bars(
     return _finish(fig, ax, c, x_label, "", title, output, subtitle)
 
 
+def table(
+    header: list[str],
+    rows: list[list[str]],
+    output: Path,
+    title: str | None = None,
+    subtitle: str | None = None,
+    dark: bool = False,
+) -> Path:
+    """Render a small comparison table as a figure and write it to `output`.
+
+    The README embeds this instead of a markdown table so every published
+    number lives under `plots/`, where CI blocks hand edits. Text wears the
+    text tokens — ink for values, muted for the header — and the only
+    frame is hairline row separators in the grid colour. The first two
+    columns are identity (left-aligned); the rest are numbers (right-
+    aligned). Returns the path written; raises nothing on empty input —
+    the caller checks.
+    """
+    fig, ax, c = styled_axes(dark)
+    ax.grid(False)
+    ax.set_axis_off()
+
+    # column widths from the content itself, in character units; the
+    # figure grows with the table so text never squeezes
+    cells = [header, *rows]
+    widths = [max(len(str(row[j])) for row in cells) for j in range(len(header))]
+    gutter = 3.0
+    total = sum(widths) + gutter * (len(widths) - 1)
+    edges: list[tuple[float, float]] = []
+    cursor = 0.0
+    for width in widths:
+        edges.append((cursor / total, (cursor + width) / total))
+        cursor += width + gutter
+    fig.set_size_inches(max(6.4, total * 0.093), 0.44 * len(cells) + 0.72)
+
+    def place(row: list[str], y: float, color: str, size: float, weight: str) -> None:
+        for j, cell in enumerate(row):
+            left, right = edges[j]
+            identity = j < 2
+            ax.text(
+                left if identity else right,
+                y,
+                str(cell),
+                transform=ax.transAxes,
+                ha="left" if identity else "right",
+                va="center",
+                color=color,
+                fontsize=size,
+                fontweight=weight,
+            )
+
+    step = 1.0 / len(cells)
+    place(header, 1.0 - step / 2, c["muted"], 9.0, "medium")
+    for i, row in enumerate(rows):
+        y = 1.0 - (i + 1.5) * step
+        place(row, y, c["text"], 10.0, "normal")
+        # hairline separator above each body row, header line included
+        ax.axhline(
+            y + step / 2,
+            xmin=0.0,
+            xmax=1.0,
+            color=c["grid"],
+            linewidth=1.0,
+            zorder=1,
+        )
+    return _finish(fig, ax, c, "", "", title, output, subtitle)
+
+
 def _finish(
     fig: Any,
     ax: Any,
