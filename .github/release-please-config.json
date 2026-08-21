@@ -28,7 +28,32 @@
         "benchmarks/fraise/pyproject.toml",
         "benchmarks/graphiti/pyproject.toml",
         "benchmarks/letta/pyproject.toml",
-        "benchmarks/mem0/pyproject.toml"
+        "benchmarks/mem0/pyproject.toml",
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name=='amb')].version"
+        },
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name=='fraise')].version"
+        },
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name=='graphiti')].version"
+        },
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name=='letta')].version"
+        },
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name=='mem0')].version"
+        }
       ]
     }
   }
