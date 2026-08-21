@@ -63,7 +63,7 @@ jobs:
       # (or a job re-run) gets its own artifact instead of colliding with or
       # replacing an earlier one; kept a few days for inspection
       - name: Upload run data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: runs-letta-locomo-direct-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: runs/
@@ -109,7 +109,7 @@ jobs:
       # (or a job re-run) gets its own artifact instead of colliding with or
       # replacing an earlier one; kept a few days for inspection
       - name: Upload run data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: runs-letta-longmemeval-direct-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: runs/
@@ -141,7 +141,7 @@ jobs:
         run: uv sync --locked
 
       - name: Collect run data
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: runs-*
           path: runs
