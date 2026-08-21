@@ -160,7 +160,7 @@ jobs:
           # two cannot drift apart.
           uv run amb plot all
           uv run amb report --latest --k "$SUMMARY_K" \
-            --output RESULTS.md --summary README.md \
+            --output RESULTS.md \
             --commit "$GITHUB_SHA" $tag
 
       # commits as github-actions[bot] and skips cleanly when nothing
@@ -169,4 +169,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "results: mem0 benchmark run for ${{ github.ref_name }}"
-          file_pattern: "runs plots RESULTS.md README.md"
+          file_pattern: "runs plots RESULTS.md"
