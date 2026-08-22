@@ -137,6 +137,10 @@ class RunReport(Report):
         if self.run.sample_seed is not None:
             # which conversations were drawn is part of what was measured
             summary["sample_seed"] = self.run.sample_seed
+        if self.run.workers > 1:
+            # latencies were measured under N-way contention — a different
+            # experiment from the single-worker rows, never blended
+            summary["workers"] = self.run.workers
         for metric in metric_set:
             if metric.count or metric.report_when_empty:
                 self._place(summary, metric.name, metric.result())
@@ -255,6 +259,7 @@ class RunReport(Report):
                 system_params=summary.get("system_params") or {},
                 max_turns=summary.get("max_turns"),
                 sample_seed=summary.get("sample_seed"),
+                workers=summary.get("workers", 1),
                 system_version=summary.get("system_version"),
                 question_records=rows,
                 ingestion_records=ingest,
@@ -305,6 +310,7 @@ class ComparisonReport(Report):
         "judge_model",
         "max_turns",
         "sample_seed",
+        "workers",
         "num_questions",
     )
 

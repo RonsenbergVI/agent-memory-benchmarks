@@ -89,6 +89,11 @@ class Run(BaseModel):
     # run, since the corpus was only partly ingested
     max_turns: int | None = None
     sample_seed: int | None = None
+    # conversations run in parallel: latency percentiles measured under
+    # N-way contention are a different experiment from single-tenant ones,
+    # so the worker count joins the run's comparison identity (1 = the
+    # historical default every earlier run used)
+    workers: int = 1
     system_version: str | None = None
     question_records: list[QuestionRecord] = Field(default_factory=list)
     ingestion_records: list[IngestionRecord] = Field(default_factory=list)

@@ -27,6 +27,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar
+from uuid import uuid4
 
 from loguru import logger
 from pydantic import BaseModel
@@ -231,7 +232,11 @@ class Runner:
         probe = self.benchmark.create_system()
         internal = probe.models()
         data = Run(
-            run_id=datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ"),
+            # the timestamp alone collides across parallel CI cells (two
+            # cells starting the same second produced the same run_id and
+            # fought over one directory); the random suffix keeps every
+            # run's directory and identity unique
+            run_id=datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ") + f"-{uuid4().hex[:6]}",
             system=self.name,
             dataset=cfg.dataset,
             variant=cfg.variant,
@@ -251,6 +256,7 @@ class Runner:
             model=None if cfg.model is None else str(cfg.model),
             max_turns=cfg.max_turns,
             sample_seed=cfg.sample_seed,
+            workers=cfg.workers,
             system_version=probe.version(),
         )
         # core callbacks first, so no benchmark override can drop the
