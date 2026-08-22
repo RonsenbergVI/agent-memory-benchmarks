@@ -36,6 +36,8 @@ jobs:
         k: [1, 3, 5, 10]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -56,19 +58,18 @@ jobs:
           docker compose -f benchmarks/mem0/docker-compose.yaml \
             run --build --rm benchmark run --system mem0 \
             --dataset locomo --mode direct \
+            --workers 2 \
             --k ${{ matrix.k }}
           docker compose -f benchmarks/mem0/docker-compose.yaml down -v
 
-      # the run id + attempt make the name unique, so a later identical run
-      # (or a job re-run) gets its own artifact instead of colliding with or
-      # replacing an earlier one; kept a few days for inspection
-      - name: Upload run data
-        uses: actions/upload-artifact@v7
+      # same mechanism as the publish job below: commits as
+      # github-actions[bot], skips cleanly when nothing changed
+      - name: Commit run data to main
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          name: runs-mem0-locomo-direct-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: runs/
-          if-no-files-found: error
-          retention-days: 5
+          branch: main
+          commit_message: "results: mem0 locomo k${{ matrix.k }} (${{ github.ref_name }})"
+          file_pattern: "runs"
 
   longmemeval:
     name: mem0 / longmemeval / direct / k${{ matrix.k }} / ${{ matrix.variant }}
@@ -81,6 +82,8 @@ jobs:
         variant: [oracle]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -102,23 +105,25 @@ jobs:
             run --build --rm benchmark run --system mem0 \
             --dataset longmemeval --mode direct \
             --variant ${{ matrix.variant }} \
+            --workers 2 \
             --k ${{ matrix.k }}
           docker compose -f benchmarks/mem0/docker-compose.yaml down -v
 
-      # the run id + attempt make the name unique, so a later identical run
-      # (or a job re-run) gets its own artifact instead of colliding with or
-      # replacing an earlier one; kept a few days for inspection
-      - name: Upload run data
-        uses: actions/upload-artifact@v7
+      # same mechanism as the publish job below: commits as
+      # github-actions[bot], skips cleanly when nothing changed
+      - name: Commit run data to main
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          name: runs-mem0-longmemeval-direct-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: runs/
-          if-no-files-found: error
-          retention-days: 5
+          branch: main
+          commit_message: "results: mem0 longmemeval k${{ matrix.k }} (${{ github.ref_name }})"
+          file_pattern: "runs"
 
   publish:
     name: publish results to main
     needs: [locomo, longmemeval]
+    # always: the cells already committed their runs to main, so the
+    # documents regenerate from whatever landed even when some failed
+    if: always()
     runs-on: ubuntu-latest
     # every framework workflow commits to main through this one group, so
     # two finishing together publish one after the other instead of racing
@@ -139,13 +144,6 @@ jobs:
 
       - name: Install the workspace
         run: uv sync --locked
-
-      - name: Collect run data
-        uses: actions/download-artifact@v8
-        with:
-          pattern: runs-*
-          path: runs
-          merge-multiple: true
 
       - name: Regenerate plots and reports
         run: |
