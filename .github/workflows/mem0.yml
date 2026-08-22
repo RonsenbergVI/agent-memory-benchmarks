@@ -58,7 +58,7 @@ jobs:
           docker compose -f benchmarks/mem0/docker-compose.yaml \
             run --build --rm benchmark run --system mem0 \
             --dataset locomo --mode direct \
-            --workers 2 \
+            --workers 3 \
             --k ${{ matrix.k }}
           docker compose -f benchmarks/mem0/docker-compose.yaml down -v
 
@@ -105,7 +105,7 @@ jobs:
             run --build --rm benchmark run --system mem0 \
             --dataset longmemeval --mode direct \
             --variant ${{ matrix.variant }} \
-            --workers 2 \
+            --workers 3 \
             --k ${{ matrix.k }}
           docker compose -f benchmarks/mem0/docker-compose.yaml down -v
 
