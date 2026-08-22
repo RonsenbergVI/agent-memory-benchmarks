@@ -32,6 +32,9 @@ text-embedding-3-small, pinned so every system in the comparison ingests
 with the same models. Override with ``--param model=...`` /
 ``--param embedding_model=...``; an explicit ``--param model=none`` (or
 ``embedding_model=none``) falls back to graphiti-core's own default.
+The LLM client runs with a raised completion ceiling (``LLM_MAX_TOKENS``)
+so gpt-5-mini's reasoning bursts cannot truncate structured output
+mid-JSON, and teardown closes every async client before its event loop.
 """
 
 import asyncio
