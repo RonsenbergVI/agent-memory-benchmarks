@@ -62,14 +62,13 @@ jobs:
             --k ${{ matrix.k }}
           docker compose -f benchmarks/graphiti/docker-compose.yaml down -v
 
-      # same mechanism as the publish job below: commits as
-      # github-actions[bot], skips cleanly when nothing changed
-      - name: Commit run data to main
-        uses: stefanzweifel/git-auto-commit-action@v7
+      # the cell's run data leaves the runner as an artifact; the publish
+      # job below commits every cell's artifacts together in one push
+      - name: Upload run data
+        uses: actions/upload-artifact@v4
         with:
-          branch: main
-          commit_message: "results: graphiti locomo k${{ matrix.k }} (${{ github.ref_name }})"
-          file_pattern: "runs"
+          name: runs-graphiti-locomo-k${{ matrix.k }}
+          path: runs
 
   longmemeval:
     name: graphiti / longmemeval / direct / k${{ matrix.k }} / ${{ matrix.variant }}
@@ -109,20 +108,19 @@ jobs:
             --k ${{ matrix.k }}
           docker compose -f benchmarks/graphiti/docker-compose.yaml down -v
 
-      # same mechanism as the publish job below: commits as
-      # github-actions[bot], skips cleanly when nothing changed
-      - name: Commit run data to main
-        uses: stefanzweifel/git-auto-commit-action@v7
+      # the cell's run data leaves the runner as an artifact; the publish
+      # job below commits every cell's artifacts together in one push
+      - name: Upload run data
+        uses: actions/upload-artifact@v4
         with:
-          branch: main
-          commit_message: "results: graphiti longmemeval k${{ matrix.k }} (${{ github.ref_name }})"
-          file_pattern: "runs"
+          name: runs-graphiti-longmemeval-${{ matrix.variant }}-k${{ matrix.k }}
+          path: runs
 
   publish:
     name: publish results to main
     needs: [locomo, longmemeval]
-    # always: the cells already committed their runs to main, so the
-    # documents regenerate from whatever landed even when some failed
+    # always: every cell that finished uploaded its runs, so whatever
+    # completed lands and the documents regenerate even when some failed
     if: always()
     runs-on: ubuntu-latest
     # every framework workflow commits to main through this one group, so
@@ -136,6 +134,16 @@ jobs:
         with:
           ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
           ref: main
+
+      # each cell uploaded its runs as an artifact; merged over the main
+      # checkout so one commit carries every cell (a failed cell uploaded
+      # nothing and is simply absent)
+      - name: Download run data
+        uses: actions/download-artifact@v4
+        with:
+          pattern: runs-*
+          merge-multiple: true
+          path: runs
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -153,9 +161,9 @@ jobs:
           [ "${{ github.ref_type }}" = "tag" ] && tag="--tag $GITHUB_REF_NAME"
           # both commands read the same report objects, so neither needs to
           # be told which datasets or variants exist: the (dataset, variant)
-          # groups are discovered from runs/ itself, which holds every run
-          # ever committed to main (checkout brings the full tree, not just
-          # this run's artifacts). `amb plot all` draws exactly the charts the
+          # groups are discovered from runs/ itself — the main checkout
+          # brings every run already published, and the download above added
+          # this run's cells. `amb plot all` draws exactly the charts the
           # documents link — every k the runs used, one directory per group
           # — and `amb report` writes the documents that link them, so the
           # two cannot drift apart.
