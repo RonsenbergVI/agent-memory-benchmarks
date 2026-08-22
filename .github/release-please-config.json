@@ -51,7 +51,7 @@
         {
           "type": "toml",
           "path": "uv.lock",
-          "jsonpath": "$.package[?(@.name=='amb')].version"
+          "jsonpath": "$.package[?(@.name.value=='amb')].version"
         }
       ]
     },
@@ -64,7 +64,7 @@
         {
           "type": "toml",
           "path": "/uv.lock",
-          "jsonpath": "$.package[?(@.name=='fraise')].version"
+          "jsonpath": "$.package[?(@.name.value=='fraise')].version"
         }
       ]
     },
@@ -77,7 +77,7 @@
         {
           "type": "toml",
           "path": "/uv.lock",
-          "jsonpath": "$.package[?(@.name=='graphiti')].version"
+          "jsonpath": "$.package[?(@.name.value=='graphiti')].version"
         }
       ]
     },
@@ -90,7 +90,7 @@
         {
           "type": "toml",
           "path": "/uv.lock",
-          "jsonpath": "$.package[?(@.name=='letta')].version"
+          "jsonpath": "$.package[?(@.name.value=='letta')].version"
         }
       ]
     },
@@ -103,7 +103,7 @@
         {
           "type": "toml",
           "path": "/uv.lock",
-          "jsonpath": "$.package[?(@.name=='mem0')].version"
+          "jsonpath": "$.package[?(@.name.value=='mem0')].version"
         }
       ]
     }

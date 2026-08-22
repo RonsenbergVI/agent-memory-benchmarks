@@ -56,7 +56,7 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
      {
        "type": "toml",
        "path": "/uv.lock",
-       "jsonpath": "$.package[?(@.name=='<name>')].version"
+       "jsonpath": "$.package[?(@.name.value=='<name>')].version"
      }
      ```
 
