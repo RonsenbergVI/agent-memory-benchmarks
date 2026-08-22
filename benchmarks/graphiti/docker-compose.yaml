@@ -24,6 +24,9 @@ services:
       - path: ../../.env
         required: false
     environment:
+      # a native crash (SIGSEGV/SIGABRT) prints the failing stack instead
+      # of a bare exit code
+      - PYTHONFAULTHANDLER=1
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=password

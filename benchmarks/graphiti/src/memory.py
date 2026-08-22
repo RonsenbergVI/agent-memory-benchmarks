@@ -218,25 +218,19 @@ class GraphitiMemory(Memory):
         return hits
 
     def teardown(self) -> None:
-        """Close the graphiti client, its openai clients, and the event loop.
+        """Close the graphiti client and its event loop.
 
-        The AsyncOpenAI instances inside graphiti's llm/embedder/reranker
-        hold httpx pools bound to this loop; left open, their finalizers
-        fire after the loop is closed and every sample ends in a spray of
-        "RuntimeError: Event loop is closed". Closing them (and draining
-        async generators) before the loop is the whole fix.
+        Deliberately does NOT close the AsyncOpenAI clients inside
+        graphiti's llm/embedder/reranker: closing them per sample was the
+        prime suspect in native crashes (SIGSEGV/SIGABRT) on the
+        high-churn longmemeval cells — hundreds of rapid loop/SSL/client
+        create-close cycles per run. The cost of leaving them is a
+        harmless "Event loop is closed" spray from their GC finalizers;
+        the cost of closing them appears to be the process. Revisit only
+        with a faulthandler-attributed stack proving otherwise.
         """
         self._episodes.clear()
         try:
             self._await(self.client.close())
-            for owner in ("llm_client", "embedder", "cross_encoder"):
-                inner = getattr(getattr(self.client, owner, None), "client", None)
-                close = getattr(inner, "close", None)
-                if close is not None:
-                    try:
-                        self._await(close())
-                    except Exception:  # noqa: BLE001 - best-effort cleanup
-                        pass
-            self._await(self._loop.shutdown_asyncgens())
         finally:
             self._loop.close()
