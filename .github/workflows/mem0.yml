@@ -62,14 +62,16 @@ jobs:
             --k ${{ matrix.k }}
           docker compose -f benchmarks/mem0/docker-compose.yaml down -v
 
-      # same mechanism as the publish job below: commits as
-      # github-actions[bot], skips cleanly when nothing changed
-      - name: Commit run data to main
-        uses: stefanzweifel/git-auto-commit-action@v7
+      # the run id + attempt make the name unique, so a later identical run
+      # (or a job re-run) gets its own artifact instead of colliding with or
+      # replacing an earlier one; kept a few days for inspection
+      - name: Upload run data
+        uses: actions/upload-artifact@v7
         with:
-          branch: main
-          commit_message: "results: mem0 locomo k${{ matrix.k }} (${{ github.ref_name }})"
-          file_pattern: "runs"
+          name: runs-mem0-locomo-direct-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: runs/
+          if-no-files-found: error
+          retention-days: 5
 
   longmemeval:
     name: mem0 / longmemeval / direct / k${{ matrix.k }} / ${{ matrix.variant }}
@@ -109,20 +111,22 @@ jobs:
             --k ${{ matrix.k }}
           docker compose -f benchmarks/mem0/docker-compose.yaml down -v
 
-      # same mechanism as the publish job below: commits as
-      # github-actions[bot], skips cleanly when nothing changed
-      - name: Commit run data to main
-        uses: stefanzweifel/git-auto-commit-action@v7
+      # the run id + attempt make the name unique, so a later identical run
+      # (or a job re-run) gets its own artifact instead of colliding with or
+      # replacing an earlier one; kept a few days for inspection
+      - name: Upload run data
+        uses: actions/upload-artifact@v7
         with:
-          branch: main
-          commit_message: "results: mem0 longmemeval k${{ matrix.k }} (${{ github.ref_name }})"
-          file_pattern: "runs"
+          name: runs-mem0-longmemeval-direct-k${{ matrix.k }}-${{ matrix.variant }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: runs/
+          if-no-files-found: error
+          retention-days: 5
 
   publish:
     name: publish results to main
     needs: [locomo, longmemeval]
-    # always: the cells already committed their runs to main, so the
-    # documents regenerate from whatever landed even when some failed
+    # always: every cell that finished uploaded its artifact, so whatever
+    # completed still lands and the documents regenerate even when some failed
     if: always()
     runs-on: ubuntu-latest
     # every framework workflow commits to main through this one group, so
@@ -144,6 +148,13 @@ jobs:
 
       - name: Install the workspace
         run: uv sync --locked
+
+      - name: Collect run data
+        uses: actions/download-artifact@v8
+        with:
+          pattern: runs-*
+          path: runs
+          merge-multiple: true
 
       - name: Regenerate plots and reports
         run: |
