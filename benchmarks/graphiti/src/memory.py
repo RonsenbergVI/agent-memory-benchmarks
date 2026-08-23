@@ -154,7 +154,13 @@ class GraphitiMemory(Memory):
         result = self._await(
             self.client.add_episode(
                 name=f"{conversation_id}:{session.session_id}",
-                episode_body=str(session),
+                # the turns alone: Session.__str__ would prepend a
+                # `[session <id> @ <time>]` header no real deployment
+                # writes, and graphiti already gets the time natively
+                # through reference_time below
+                episode_body="\n".join(
+                    f"{turn.speaker}: {turn.text}" for turn in session.turns
+                ),
                 source=EpisodeType.message,
                 source_description="benchmark conversation session",
                 reference_time=self._reference_time(session),
@@ -198,11 +204,17 @@ class GraphitiMemory(Memory):
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return the k best graph edges (facts) for the query."""
-        edges = self._await(
-            self.client.search(query, group_ids=[conversation_id], num_results=k)
+        from graphiti_core.search.search_config_recipes import (
+            COMBINED_HYBRID_SEARCH_RRF,
+        )
+
+        config = COMBINED_HYBRID_SEARCH_RRF.model_copy(deep=True)
+        config.limit = k
+        results = self._await(
+            self.client.search_(query, config=config, group_ids=[conversation_id])
         )
         hits = []
-        for edge in edges:
+        for edge in results.edges:
             sessions = [
                 self._episodes[str(e)]
                 for e in getattr(edge, "episodes", []) or []
@@ -210,9 +222,9 @@ class GraphitiMemory(Memory):
             ]
             hits.append(
                 MemoryHit(
-                    content=getattr(edge, "fact", str(edge)),
+                    content=edge.fact,
                     session_ids=sessions,
-                    metadata={"uuid": str(getattr(edge, "uuid", ""))},
+                    metadata={"uuid": str(edge.uuid)},
                 )
             )
         return hits

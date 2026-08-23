@@ -174,7 +174,11 @@ class Mem0Memory(Memory):
         # mem0 2.0 API: entity scoping goes in `filters`, result count is
         # `top_k` (`limit` would be silently swallowed by **kwargs)
         response = self.memory.search(
-            query, filters={"user_id": conversation_id}, top_k=k
+            query,
+            filters={"user_id": conversation_id},
+            top_k=k,
+            rerank=True,  # default False — mem0's docs recommend it for precision
+            threshold=0.0,  # default 0.1 silently drops low-scoring hits
         )
         results = (
             response.get("results", []) if isinstance(response, dict) else response
