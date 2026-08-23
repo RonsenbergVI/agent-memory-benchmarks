@@ -73,6 +73,9 @@ Latest run per system x dataset x models. Each row's full per-question output li
 | longmemeval | oracle | mem0 | 2.0.18 | direct | 3 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  |  | 20 | 964852.000 | 0.904 | 1.000 | 0.862 |  |  |  | 1.0393 | 1.2578 |
 | longmemeval | oracle | mem0 | 2.0.18 | direct | 10 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  |  | 20 | 961743.000 | 0.968 | 1.000 | 0.948 |  |  |  | 0.9921 | 1.2829 |
 | longmemeval | oracle | mem0 | 2.0.18 | direct | 10 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  | 3 | 500 | 18513695.000 | 0.993 | 1.000 | 0.989 |  |  |  | 0.5103 | 0.7981 |
+| longmemeval | oracle | mem0 | 2.0.18 | direct | 5 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  | 3 | 500 | 18572785.000 | 0.977 | 1.000 | 0.964 |  |  |  | 0.6226 | 0.8972 |
+| longmemeval | oracle | mem0 | 2.0.18 | direct | 3 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  | 3 | 500 | 18559135.000 | 0.942 | 1.000 | 0.912 |  |  |  | 0.5176 | 0.7698 |
+| longmemeval | oracle | mem0 | 2.0.18 | direct | 1 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  | 3 | 500 | 18579325.000 | 0.751 | 1.000 | 0.644 |  |  |  | 0.6114 | 0.9668 |
 
 ## Plots
 
