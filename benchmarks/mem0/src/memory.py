@@ -36,6 +36,7 @@ dict) to bypass all of it and point at other backends.
 """
 
 import os
+import threading
 from typing import Any, ClassVar
 
 from amb.base import Memory
@@ -44,6 +45,12 @@ from amb.logs import logger
 
 DEFAULT_INGESTION_MODEL = "gpt-5-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+
+# parallel workers each build a client, and every mem0 Qdrant store does
+# check-then-create on the same collection — concurrent setups race that
+# gap and the losers die on 409 Conflict. One build at a time; after the
+# first, the collection exists for everyone.
+_SETUP_LOCK = threading.Lock()
 
 
 class Mem0Memory(Memory):
@@ -112,7 +119,8 @@ class Mem0Memory(Memory):
             .get("config", {})
             .get("host", "embedded"),
         )
-        self.memory = Memory.from_config(config) if config else Memory()
+        with _SETUP_LOCK:
+            self.memory = Memory.from_config(config) if config else Memory()
 
     def ingest_session(self, conversation_id: str, session: Session) -> None:
         """Hand the session to mem0, which extracts facts from it."""
