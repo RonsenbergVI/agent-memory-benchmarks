@@ -1,0 +1,79 @@
+{
+  "run_id": "20260823T130657Z-4d994a",
+  "system": "letta",
+  "system_version": "0.16.8",
+  "dataset": "longmemeval",
+  "variant": "oracle",
+  "mode": "direct",
+  "k": 10,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 500,
+  "num_questions": 500,
+  "ingestion_model": "openai/gpt-5-mini",
+  "embedding_model": "openai/text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 4387.517097287991,
+    "total_turns": 10960,
+    "total_sessions": 948
+  },
+  "conversation": {
+    "total_s": 177.9022594979981
+  },
+  "retrieval_precision": 1.0,
+  "retrieval_recall": 0.9862000000000002,
+  "retrieval_f1": 0.9914079365079367,
+  "turn_precision": 0.17642658315936027,
+  "turn_recall": 0.9344119693806541,
+  "turn_f1": 0.2882655618563781,
+  "search_latency": {
+    "p50_s": 0.33543026200004533,
+    "p95_s": 0.4589597719999574,
+    "p99_s": 0.8420585290000417
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 10960,
+      "embedding_tokens": 2841098,
+      "llm_calls": 0,
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0
+    },
+    "search_total": 9005
+  },
+  "errors": 0,
+  "memory_tokens_total": 2850103.0,
+  "by_category": {
+    "knowledge-update": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 1.0
+    },
+    "multi-session": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 0.9773182957393485,
+      "retrieval_f1": 0.9864005251223297
+    },
+    "single-session-assistant": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 1.0
+    },
+    "single-session-preference": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 1.0
+    },
+    "single-session-user": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 1.0
+    },
+    "temporal-reasoning": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 0.9708020050125313,
+      "retrieval_f1": 0.981298484306003
+    }
+  }
+}
