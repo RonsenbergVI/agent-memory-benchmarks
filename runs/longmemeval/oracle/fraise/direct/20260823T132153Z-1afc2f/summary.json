@@ -1,0 +1,79 @@
+{
+  "run_id": "20260823T132153Z-1afc2f",
+  "system": "fraise",
+  "system_version": "0.1.0-beta.8",
+  "dataset": "longmemeval",
+  "variant": "oracle",
+  "mode": "direct",
+  "k": 1,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 500,
+  "num_questions": 500,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 38267.576018550026,
+    "total_turns": 10960,
+    "total_sessions": 948
+  },
+  "conversation": {
+    "total_s": 142.84099655502422
+  },
+  "retrieval_precision": 0.946,
+  "retrieval_recall": 0.6042333333333334,
+  "retrieval_f1": 0.7062476190476231,
+  "turn_precision": 0.5854838709677419,
+  "turn_recall": 0.39971326164874554,
+  "turn_f1": 0.4540450588837675,
+  "search_latency": {
+    "p50_s": 0.22795769999993354,
+    "p95_s": 0.36340653099978226,
+    "p99_s": 1.4108863080000447
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 18567,
+      "embedding_tokens": 376292,
+      "llm_calls": 948,
+      "llm_input_tokens": 3123946,
+      "llm_output_tokens": 3773505
+    },
+    "search_total": 9005
+  },
+  "errors": 0,
+  "memory_tokens_total": 7282748.0,
+  "by_category": {
+    "knowledge-update": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 0.5,
+      "retrieval_f1": 0.6666666666666661
+    },
+    "multi-session": {
+      "retrieval_precision": 0.9548872180451128,
+      "retrieval_recall": 0.3993734335839598,
+      "retrieval_f1": 0.5548872180451124
+    },
+    "single-session-assistant": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 1.0
+    },
+    "single-session-preference": {
+      "retrieval_precision": 0.7333333333333333,
+      "retrieval_recall": 0.7333333333333333,
+      "retrieval_f1": 0.7333333333333333
+    },
+    "single-session-user": {
+      "retrieval_precision": 0.9428571428571428,
+      "retrieval_recall": 0.9428571428571428,
+      "retrieval_f1": 0.9428571428571428
+    },
+    "temporal-reasoning": {
+      "retrieval_precision": 0.9323308270676691,
+      "retrieval_recall": 0.4962406015037595,
+      "retrieval_f1": 0.6264948084496956
+    }
+  }
+}

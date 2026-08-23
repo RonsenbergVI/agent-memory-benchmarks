@@ -1,0 +1,74 @@
+{
+  "run_id": "20260823T132143Z-e232bf",
+  "system": "fraise",
+  "system_version": "0.1.0-beta.8",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 3,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 10775.810820374,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 407.878668681
+  },
+  "retrieval_precision": 0.4922637066935777,
+  "retrieval_recall": 0.6846471417359411,
+  "retrieval_f1": 0.5402468901207522,
+  "turn_precision": 0.2245319753175794,
+  "turn_recall": 0.5054401071640382,
+  "turn_f1": 0.29378134255510213,
+  "search_latency": {
+    "p50_s": 0.16867750800020076,
+    "p95_s": 0.28647907399999895,
+    "p99_s": 1.0212376270001187
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 6110,
+      "embedding_tokens": 99933,
+      "llm_calls": 272,
+      "llm_input_tokens": 279329,
+      "llm_output_tokens": 1089518
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 1492849.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.480194319880419,
+      "retrieval_recall": 0.7197309417040358,
+      "retrieval_f1": 0.5493273542600889
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.40248226950354593,
+      "retrieval_recall": 0.31395784081954314,
+      "retrieval_f1": 0.33154135069028706
+    },
+    "open-domain": {
+      "retrieval_precision": 0.2572463768115942,
+      "retrieval_recall": 0.33986801242236025,
+      "retrieval_f1": 0.2663913984566159
+    },
+    "single-hop": {
+      "retrieval_precision": 0.5435988902100664,
+      "retrieval_recall": 0.7954815695600476,
+      "retrieval_f1": 0.6171224732461376
+    },
+    "temporal": {
+      "retrieval_precision": 0.5207684319833855,
+      "retrieval_recall": 0.7699896157840083,
+      "retrieval_f1": 0.588058151609553
+    }
+  }
+}
