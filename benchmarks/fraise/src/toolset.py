@@ -23,7 +23,7 @@
 """Fraise's native tool surface for `--mode agentic`.
 
 The agent drives fraise's own verbs: `remember` (with topics and entities of
-its choosing) at ingestion, `recall` (keywords, semantic query, topic and
+its choosing) at ingestion, `recall` (a natural-phrase query with topic and
 entity filters) at search. Conversation isolation stays forced — the
 `conv-<id>` anchor is added by the adapter, never left to the agent.
 """
@@ -61,17 +61,16 @@ class FraiseSearchToolset(SearchToolset):
 
     def recall(
         self,
-        keywords: list[str],
-        query: str | None = None,
+        query: str,
         topics: list[str] | None = None,
         entities: list[str] | None = None,
     ) -> list[dict]:
         """Search the conversation's memory database.
 
         Args:
-            keywords: Words to match in stored facts (full-text seeds).
-            query: The information need as a natural phrase; used for
-                semantic matching when the database has an embedder.
+            query: The information need as a natural phrase; matched
+                verbatim and, when the database has an embedder,
+                semantically.
             topics: Topic tags to require on results — a hard filter, so
                 only use tags likely used at storage time.
             entities: People or things results must be about (e.g. a
@@ -83,7 +82,6 @@ class FraiseSearchToolset(SearchToolset):
         t0 = time.perf_counter()
         hits = self.fraise.recall_hits(
             self.conversation_id,
-            keywords=keywords,
             query=query,
             topics=[_slug(t) for t in topics or [] if _slug(t)],
             entities=[e.replace("'", "’") for e in entities or []],
@@ -138,7 +136,7 @@ class FraiseIngestToolset(IngestToolset):
         t0 = time.perf_counter()
         self.fraise.store(
             self.conversation_id,
-            f"{self.fraise.session_header(self.session)} {fact}",
+            fact,
             session_id=self.session.session_id,
             turn_ids=cited,
             topics=[_slug(t) for t in topics or [] if _slug(t)],
