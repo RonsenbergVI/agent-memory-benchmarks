@@ -134,14 +134,6 @@ class LettaMemory(Memory):
             self._agents[conversation_id] = agent.id
         return self._agents[conversation_id]
 
-    @staticmethod
-    def session_header(session: Session) -> str:
-        """The `[session ... @ time]` prefix stored passages carry."""
-        header = f"[session {session.session_id}"
-        if session.timestamp:
-            header += f" @ {session.timestamp}"
-        return header + "]"
-
     def store(
         self,
         conversation_id: str,
@@ -167,11 +159,10 @@ class LettaMemory(Memory):
 
     def ingest_session(self, conversation_id: str, session: Session) -> None:
         """Insert each turn of the session as an archival passage."""
-        header = self.session_header(session)
         for turn in session.turns:
             self.store(
                 conversation_id,
-                f"{header} {turn.speaker}: {turn.text}",
+                f"{turn.speaker}: {turn.text}",
                 session_id=session.session_id,
                 turn_ids=[turn.turn_id],
             )

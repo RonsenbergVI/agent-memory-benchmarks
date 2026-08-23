@@ -724,20 +724,20 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "amb", editable = "." },
-    { name = "fraise-sdk", specifier = ">=0.1.0a1,<0.2" },
+    { name = "fraise-sdk", specifier = ">=0.1.0b3,<0.2" },
     { name = "openai", specifier = ">=2,<4" },
 ]
 
 [[package]]
 name = "fraise-sdk"
-version = "0.1.0b1"
+version = "0.1.0b3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/ca/266a83bfa18be20f14c45806af9b0d6e4ff25e9e8b1872b2d38562bbfd23/fraise_sdk-0.1.0b1.tar.gz", hash = "sha256:6f1cdf65176d9a5e98ad7e918f16f6583ea060fb7ad4b4128194b967d8c2d3ba", size = 14845, upload-time = "2026-08-15T11:04:21.867Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/c6/1ae5acd8375c06e584364f32a4c1fa4282e8797c646a87438872dfd6b7cb/fraise_sdk-0.1.0b3.tar.gz", hash = "sha256:b007ca3ffb0b2c77bbf62f87683b3795d6e4afbf98326b81a3d10796c99e3a36", size = 17704, upload-time = "2026-08-23T09:05:44.615Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/1c/0d8d0c58167f3f25149380d2a2c84422b73e08dd11b0097f7c28b2d2f1b8/fraise_sdk-0.1.0b1-py3-none-any.whl", hash = "sha256:d981701543913a1244bc69fc485d274993449c289d5931bc80f4cf8428ac25bf", size = 28274, upload-time = "2026-08-15T11:04:20.293Z" },
+    { url = "https://files.pythonhosted.org/packages/16/9f/8c4aac2fd9eb5320a4fe319d682eaf5ec9fdd6122967f80cc4c260788e7d/fraise_sdk-0.1.0b3-py3-none-any.whl", hash = "sha256:38b9afcf1af255cf131215a9ca6b21de569c3d399fa283be45f2de00b78639c8", size = 31321, upload-time = "2026-08-23T09:05:43.583Z" },
 ]
 
 [[package]]
@@ -1300,7 +1300,7 @@ wheels = [
 
 [[package]]
 name = "letta"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "benchmarks/letta" }
 dependencies = [
     { name = "amb" },
