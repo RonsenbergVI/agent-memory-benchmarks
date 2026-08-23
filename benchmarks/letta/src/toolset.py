@@ -98,7 +98,7 @@ class LettaIngestToolset(IngestToolset):
         t0 = time.perf_counter()
         self.letta.store(
             self.conversation_id,
-            f"{self.letta.session_header(self.session)} {content}",
+            content,
             session_id=self.session.session_id,
             turn_ids=cited,
         )
