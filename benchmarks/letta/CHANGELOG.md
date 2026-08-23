@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/letta/v0.1.0...letta/v0.2.0) (2026-08-23)
+
+
+### Bug fixes
+
+* **letta:** stop injecting a session header into stored passages ([#104](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/104)) ([299374b](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/299374b3c36a24c6aeec8304e12f09731d23a110))
+
 ## 0.1.0 (2026-08-21)
 
 

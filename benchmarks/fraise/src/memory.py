@@ -186,14 +186,6 @@ class FraiseMemory(Memory):
         tokens = (re.sub(r"[^A-Za-z0-9]+", "-", v).strip("-") for v in values or [])
         return [t for t in tokens if t]
 
-    @staticmethod
-    def session_header(session: Session) -> str:
-        """The `[session ... @ time]` prefix stored values carry."""
-        header = f"[session {session.session_id}"
-        if session.timestamp:
-            header += f" @ {session.timestamp}"
-        return header + "]"
-
     def store(
         self,
         conversation_id: str,
@@ -251,12 +243,11 @@ class FraiseMemory(Memory):
         """
         if not session.turns:
             return
-        header = self.session_header(session)
         if not self.model:
             for turn in session.turns:
                 self.store(
                     conversation_id,
-                    f"{header} {turn.speaker}: {turn.text}",
+                    f"{turn.speaker}: {turn.text}",
                     session_id=session.session_id,
                     turn_ids=[turn.turn_id],
                     entities=[turn.speaker],
@@ -269,7 +260,7 @@ class FraiseMemory(Memory):
                 continue
             self.store(
                 conversation_id,
-                f"{header} {fact}",
+                fact,
                 session_id=session.session_id,
                 turn_ids=[t for t in memory["turn_ids"] if t in known],
                 entities=[e for e in memory["entities"] if e.strip()],
@@ -334,28 +325,41 @@ class FraiseMemory(Memory):
         self,
         conversation_id: str,
         *,
-        keywords: list[str],
-        query: str | None = None,
+        query: str,
         topics: list[str] | None = None,
         entities: list[str] | None = None,
         k: int = 10,
     ) -> list[MemoryHit]:
         """Recall inside the conversation, with provenance restored.
 
-        `query` is the embed text: with an embedder the raw phrase (not the
-        keyword bag) is encoded and seeds the vector index; without one the
-        client ignores it. `self.depth` bounds how many graph hops a match
-        may walk to pull in related facts — 2 by default, `--param depth=N`
-        to change it, `--param depth=none` for the server's own default.
+        `query` travels as one quoted phrase term — literal inside its
+        quotes, so it can never collide with the grammar's reserved words —
+        and doubles as the embed text when an embedder is configured. No
+        bare keyword terms are ever sent. `self.depth` bounds how many
+        graph hops a match may walk to pull in related facts — 2 by
+        default, `--param depth=N` to change it, `--param depth=none` for
+        the server's own default.
         """
-        result = self.client.recall(
-            *keywords,
-            query=query,
-            topics=[f"conv-{conversation_id}", *(topics or [])],
-            entities=entities or None,
-            top=k,
-            depth=self.depth,
-        )
+        recall_topics = [f"conv-{conversation_id}", *(topics or [])]
+        try:
+            result = self.client.recall(
+                query=query,
+                topics=recall_topics,
+                entities=entities or None,
+                top=k,
+                depth=self.depth,
+            )
+        except Exception:
+            # same diagnostic idiom as store(): log the exact inputs so a
+            # rejected query is diagnosable from the benchmark log alone,
+            # which outlives the server container and its logs
+            logger.bind(scope="fraise").error(
+                "recall failed: query={!r} topics={!r} entities={!r}",
+                query,
+                recall_topics,
+                entities,
+            )
+            raise
         hits = []
         for hit in result.hits:
             turn_ids, session_id = self._provenance.get(
@@ -372,11 +376,15 @@ class FraiseMemory(Memory):
         return hits
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
-        """Return the k best facts for the query, inside the conversation."""
-        keywords = re.findall(r"[A-Za-z0-9]+", query)
-        if not keywords and not self.embedding_model:
+        """Return the k best facts for the query, inside the conversation.
+
+        The question goes over as the quoted phrase term only — never
+        tokenized into bare keywords, where grammar words like "topic",
+        "since" or "remember" would break the server's parse.
+        """
+        if not query.strip():
             return []
-        return self.recall_hits(conversation_id, keywords=keywords, query=query, k=k)
+        return self.recall_hits(conversation_id, query=query, k=k)
 
     def teardown(self) -> None:
         """Nothing to delete: the alpha SDK has no forget/delete verb."""

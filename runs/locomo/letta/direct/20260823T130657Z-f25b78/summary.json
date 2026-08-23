@@ -1,0 +1,74 @@
+{
+  "run_id": "20260823T130657Z-f25b78",
+  "system": "letta",
+  "system_version": "0.16.8",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 10,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "openai/gpt-5-mini",
+  "embedding_model": "openai/text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 2266.8624637409994,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 757.5644596599998
+  },
+  "retrieval_precision": 0.17745082728685177,
+  "retrieval_recall": 0.8972736773821532,
+  "retrieval_f1": 0.2860159248262463,
+  "turn_precision": 0.08511604439959426,
+  "turn_recall": 0.6893101473453899,
+  "turn_f1": 0.14741422631984716,
+  "search_latency": {
+    "p50_s": 0.34888657099998,
+    "p95_s": 0.4533037520000107,
+    "p99_s": 1.0606685499999458
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202785,
+      "llm_calls": 0,
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 226854.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.16279005623176088,
+      "retrieval_recall": 0.9394618834080718,
+      "retrieval_f1": 0.27438122415700983
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.27175222334796817,
+      "retrieval_recall": 0.7087259371833842,
+      "retrieval_f1": 0.37692609562134005
+    },
+    "open-domain": {
+      "retrieval_precision": 0.14974120082815728,
+      "retrieval_recall": 0.6308229813664596,
+      "retrieval_f1": 0.22711823200953626
+    },
+    "single-hop": {
+      "retrieval_precision": 0.1642828831889474,
+      "retrieval_recall": 0.9595719381688466,
+      "retrieval_f1": 0.27662723720987775
+    },
+    "temporal": {
+      "retrieval_precision": 0.15741729713692354,
+      "retrieval_recall": 0.9174454828660437,
+      "retrieval_f1": 0.2637943745420384
+    }
+  }
+}
