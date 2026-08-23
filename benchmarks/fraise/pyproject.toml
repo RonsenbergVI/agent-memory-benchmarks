@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "amb",
-    "fraise-sdk>=0.1.0a1,<0.2",
+    "fraise-sdk>=0.1.0b3,<0.2",
     # for the SDK's OpenAIEmbedder (the published alpha declares no
     # `openai` extra yet) and the usage tracker
     "openai>=2,<4",
