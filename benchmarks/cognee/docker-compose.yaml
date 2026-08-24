@@ -1,0 +1,33 @@
+services:
+  # cognee needs no backing service: its vector (lancedb), graph (ladybug)
+  # and relational (sqlite) stores are all embedded on local disk.
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/cognee/Dockerfile
+    image: amb-cognee
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # a native crash (SIGSEGV/SIGABRT) prints the failing stack instead
+      # of a bare exit code
+      - PYTHONFAULTHANDLER=1
+      # httpx2 (openai's HTTP stack) defaults to a truststore SSL context,
+      # which mutates the OpenSSL cert store on every handshake and is not
+      # thread-safe — parallel workers' concurrent handshakes corrupt the
+      # heap (double free -> abort). SSL_CERT_FILE makes httpx2 build a
+      # plain stdlib context over certifi instead, which is thread-safe.
+      - SSL_CERT_FILE=/amb/.venv/lib/python3.13/site-packages/certifi/cacert.pem
+      # cognee's defaults write inside its own site-packages directory,
+      # where the data is invisible and survives nothing; these three are
+      # unprefixed and must be absolute
+      - DATA_ROOT_DIRECTORY=/amb/.cognee/data
+      - SYSTEM_ROOT_DIRECTORY=/amb/.cognee/system
+      - CACHE_ROOT_DIRECTORY=/amb/.cognee/cache
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system cognee --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../runs:/amb/runs

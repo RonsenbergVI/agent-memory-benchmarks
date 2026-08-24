@@ -1,0 +1,31 @@
+[project]
+# the workspace member cannot be called `cognee`: the SDK on PyPI owns
+# that name, and uv reads a member depending on its own name as a
+# self-dependency. The `--system cognee` handle is the entry-point key
+# below, which is unaffected.
+name = "cognee-benchmark"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "René-Jean Corneille", email = "corneille.r.j@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "amb",
+    "cognee>=1.5,<1.6",
+]
+
+# every integration ships its module as `src` — SDKs own the pretty names
+[project.entry-points."amb.systems"]
+cognee = "src.benchmark:CogneeBenchmark"
+
+[tool.uv.sources]
+amb = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

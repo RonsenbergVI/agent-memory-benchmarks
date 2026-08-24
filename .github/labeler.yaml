@@ -6,6 +6,11 @@ area:benchmarks:
       - any-glob-to-any-file:
           - benchmarks/**
 
+memory:cognee:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/cognee/**
+
 memory:fraise:
   - changed-files:
       - any-glob-to-any-file:
