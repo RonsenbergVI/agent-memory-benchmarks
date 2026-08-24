@@ -194,6 +194,21 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the contribution process. Roughly:
 - New systems to add: open an issue first to discuss inclusion criteria.
 - Methodology critique or improvements: open a discussion in [GitHub Issues](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues). This benchmark only works if the methodology is trusted. We take methodology critique seriously and document responses to substantive criticism publicly.
 
+## Support this benchmark
+
+Running this costs real money: every official number comes from a CI run on
+tagged code, and the API spend is accounted per-run in each `summary.json`.
+
+If the results are useful to you or your team, you can fund the run pool
+through [GitHub Sponsors](https://github.com/sponsors/RonsenbergVI). API
+credits count and are disclosed exactly like cash.
+
+**Sponsorship buys nothing about results.** No influence on methodology,
+configuration, datasets, run timing, presentation, or which systems are
+included — and there is no human step in the pipeline where influence could
+apply. The full policy, written before any sponsor existed, is in
+[SPONSORS.md](./SPONSORS.md).
+
 ## Citing
 
 If you find this work useful, please use the citation:
