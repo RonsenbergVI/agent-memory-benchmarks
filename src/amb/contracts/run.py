@@ -79,6 +79,9 @@ class Run(BaseModel):
     # of the run's comparison identity, so variants coexist as rows
     ingestion_model: str | None = None
     embedding_model: str | None = None
+    # False when the system's spend is invisible to every tracker here;
+    # reporting shows its cost as absent rather than as a zero
+    tracks_usage: bool = True
     system_params: dict = Field(default_factory=dict)
     variant: str | None = None
     mode: str = "direct"  # "direct" (harness-driven) or "agentic" (model-driven)
