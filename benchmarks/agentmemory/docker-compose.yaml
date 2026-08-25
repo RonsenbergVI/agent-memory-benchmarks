@@ -21,12 +21,9 @@ services:
         required: false
     environment:
       - AGENTMEMORY_DATA_DIR=/data
-      # Embeddings on, LLM off. Keyless, agentmemory retrieves with BM25
-      # only — its weakest mode, and not what its own README headlines.
-      # The provider is forced and the key is handed over under the
-      # embedding-scoped name by the entrypoint; the bare OPENAI_API_KEY
-      # is unset there because its presence alone would switch on LLM
-      # compression and consolidation too.
+      # Keyless, agentmemory retrieves with BM25 only and runs no LLM —
+      # its weakest mode. Both are switched on here so its configuration
+      # matches the rest of the comparison.
       #
       # OPENAI_EMBEDDING_MODEL is already this value by default; it is
       # set so the run's configuration is on the record. The dimension
@@ -35,9 +32,20 @@ services:
       # 0.4/0.6, and a fusion ratio rather than a gate on the vector leg.
       - EMBEDDING_PROVIDER=openai
       - OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-      # explicit belt-and-braces; both are already the defaults
+      # LLM compression on. NOT gpt-5-mini like the rest of the
+      # comparison: agentmemory hardcodes `max_tokens` in its OpenAI
+      # request (src/providers/openai.ts) and never sends
+      # `max_completion_tokens`, which is the only form OpenAI's
+      # reasoning models accept — they answer 400, compression fails,
+      # and the observation is dropped without being indexed. No env var
+      # changes the parameter name. gpt-4.1-mini is non-reasoning and
+      # accepts max_tokens.
+      - OPENAI_MODEL=gpt-4.1-mini
+      - AGENTMEMORY_AUTO_COMPRESS=true
+      # consolidation is a separate feature — a periodic pipeline plus
+      # consolidate-on-session-end — that the LLM key would otherwise
+      # default ON. It is not extraction, so it stays off.
       - CONSOLIDATION_ENABLED=false
-      - AGENTMEMORY_AUTO_COMPRESS=false
       # a persisted index whose width differs from the active provider
       # makes the worker refuse to boot; this stack starts from an empty
       # volume, and the flag keeps a reused one from wedging

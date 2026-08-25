@@ -12,7 +12,11 @@ The adapter asks for `k × 10` (capped at the API's 100) and trims to k locally 
 
 ## What it measures
 
-The server runs **keyless** — no LLM provider key — which is its default and the mode its README headlines. In that mode it stores each observation verbatim as the observation's `narrative`, retrieves with BM25 plus on-device embeddings, and spends nothing, so the recorded `memory_tokens_total: 0` is measured rather than assumed. Setting a provider key on the server turns on LLM compression: that is a different system and belongs on a different results row, and its spend would be invisible the way letta's is.
+The server runs with LLM compression on (`AGENTMEMORY_AUTO_COMPRESS=true`) and OpenAI embeddings, so its configuration matches the rest of the comparison rather than sitting in agentmemory's keyless BM25-only default.
+
+**The extraction model is `gpt-4.1-mini`, not the `gpt-5-mini` everything else uses.** agentmemory hardcodes `max_tokens` in its OpenAI request (`src/providers/openai.ts:82`) and never sends `max_completion_tokens`, which is the only form OpenAI's reasoning models accept. With gpt-5-mini every compression call returns 400, and the failure is destructive rather than degraded: the observation is dropped without ever being indexed, so the system retrieves nothing at all. No environment variable changes the parameter name.
+
+`CONSOLIDATION_ENABLED=false` keeps consolidation off — that is a separate periodic pipeline, not extraction.
 
 Ingestion uses agentmemory's own hook path: one agentmemory session per dataset session, and one `prompt_submit` observation per turn — the shape the project's Claude Code hooks produce, and the only hook whose payload is an utterance rather than a tool call or a lifecycle event.
 
