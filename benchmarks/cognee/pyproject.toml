@@ -13,7 +13,10 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "amb",
-    "cognee>=1.5,<1.6",
+    # the extras carry the database drivers: neo4j for the graph store,
+    # asyncpg/pgvector/psycopg2 for Postgres. `postgres-binary` ships the
+    # psycopg2 wheel, so the image needs no build toolchain.
+    "cognee[neo4j,postgres-binary]>=1.5,<1.6",
 ]
 
 # every integration ships its module as `src` — SDKs own the pretty names

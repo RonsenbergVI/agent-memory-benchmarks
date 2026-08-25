@@ -22,10 +22,13 @@
 
 """Cognee (topoteretes/cognee) — embedded knowledge-graph memory.
 
-Workspace package ``cognee`` (this directory). Nothing external to run:
-cognee's vector store (LanceDB), graph store (ladybug) and relational
-store (sqlite) are all embedded on local disk, so the compose stack is
-the benchmark container alone.
+Workspace package ``cognee-benchmark`` (this directory). cognee can run
+fully embedded (LanceDB, ladybug and sqlite on local disk), but the
+compose stack points it at real databases so its setup is comparable
+with the other integrations: Neo4j for the graph, Postgres for the
+relational store, and pgvector in that same Postgres for the vectors.
+The providers are chosen entirely by environment variable, so an
+embedded run is still a compose file away.
 
 Ingestion is cognee's own: ``add`` stages a session's turns and
 ``cognify`` builds the graph from them, extracting with the model pinned
