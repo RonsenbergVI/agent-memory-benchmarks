@@ -22,39 +22,28 @@
 
 """MemPalace (MemPalace/mempalace) — local-first verbatim memory.
 
-Workspace package ``mempalace-benchmark`` (this directory). The member
-cannot be called ``mempalace``: that is the SDK's own distribution name,
-and a workspace member of the same name would shadow the dependency.
+Workspace package ``mempalace-benchmark`` (this directory); the member
+cannot be ``mempalace``, which is the SDK's own distribution name.
 
-MemPalace calls no API and runs no LLM. It stores conversation text
-*verbatim* as drawers, embeds them with a local ONNX model
-(``all-MiniLM-L6-v2``, 384-dim, baked into the image), and retrieves with
-cosine similarity re-ranked by BM25. Nothing is summarised, extracted, or
-paraphrased, so there is no ingestion model to pin and the run's token
-spend is a truthful zero rather than an unmeasured one — the whole point
-of the system under test.
+MemPalace stores conversation text verbatim as *drawers* and retrieves
+with cosine similarity re-ranked by BM25. It runs no LLM: nothing is
+summarised, extracted or paraphrased, so there is no ingestion model.
+The embedder defaults to text-embedding-3-small to match the rest of the
+comparison; ``--param embedding_model=minilm`` restores MemPalace's own
+local one, which is the only configuration whose zero token spend is
+real rather than merely unobserved.
 
-Ingestion is MemPalace's own ``mine``. Each session is written to
-``<root>/<conversation>/sessions/<n>-<session>.txt`` and mined into that
-conversation's palace, which chunks it, routes it to a room, and files the
-closet lines its ranking uses as a boost signal.
+Ingestion is MemPalace's own ``mine``: each session is written to a file
+under ``<root>/<conversation>/sessions/`` and mined into that
+conversation's palace. Isolation is a palace directory per conversation
+rather than a filter, which also keeps MemPalace's per-palace write lock
+from serialising ``--workers N``.
 
-Isolation is a palace *directory* per conversation rather than a filter:
-separate palaces cannot leak into each other's recall, and MemPalace's
-write lock is per palace, so ``--workers N`` conversations mine in
-parallel instead of serialising on one store. The conversation's ``wing``
-is set to the same id, so both channels agree.
-
-Two properties of that write make provenance exact rather than inferred:
-
-* A hit names the ``source_file`` it was cut from — the session's own
-  file, so the session id comes straight back from the file name.
-* Storage is verbatim and one turn is one line, so a turn was retrieved
-  exactly when its whole line comes back in the hit's text. Chunk
-  boundaries are character-based and cut mid-line, and a hit's text is a
-  drawer stitched to its neighbours rather than one contiguous span of the
-  file — matching whole lines is immune to both, and a half-line at a seam
-  is correctly not counted as the turn being returned.
+Provenance is exact at both levels. A hit names the ``source_file`` it
+was cut from, and storage is verbatim with one turn per line, so a turn
+was retrieved exactly when its whole line comes back in the hit's text —
+which holds even though chunks cut mid-line and a hit is a drawer
+stitched to its neighbours.
 """
 
 import os
@@ -71,19 +60,13 @@ from amb.base import Memory
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
-# Matched to the rest of the comparison rather than left on MemPalace's
-# own default. Its bundled embedders are local ONNX ("minilm",
-# all-MiniLM-L6-v2 384-dim, and "embeddinggemma"); anything else is taken
-# as a model id for its `openai-compat` backend — see `_configure_env`.
-# `--param embedding_model=minilm` restores the local, zero-spend
-# configuration, which is the one whose reported zero tokens is true.
+# matched to the rest of the comparison; `--param embedding_model=minilm`
+# restores MemPalace's own local embedder
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
-# the embedders MemPalace runs on-device; everything else goes over HTTP
+# run on-device; anything else goes to `openai-compat` over HTTP
 LOCAL_EMBEDDERS = ("minilm", "embeddinggemma")
 DEFAULT_EMBEDDING_API_URL = "https://api.openai.com/v1"
-# MemPalace's own default: the re-rank pool is the top n*3 vector hits.
-# "union" also pulls lexical candidates into that pool — documented as
-# opt-in until its cost is characterised, so it stays one --param away.
+# MemPalace's own default; "union" also pulls in lexical candidates
 DEFAULT_CANDIDATE_STRATEGY = "vector"
 # relative, so it lands under the container's WORKDIR; MEMPALACE_ROOT moves it
 DEFAULT_ROOT = ".mempalace"
@@ -92,11 +75,8 @@ DEFAULT_ROOM = "general"
 # what an agentic write is filed as, in place of a mined file's path
 AGENT_SOURCE = "agent://{session_id}"
 
-# The embedder downloads and unpacks its ONNX model on first use, into a
-# cache shared by every worker. One warmup per process, serially, so
-# concurrent first mines cannot race that unpack; after it, the model is
-# on disk for everyone. Held across the call, so a worker arriving
-# mid-warmup waits rather than racing past it.
+# the local embedder unpacks its ONNX model on first use into a shared
+# cache; one warmup per process so concurrent mines cannot race it
 _WARM_LOCK = threading.Lock()
 _WARMED = False
 # its own lock, not _WARM_LOCK: the warmup holds that one across an await
@@ -188,11 +168,8 @@ class MemPalaceMemory(Memory):
     ) -> None:
         """Pin the local embedder and the retrieval strategy MemPalace uses."""
         super().__init__(**params)
-        # resolved, not left relative: `mine` resolves the directory it is
-        # given to an absolute path and then calls `relative_to` on each
-        # file, so handing it files built from a relative root raises
-        # "is not in the subpath of". The default root IS relative, so
-        # this is the normal path, not an edge case.
+        # `mine` resolves its project dir then calls `relative_to` on each
+        # file, so a relative root raises "is not in the subpath of"
         self.root = (
             Path(root or os.environ.get("MEMPALACE_ROOT", DEFAULT_ROOT))
             .expanduser()
@@ -225,13 +202,10 @@ class MemPalaceMemory(Memory):
         if self.embedding_model in LOCAL_EMBEDDERS:
             os.environ.setdefault("MEMPALACE_EMBEDDING_MODEL", self.embedding_model)
         elif self.embedding_model:
-            # MemPalace reaches an OpenAI-compatible /v1/embeddings endpoint
-            # under the reserved model name "openai-compat", taking the real
-            # model id from its own env var. It fetches over stdlib urllib,
-            # NOT the openai SDK, so this spend is invisible to
-            # OpenAIUsageTracker: a run configured this way reports zero
-            # tokens and that zero is false. Only the local embedders make
-            # mempalace's zero a true one.
+            # "openai-compat" is MemPalace's reserved name for an
+            # OpenAI-compatible endpoint. It fetches over stdlib urllib, not
+            # the openai SDK, so this spend is invisible to the tracker —
+            # a run configured this way reports a false zero.
             os.environ.setdefault("MEMPALACE_EMBEDDING_MODEL", "openai-compat")
             os.environ.setdefault("MEMPALACE_EMBEDDING_API_MODEL", self.embedding_model)
             os.environ.setdefault(
