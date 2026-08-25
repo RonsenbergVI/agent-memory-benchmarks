@@ -39,6 +39,11 @@ class Memory(ABC):
     description: ClassVar[str]
     # PyPI distribution whose version identifies the system under test
     sdk_dist: ClassVar[str | None] = None
+    # Whether this system's token spend is observable at all. False for a
+    # system that spends inside its own infrastructure in a way no
+    # tracker here can see — its reported zero would read as "free" when
+    # it means "unmeasured", so reporting shows it as absent instead.
+    tracks_usage: ClassVar[bool] = True
 
     def __init__(self, **params: object) -> None:
         """Keep any `--param` overrides the CLI passed through."""
