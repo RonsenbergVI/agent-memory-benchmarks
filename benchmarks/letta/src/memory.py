@@ -38,7 +38,6 @@ embeddings call per passage insert / search and no server-side chunking —
 both held for letta 0.16.8; recheck on version bumps.
 """
 
-import json
 import os
 from typing import ClassVar
 
@@ -46,14 +45,12 @@ from amb.base import Memory
 from amb.callbacks import OpenAIUsageTracker
 from amb.contracts import MemoryHit, Session
 
-# retrieve straight from the archival store; no LLM is invoked
-RECALL_PASSAGES = "passages"
-# ask the agent, so letta's own model formulates the query and reads the
-# results — the only mode in which a letta run exercises its LLM
-RECALL_AGENT = "agent"
-DEFAULT_RECALL = RECALL_PASSAGES
-# the tool letta's agent calls to reach its archival store
-ARCHIVAL_SEARCH_TOOL = "archival_memory_search"
+# write passages straight through the SDK; no LLM is invoked
+INGEST_PASSAGES = "passages"
+# hand the turns to the agent and let it decide what is worth keeping,
+# which is the only mode where a letta run exercises its own model
+INGEST_AGENT = "agent"
+DEFAULT_INGEST = INGEST_PASSAGES
 
 
 class LettaMemory(Memory):
@@ -68,7 +65,7 @@ class LettaMemory(Memory):
         base_url: str | None = None,
         model: str = "openai/gpt-5-mini",
         embedding_model: str = "openai/text-embedding-3-small",
-        recall: str = DEFAULT_RECALL,
+        ingest: str = DEFAULT_INGEST,
         **params: object,
     ) -> None:
         """Point the adapter at a Letta server and pin its agent models.
@@ -81,12 +78,13 @@ class LettaMemory(Memory):
         super().__init__(**params)
         self.model = model
         self.embedding_model = embedding_model
-        # "passages" retrieves straight from the archival store and never
-        # invokes the LLM — the surface every published letta run measured.
-        # "agent" asks the agent instead, so letta's own model chooses the
-        # query and reads the results back. Different subject, different
-        # row; see `_search_via_agent`.
-        self.recall = recall
+        # "passages" writes through the SDK and never invokes the LLM —
+        # the surface every published letta run measured. "agent" hands
+        # the turns to the agent, which decides what is worth keeping and
+        # calls archival_memory_insert itself. Both are documented access
+        # patterns; they measure different things, so they are different
+        # rows. See `_ingest_via_agent`.
+        self.ingest = ingest
         # where the server lives is infrastructure, so it comes from the
         # environment (compose sets it; localhost default for local runs)
         self.base_url = base_url or os.environ.get(
@@ -96,9 +94,6 @@ class LettaMemory(Memory):
         # passage id -> (turn_ids, session_id): scoring provenance, kept
         # local — the passages themselves carry only their text
         self._provenance: dict[str, tuple[list[str], str]] = {}
-        # passage text -> the same, for `recall=agent`: the agent's tool
-        # return renders passages as text and promises no id to match on
-        self._provenance_by_text: dict[str, tuple[list[str], str]] = {}
         # tokenizer-computed embedding spend (see module docstring), read
         # by TiktokenUsageTracker at the run's lifecycle boundaries
         self._usage = dict.fromkeys(OpenAIUsageTracker.KEYS, 0)
@@ -176,10 +171,12 @@ class LettaMemory(Memory):
             pid = getattr(passage, "id", None)
             if pid is not None:
                 self._provenance[str(pid)] = (list(turn_ids), session_id)
-        self._provenance_by_text[text.strip()] = (list(turn_ids), session_id)
 
     def ingest_session(self, conversation_id: str, session: Session) -> None:
-        """Insert each turn of the session as an archival passage."""
+        """Store the session, by the configured ingestion mode."""
+        if self.ingest == INGEST_AGENT:
+            self._ingest_via_agent(conversation_id, session)
+            return
         for turn in session.turns:
             self.store(
                 conversation_id,
@@ -188,96 +185,47 @@ class LettaMemory(Memory):
                 turn_ids=[turn.turn_id],
             )
 
-    def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
-        """Return the k best archival passages, by the configured recall mode."""
-        if self.recall == RECALL_AGENT:
-            return self._search_via_agent(conversation_id, query, k)
-        return self._search_via_passages(conversation_id, query, k)
+    def _ingest_via_agent(self, conversation_id: str, session: Session) -> None:
+        """Hand the turns to the agent and let it write what it keeps.
 
-    def _search_via_agent(
-        self, conversation_id: str, query: str, k: int = 10
-    ) -> list[MemoryHit]:
-        """Ask the agent, and take what its own archival search returned.
+        This is the mode where letta actually uses its LLM. The turns go
+        in as user messages and the agent calls `archival_memory_insert`
+        itself, which is the access pattern letta documents for agents,
+        as against the `passages.*` endpoints it documents for
+        developers.
 
-        This is the mode where letta actually uses its LLM: the question
-        goes to the agent, the agent decides how to search, and the
-        passages come back out of its `archival_memory_search` tool
-        returns. What is measured is therefore letta's retrieval *plus*
-        its model's query formulation — strictly more than
-        `_search_via_passages` measures, and not comparable with it.
+        What that costs the measurement is worth stating. The agent
+        decides what is worth keeping, so ingestion is *selective*: a
+        later retrieval miss can be the search failing or the agent
+        never having stored the fact, and this cannot tell them apart.
+        The passages it writes are its own wording rather than the turn,
+        so turn-level provenance is gone — the passages this session
+        produced are recovered by diffing the agent's archive, which
+        attests the session and nothing finer.
 
-        The LLM spend lives inside letta's server and is not counted by
-        the tiktoken arithmetic in this adapter, which models embeddings
-        only. A run in this mode under-reports its own cost.
+        The LLM spend happens inside letta's server and this adapter's
+        tiktoken arithmetic models embeddings only, so a run in this mode
+        under-reports its own cost.
         """
         agent_id = self._agent_id(conversation_id)
-        response = self.client.agents.messages.create(
-            agent_id=agent_id,
-            messages=[{"role": "user", "content": query}],
-        )
-        hits: list[MemoryHit] = []
-        for message in getattr(response, "messages", None) or []:
-            if getattr(message, "message_type", None) != "tool_return_message":
-                continue
-            if getattr(message, "name", None) != ARCHIVAL_SEARCH_TOOL:
-                continue
-            if getattr(message, "is_err", False):
-                continue
-            hits.extend(self._hits_from_tool_return(message))
-        return hits[:k]
-
-    def _hits_from_tool_return(self, message: object) -> list[MemoryHit]:
-        """Passages named by one archival_memory_search return.
-
-        The return is the tool's own rendering, so provenance is restored
-        by matching the text back to what was inserted rather than by an
-        id the tool does not promise to carry.
-        """
-        raw = getattr(message, "tool_return", None)
-        if raw is None:
-            return []
-        texts: list[str] = []
-        if isinstance(raw, str):
-            try:
-                parsed = json.loads(raw)
-            except (json.JSONDecodeError, TypeError):
-                parsed = raw
-        else:
-            parsed = raw
-        if isinstance(parsed, str):
-            texts = [parsed]
-        elif isinstance(parsed, dict):
-            items = parsed.get("results") or parsed.get("passages") or []
-            texts = [self._text_of(i) for i in items]
-        elif isinstance(parsed, list):
-            texts = [self._text_of(i) for i in parsed]
-        hits = []
-        for text in [t for t in texts if t]:
-            turn_ids, session_id = self._provenance_by_text.get(text, ([], None))
-            hits.append(
-                MemoryHit(
-                    content=text,
-                    turn_ids=list(turn_ids),
-                    session_ids=[session_id] if session_id else [],
-                    metadata={"via": ARCHIVAL_SEARCH_TOOL},
-                )
+        before = self._passage_ids(agent_id)
+        for turn in session.turns:
+            self.client.agents.messages.create(
+                agent_id=agent_id,
+                messages=[{"role": "user", "content": f"{turn.speaker}: {turn.text}"}],
             )
-        return hits
+        for passage_id in self._passage_ids(agent_id) - before:
+            # session only: the agent wrote its own wording, so there is
+            # no turn to attribute and no text to match one against
+            self._provenance[passage_id] = ([], session.session_id)
 
-    @staticmethod
-    def _text_of(item: object) -> str:
-        """The passage text out of whatever shape the tool rendered."""
-        if isinstance(item, str):
-            return item.strip()
-        if isinstance(item, dict):
-            for key in ("text", "content", "passage"):
-                if value := item.get(key):
-                    return str(value).strip()
-        return ""
+    def _passage_ids(self, agent_id: str) -> set[str]:
+        """Every passage id the agent's archive currently holds."""
+        response = self.client.agents.passages.list(agent_id=agent_id)
+        passages = getattr(response, "results", response) or []
+        return {str(p.id) for p in passages if getattr(p, "id", None)}
 
-    def _search_via_passages(
-        self, conversation_id: str, query: str, k: int = 10
-    ) -> list[MemoryHit]:
+    def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return the k best archival passages by semantic search.
 
         `passages.search` is the embedding-based endpoint (the same one the
@@ -313,8 +261,7 @@ class LettaMemory(Memory):
                 pass
         self._agents.clear()
         self._provenance.clear()
-        self._provenance_by_text.clear()
 
     def stats(self) -> dict:
-        """Report how this run recalled."""
-        return {"recall": self.recall}
+        """Report how this run ingested."""
+        return {"ingest": self.ingest}
