@@ -26,6 +26,11 @@ memory:mem0:
       - any-glob-to-any-file:
           - benchmarks/mem0/**
 
+memory:supermemory:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/supermemory/**
+
 memory:package:
   - changed-files:
       - any-glob-to-any-file:

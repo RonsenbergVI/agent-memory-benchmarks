@@ -106,6 +106,19 @@
           "jsonpath": "$.package[?(@.name.value=='mem0')].version"
         }
       ]
+    },
+    "benchmarks/supermemory": {
+      "release-type": "python",
+      "component": "supermemory",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='supermemory-benchmark')].version"
+        }
+      ]
     }
   }
 }

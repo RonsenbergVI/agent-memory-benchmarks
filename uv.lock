@@ -19,6 +19,7 @@ members = [
     "graphiti",
     "letta",
     "mem0",
+    "supermemory-benchmark",
 ]
 
 [[package]]
@@ -2767,6 +2768,38 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b5/b4/205b0d5241d934e8add0c38aa924c4f9fb7330834ff11e5444db964ec3f9/starlette-1.6.0.tar.gz", hash = "sha256:d4e3ac5e546444960c710297a3c9fc3f7ebae1b7e963f3d36173b49da535be9b", size = 2716969, upload-time = "2026-08-08T18:27:57.512Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/cb/6a6a47d5b464bd08695d254f3da6e7986cc70c9fa5d778eda57538edfe56/starlette-1.6.0-py3-none-any.whl", hash = "sha256:a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c", size = 75969, upload-time = "2026-08-08T18:27:56.196Z" },
+]
+
+[[package]]
+name = "supermemory"
+version = "3.59.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/30/83/7db28873de639f4c4ac469266a2142d1f9def545a0cac2a023011df23601/supermemory-3.59.0.tar.gz", hash = "sha256:5efd5a5a087d552b0e00e739e4eeac21379d087bdfaa1c9f5995d11272b35bb3", size = 154326, upload-time = "2026-08-14T21:28:39.913Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/73/0cf59b31317baf66b0bb9d1fa6506a54013e49fb35ffc9c12c3f3a189c5c/supermemory-3.59.0-py3-none-any.whl", hash = "sha256:3c66ae0fcb082241d8a600b4f8aaebe68159aee7cd24c2ce1aae533ea404bb2d", size = 142020, upload-time = "2026-08-14T21:28:38.842Z" },
+]
+
+[[package]]
+name = "supermemory-benchmark"
+version = "0.0.0"
+source = { editable = "benchmarks/supermemory" }
+dependencies = [
+    { name = "amb" },
+    { name = "supermemory" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amb", editable = "." },
+    { name = "supermemory", specifier = ">=3.59,<4" },
 ]
 
 [[package]]

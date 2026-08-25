@@ -1,0 +1,27 @@
+services:
+  # Supermemory is a service, not a database this stack can stand up: the
+  # project ships no container image and its local server's first boot is
+  # an interactive wizard. The runner therefore talks to whichever server
+  # SUPERMEMORY_BASE_URL names — the hosted API by default, or a
+  # Supermemory local server (port 6767) reachable from the container.
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/supermemory/Dockerfile
+    image: amb-supermemory
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # required by both deployments; never baked into the image
+      - ${SUPERMEMORY_API_KEY:+SUPERMEMORY_API_KEY=}${SUPERMEMORY_API_KEY:-_AMB_UNSET_SUPERMEMORY=1}
+      # unset -> the SDK's own default, the hosted API
+      - ${SUPERMEMORY_BASE_URL:+SUPERMEMORY_BASE_URL=}${SUPERMEMORY_BASE_URL:-_AMB_UNSET_SUPERMEMORY_URL=1}
+      # the answering and judging models, not the memory system's — its
+      # own extraction runs behind the Supermemory API
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system supermemory --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../runs:/amb/runs
