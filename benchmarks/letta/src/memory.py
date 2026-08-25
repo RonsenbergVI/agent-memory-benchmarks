@@ -209,6 +209,12 @@ class LettaMemory(Memory):
         """
         agent_id = self._agent_id(conversation_id)
         before = set(self._passages(agent_id))
+        # Serial, and it must stay that way: letta documents that
+        # "sending multiple concurrent requests to the same agent can
+        # lead to undefined behavior". `--workers N` is safe because
+        # every conversation gets its own agent, so the parallelism is
+        # across agents; sending a session's turns concurrently to speed
+        # this up would put it back inside one.
         for turn in session.turns:
             self.client.agents.messages.create(
                 agent_id=agent_id,
