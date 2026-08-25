@@ -67,4 +67,16 @@ workers:
       logs_console_output: true
 EOF
 
+# Embeddings key, scoped. agentmemory resolves the embedding key as
+# OPENAI_EMBEDDING_API_KEY || OPENAI_API_KEY, but a *bare* OPENAI_API_KEY
+# also flips detectProvider() to a real LLM (gpt-5.6-luna) and defaults
+# consolidation ON — a periodic pipeline plus consolidate-on-session-end.
+# That is a different system under test and real money. So the key is
+# mapped to the embedding-scoped name and the bare one is dropped.
+if [ -n "${OPENAI_API_KEY:-}" ] && [ -z "${OPENAI_EMBEDDING_API_KEY:-}" ]; then
+  OPENAI_EMBEDDING_API_KEY="$OPENAI_API_KEY"
+  export OPENAI_EMBEDDING_API_KEY
+fi
+unset OPENAI_API_KEY
+
 exec agentmemory "$@"

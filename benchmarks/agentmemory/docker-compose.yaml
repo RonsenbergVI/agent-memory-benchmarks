@@ -16,12 +16,32 @@ services:
         III_VERSION: "0.11.2"
         III_SDK_VERSION: "0.11.2"
     image: amb-agentmemory-server
+    env_file:
+      - path: ../../.env
+        required: false
     environment:
       - AGENTMEMORY_DATA_DIR=/data
-      # no provider key: the server runs keyless (BM25 + on-device
-      # embeddings), stores observations verbatim, and spends nothing.
-      # Setting one turns on LLM compression, which is a different
-      # system and a different results row.
+      # Embeddings on, LLM off. Keyless, agentmemory retrieves with BM25
+      # only — its weakest mode, and not what its own README headlines.
+      # The provider is forced and the key is handed over under the
+      # embedding-scoped name by the entrypoint; the bare OPENAI_API_KEY
+      # is unset there because its presence alone would switch on LLM
+      # compression and consolidation too.
+      #
+      # OPENAI_EMBEDDING_MODEL is already this value by default; it is
+      # set so the run's configuration is on the record. The dimension
+      # (1536) is looked up from the model — a wrong explicit value makes
+      # every embed throw. BM25/VECTOR weights are left alone: already
+      # 0.4/0.6, and a fusion ratio rather than a gate on the vector leg.
+      - EMBEDDING_PROVIDER=openai
+      - OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+      # explicit belt-and-braces; both are already the defaults
+      - CONSOLIDATION_ENABLED=false
+      - AGENTMEMORY_AUTO_COMPRESS=false
+      # a persisted index whose width differs from the active provider
+      # makes the worker refuse to boot; this stack starts from an empty
+      # volume, and the flag keeps a reused one from wedging
+      - AGENTMEMORY_DROP_STALE_INDEX=true
       - ${AGENTMEMORY_SECRET:+AGENTMEMORY_SECRET=}${AGENTMEMORY_SECRET:-_AMB_UNSET_AM_SECRET=1}
     volumes:
       - agentmemory-data:/data
