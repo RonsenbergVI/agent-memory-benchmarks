@@ -128,8 +128,8 @@ class RunReport(Report):
             summary["ingestion_model"] = self.run.ingestion_model
         if self.run.embedding_model:
             summary["embedding_model"] = self.run.embedding_model
-        if not self.run.tracks_usage:
-            summary["tracks_usage"] = False
+        if self.run.usage_coverage != "full":
+            summary["usage_coverage"] = self.run.usage_coverage
         if self.run.system_params:
             summary["system_params"] = self.run.system_params
         if self.run.max_turns is not None:
@@ -153,7 +153,7 @@ class RunReport(Report):
         # which reads as "free" beside a system that genuinely spends
         # nothing. The column is left out entirely for those instead, so
         # the table shows it as absent rather than as a cheap result.
-        if isinstance(section, dict) and self.run.tracks_usage:
+        if isinstance(section, dict) and self.run.usage_coverage != "none":
             ingested: dict = section.get("ingest", {})
             summary["memory_tokens_total"] = float(
                 sum(v for k, v in ingested.items() if k.endswith("_tokens"))
@@ -262,7 +262,7 @@ class RunReport(Report):
                 judge_model=summary.get("judge_model"),
                 ingestion_model=summary.get("ingestion_model"),
                 embedding_model=summary.get("embedding_model"),
-                tracks_usage=summary.get("tracks_usage", True),
+                usage_coverage=summary.get("usage_coverage", "full"),
                 system_params=summary.get("system_params") or {},
                 max_turns=summary.get("max_turns"),
                 sample_seed=summary.get("sample_seed"),
@@ -442,23 +442,54 @@ class ComparisonReport(Report):
 
     @staticmethod
     def _cell(summary: dict, key: str, fmt: str) -> str:
-        """One comparison cell, distinguishing "not measurable" from blank.
+        """One comparison cell, saying how much of the cost it accounts for.
 
-        A system whose spend no tracker here can see never writes
-        `memory_tokens_total`, and an empty cell would read as a missing
-        datum rather than as a property of the system. "n/a" says which.
+        Three states have to stay apart. A full number is comparable. A
+        number a system cannot fully see is real but short of the truth,
+        so it is starred rather than quietly ranked against complete
+        ones. A system nothing here can measure writes no number at all,
+        and a blank cell would read as a missing datum rather than as a
+        property of the system, so it says "n/a".
         """
+        coverage = summary.get("usage_coverage", "full")
         if key in summary:
-            return fmt.format(summary[key])
-        if key == "memory_tokens_total" and not summary.get("tracks_usage", True):
+            cell = fmt.format(summary[key])
+            if key == "memory_tokens_total" and coverage == "partial":
+                return f"{cell}*"
+            return cell
+        if key == "memory_tokens_total" and coverage == "none":
             return "n/a"
         return ""
+
+    # what the cost column's two non-numeric renderings mean, emitted
+    # under the table only when a row actually uses one
+    USAGE_FOOTNOTES = {
+        "*": "incomplete — the system spends where this harness cannot fully see it",
+        "n/a": "not measurable — none of this system's spend is observable here",
+    }
 
     def to_summary_markdown(
         self, k: int = 10, dataset: str | None = None, variant: str | None = None
     ) -> str:
-        """Render `summary_table` as a markdown table."""
-        return markdown_table(*self.summary_table(k, dataset, variant))
+        """Render `summary_table` as a markdown table, with its cost notes."""
+        header, rows = self.summary_table(k, dataset, variant)
+        table = markdown_table(header, rows)
+        try:
+            column = header.index("memory tokens")
+        except ValueError:
+            return table
+        notes = self._usage_notes([row[column] for row in rows])
+        return table if not notes else table + "\n\n" + notes + "\n"
+
+    @classmethod
+    def _usage_notes(cls, cells: list[str]) -> str:
+        """Explain the cost marks this table actually used, and only those."""
+        used = [
+            f"`{mark}` {text}"
+            for mark, text in cls.USAGE_FOOTNOTES.items()
+            if any(cell == mark or cell.endswith(mark) for cell in cells)
+        ]
+        return "  \n".join(used)
 
     def table(self) -> tuple[list[str], list[list[str]]]:
         """Build the full comparison: one row per run, every identity column.

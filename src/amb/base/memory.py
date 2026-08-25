@@ -39,11 +39,15 @@ class Memory(ABC):
     description: ClassVar[str]
     # PyPI distribution whose version identifies the system under test
     sdk_dist: ClassVar[str | None] = None
-    # Whether this system's token spend is observable at all. False for a
-    # system that spends inside its own infrastructure in a way no
-    # tracker here can see — its reported zero would read as "free" when
-    # it means "unmeasured", so reporting shows it as absent instead.
-    tracks_usage: ClassVar[bool] = True
+    # How much of this system's token spend the run actually accounts
+    # for. "full" is the default and the only value that makes the cost
+    # column comparable; "partial" marks a number that is real but
+    # short of the truth, and "none" a system whose spend nothing here
+    # can see — whose zero would otherwise read as "free". Reporting
+    # renders the three differently, because conflating them is how a
+    # cost column publishes a wrong number without ever being wrong
+    # about a value it holds.
+    usage_coverage: ClassVar[str] = "full"
 
     def __init__(self, **params: object) -> None:
         """Keep any `--param` overrides the CLI passed through."""
