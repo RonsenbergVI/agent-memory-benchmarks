@@ -28,14 +28,18 @@ adapter benchmarks Letta's archival memory: one agent per conversation, turns
 inserted as archival passages, search via passage retrieval.
 
 Token accounting: letta spends inside its server, invisible to the harness's
-in-process SDK wrappers, so the adapter computes it — every stored passage
+in-process SDK wrappers, so the adapter accounts for it itself. Embeddings
+are computed — every stored passage
 and search query is tokenized with the embedding model's own tiktoken
 encoding, and embeddings bill exactly their input, so the arithmetic equals
 the wire. Calibrated 2026-08-11 against a counting reverse proxy on the
 server's OpenAI traffic: identical to the token (53,735 over 1,000 passages
 + 189 queries; the proxy is retired, see git history). The counts assume one
 embeddings call per passage insert / search and no server-side chunking —
-both held for letta 0.16.8; recheck on version bumps.
+both held for letta 0.16.8; recheck on version bumps. Under
+``--param ingest=agent`` the agent's own LLM turns are read off the usage
+letta reports on each response, so that half is billed rather than
+computed.
 """
 
 import os
@@ -129,6 +133,22 @@ class LettaMemory(Memory):
         except KeyError:
             self._encoding = tiktoken.get_encoding("cl100k_base")
 
+    def _count_reported_usage(self, response: object) -> None:
+        """Book the LLM spend letta reports for one agent turn.
+
+        The agent's own model runs inside letta's server, so the tiktoken
+        arithmetic below cannot reach it — but letta hands the usage back
+        on the response, so this half is *billed* rather than estimated.
+        `reasoning_tokens` are already inside `completion_tokens`, so
+        they are deliberately not added again.
+        """
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        self._usage["llm_calls"] += 1
+        self._usage["llm_input_tokens"] += getattr(usage, "prompt_tokens", 0) or 0
+        self._usage["llm_output_tokens"] += getattr(usage, "completion_tokens", 0) or 0
+
     def _count_embedding(self, text: str) -> None:
         """Book one server-side embedding call for `text`."""
         self._usage["embedding_calls"] += 1
@@ -203,9 +223,10 @@ class LettaMemory(Memory):
         produced are recovered by diffing the agent's archive, which
         attests the session and nothing finer.
 
-        The LLM spend happens inside letta's server and this adapter's
-        tiktoken arithmetic models embeddings only, so a run in this mode
-        under-reports its own cost.
+        Cost is fully accounted even so: letta reports the agent's own
+        LLM usage on each response, so that half is billed rather than
+        estimated, and the passages it wrote are tokenized like any
+        other.
         """
         agent_id = self._agent_id(conversation_id)
         before = set(self._passages(agent_id))
@@ -216,10 +237,11 @@ class LettaMemory(Memory):
         # across agents; sending a session's turns concurrently to speed
         # this up would put it back inside one.
         for turn in session.turns:
-            self.client.agents.messages.create(
+            response = self.client.agents.messages.create(
                 agent_id=agent_id,
                 messages=[{"role": "user", "content": f"{turn.speaker}: {turn.text}"}],
             )
+            self._count_reported_usage(response)
         for passage_id, text in self._passages(agent_id).items():
             if passage_id in before:
                 continue
