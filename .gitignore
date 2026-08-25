@@ -219,4 +219,7 @@ __marimo__/
 
 # amb
 .data/
+# mempalace's palaces, when a run is driven from a checkout instead of the
+# container (MEMPALACE_ROOT moves them elsewhere)
+.mempalace/
 .DS_STORE

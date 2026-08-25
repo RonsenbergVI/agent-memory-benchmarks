@@ -1,0 +1,27 @@
+[project]
+name = "mempalace-benchmark"
+version = "0.0.0"
+description = "MemPalace benchmark."
+readme = "README.md"
+authors = [
+    { name = "René-Jean Corneille", email = "corneille.r.j@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "amb",
+    "mempalace>=3.8,<4",
+]
+
+# every integration ships its module as `src` — SDKs own the pretty names
+[project.entry-points."amb.systems"]
+mempalace = "src.benchmark:MemPalaceBenchmark"
+
+[tool.uv.sources]
+amb = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

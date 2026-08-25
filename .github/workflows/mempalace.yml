@@ -1,0 +1,185 @@
+name: Benchmark mempalace
+
+on:
+  push:
+    # micro is always 0 under the major.minor release scheme; the
+    # strict patterns keep a hand-pushed patch or prerelease tag from
+    # starting paid benchmark runs
+    tags: ["v[0-9]+.[0-9]+.0", "mempalace/v[0-9]+.[0-9]+.0"]
+  workflow_dispatch:
+
+# one mempalace benchmark run at a time; a second trigger queues rather than
+# interleaving runs/ artifacts. Other frameworks' workflows run in
+# parallel — publishing is serialized by the publish job's own group.
+concurrency:
+  group: benchmark-mempalace
+
+permissions:
+  contents: write
+
+env:
+  # the k the README summary table compares at; the chart sets cover every
+  # k the runs actually used, so this narrows the headline only
+  SUMMARY_K: 10
+
+# one job per dataset: each has different scope parameters, so each gets
+# its own matrix of plain values and a flat run command. Agentic mode gets
+# its own jobs here later (with the driving-model env).
+jobs:
+  locomo:
+    name: mempalace / locomo / direct / k${{ matrix.k }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        k: [1, 3, 5, 10]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the workspace
+        run: uv sync --locked
+
+      # pulled on the runner; the compose stack volume-mounts .data/
+      - name: Pull the dataset
+        run: uv run amb datasets pull locomo
+
+      - name: Run the benchmark
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          docker compose -f benchmarks/mempalace/docker-compose.yaml \
+            run --build --rm benchmark run --system mempalace \
+            --dataset locomo --mode direct \
+            --workers 3 \
+            --k ${{ matrix.k }}
+          docker compose -f benchmarks/mempalace/docker-compose.yaml down -v
+
+      # the run id + attempt make the name unique, so a later identical run
+      # (or a job re-run) gets its own artifact instead of colliding with or
+      # replacing an earlier one; kept a few days for inspection
+      - name: Upload run data
+        uses: actions/upload-artifact@v7
+        with:
+          name: runs-mempalace-locomo-direct-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: runs/
+          if-no-files-found: error
+          retention-days: 5
+
+  longmemeval:
+    name: mempalace / longmemeval / direct / k${{ matrix.k }} / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        k: [1, 3, 5, 10]
+        variant: [oracle]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the workspace
+        run: uv sync --locked
+
+      # pulled on the runner; the compose stack volume-mounts .data/
+      - name: Pull the dataset
+        run: uv run amb datasets pull longmemeval --variant ${{ matrix.variant }}
+
+      - name: Run the benchmark
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          docker compose -f benchmarks/mempalace/docker-compose.yaml \
+            run --build --rm benchmark run --system mempalace \
+            --dataset longmemeval --mode direct \
+            --variant ${{ matrix.variant }} \
+            --workers 3 \
+            --k ${{ matrix.k }}
+          docker compose -f benchmarks/mempalace/docker-compose.yaml down -v
+
+      # the run id + attempt make the name unique, so a later identical run
+      # (or a job re-run) gets its own artifact instead of colliding with or
+      # replacing an earlier one; kept a few days for inspection
+      - name: Upload run data
+        uses: actions/upload-artifact@v7
+        with:
+          name: runs-mempalace-longmemeval-direct-k${{ matrix.k }}-${{ matrix.variant }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: runs/
+          if-no-files-found: error
+          retention-days: 5
+
+  publish:
+    name: publish results to main
+    needs: [locomo, longmemeval]
+    # always: every cell that finished uploaded its artifact, so whatever
+    # completed still lands and the documents regenerate even when some failed
+    if: always()
+    runs-on: ubuntu-latest
+    # every framework workflow commits to main through this one group, so
+    # two finishing together publish one after the other instead of racing
+    # the push
+    concurrency:
+      group: publish-results
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
+          ref: main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the workspace
+        run: uv sync --locked
+
+      - name: Collect run data
+        uses: actions/download-artifact@v8
+        with:
+          pattern: runs-*
+          path: runs
+          merge-multiple: true
+
+      - name: Regenerate plots and reports
+        run: |
+          # every run stamps the commit that triggered it; only a real
+          # release also stamps its tag
+          tag=""
+          [ "${{ github.ref_type }}" = "tag" ] && tag="--tag $GITHUB_REF_NAME"
+          # both commands read the same report objects, so neither needs to
+          # be told which datasets or variants exist: the (dataset, variant)
+          # groups are discovered from runs/ itself, which holds every run
+          # ever committed to main (checkout brings the full tree, not just
+          # this run's artifacts). `amb plot all` draws exactly the charts the
+          # documents link — every k the runs used, one directory per group
+          # — and `amb report` writes the documents that link them, so the
+          # two cannot drift apart.
+          uv run amb plot all
+          uv run amb plot all --dark
+          uv run amb report --latest --k "$SUMMARY_K" \
+            --output RESULTS.md \
+            --commit "$GITHUB_SHA" $tag
+
+      # commits as github-actions[bot] and skips cleanly when nothing
+      # changed; pushes to the checked-out branch (main)
+      - name: Commit results to main
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "results: mempalace benchmark run for ${{ github.ref_name }}"
+          file_pattern: "runs plots RESULTS.md"

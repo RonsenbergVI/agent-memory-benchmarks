@@ -1,0 +1,26 @@
+services:
+  # MemPalace has no server and no backing database to stand up: the
+  # palace is a directory, the embedder is a local ONNX model baked into
+  # the image, and nothing leaves the container. This file therefore
+  # declares only the runner — the volume the palaces live on is the
+  # container's own, and teardown deletes each conversation's as it ends.
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/mempalace/Dockerfile
+    image: amb-mempalace
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # chromadb (the default backend) ships posthog telemetry on; a
+      # benchmark run has no business phoning home about its corpus
+      - ANONYMIZED_TELEMETRY=False
+      # the answering and judging models still reach OpenAI; the memory
+      # system itself makes no API call at any stage
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system mempalace --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../runs:/amb/runs
