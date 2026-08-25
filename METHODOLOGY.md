@@ -221,12 +221,15 @@ Ingestion is serial and, for LLM-backed systems, is the dominant cost of a run. 
 | Dataset | Corpus | Mem0 ingestion | `naive` ingestion |
 | --- | --- | --- | --- |
 | LoCoMo | 10 conversations, 272 sessions, 5,882 turns | ~4 h | 0.04 s |
+| LongMemEval `oracle` | 500 instances, 948 sessions (evidence only) | ~12 h | seconds |
 | LongMemEval `s` | 500 instances x ~115k tokens | ~7 weeks | seconds |
 | LongMemEval `m` | 500 instances x ~500 sessions | ~5 months | seconds |
 
-Only the LoCoMo row is measured end to end; the others extrapolate its throughput (~13.6 source tokens/s, ~2.5 s/turn) by corpus size, and instance counts for the datasets that aren't downloaded yet come from their published sizes. Treat them as orders of magnitude, not schedules.
+The LoCoMo and `oracle` rows are measured end to end — `oracle` from the full 500-instance runs in `runs/longmemeval/oracle/`, where Mem0 sums 11.2–11.9 h of ingestion across its four k values. The `s` and `m` rows extrapolate LoCoMo's throughput (~13.6 source tokens/s, ~2.5 s/turn) by corpus size, and their instance counts come from published sizes rather than a downloaded corpus. Treat those two as orders of magnitude, not schedules.
 
-The practical consequence: **only LoCoMo is a whole-dataset run today.** For everything else, scope the run with `--limit` and `--turns` and report what you scoped, or expect a multi-day job. Each LongMemEval instance carries its own haystack, so its cost is per question — halving `--limit` halves the run.
+Every figure above is *summed* ingestion — the total across all conversations, which is what the reports record and which does not shrink with `--workers`. Wall clock does: `--workers 3` measures ~2.3x on LoCoMo (2.99 h summed, 1.28 h elapsed), the parallel speedup being sublinear because conversations differ in length and the run waits on the longest. Summed across `oracle` the four benchmarked systems span an order of magnitude — Letta 1.0 h, Graphiti 4.1 h, Fraise 10.6 h, Mem0 11.8 h — which at that speedup puts Fraise near 4.6 h and Mem0 near 5.1 h of wall clock against CI's six-hour ceiling. That thin headroom is what the [dataset tiers](README.md#dataset-tiers) rule protects: past roughly 40 s/session there is none left.
+
+The practical consequence: **LoCoMo and LongMemEval `oracle` are whole-dataset runs today; `s` and `m` are not.** For those, scope the run with `--limit` and `--turns` and report what you scoped, or expect a multi-day job. Each LongMemEval instance carries its own haystack, so its cost is per question — halving `--limit` halves the run.
 
 ### Persistent stores
 

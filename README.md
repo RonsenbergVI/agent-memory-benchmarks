@@ -98,6 +98,18 @@ None of these give a builder a reliable answer to "which agent memory system fit
 
 Projects must be permissively licensed (MIT, Apache 2.0, BSD) or use a credible open-source-adjacent license. Hosted SaaS without an OSS counterpart is out of scope. Open-core projects are included via their OSS edition only — commercial/cloud features aren't benchmarked.
 
+## Dataset tiers
+
+**Every system runs LoCoMo. Whether it also runs LongMemEval depends on how fast it ingested LoCoMo.**
+
+LoCoMo does double duty: it is the entry test and the runtime screen in one pass. A system that cannot complete it end to end is not benchmarked at all, and there is no separate qualifying step to negotiate over. A system that completes it is then measured on ingestion cost per session, and that number decides whether it moves on.
+
+The threshold is derived rather than chosen. LongMemEval's oracle variant is 948 sessions against a six-hour ceiling per run, so ingestion above roughly 40 seconds per session cannot finish, and a run that cannot finish spends the full budget and publishes nothing. Systems under that mark get the deep tier; systems over it stay on LoCoMo, with their measured per-session cost published alongside the result so the reason is visible rather than editorial.
+
+Two properties make this fair rather than punitive. **The gate is re-evaluated on every full rerun, never decided once** — a new release or a corrected configuration moves a system between tiers in the next cycle, so the rule is a target to clear rather than a wall. And because runs execute concurrently, a batch takes as long as the slowest system in it; capping per-session cost bounds the thing that actually constrains the benchmark instead of proxying for it.
+
+The full rationale, and the per-session figures each verdict rests on, are in [METHODOLOGY.md](METHODOLOGY.md).
+
 ## Status
 
 Pre-alpha. Methodology is being defined and the test harness is in development. First results land here on the first tagged release and regenerate on every one after (see [RESULTS.md](RESULTS.md) for the full detail). Expected timeline:
