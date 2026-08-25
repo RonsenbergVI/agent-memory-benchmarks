@@ -16,6 +16,11 @@ memory:graphiti:
       - any-glob-to-any-file:
           - benchmarks/graphiti/**
 
+memory:hindsight:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/hindsight/**
+
 memory:letta:
   - changed-files:
       - any-glob-to-any-file:

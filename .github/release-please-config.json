@@ -106,6 +106,19 @@
           "jsonpath": "$.package[?(@.name.value=='mem0')].version"
         }
       ]
+    },
+    "benchmarks/hindsight": {
+      "release-type": "python",
+      "component": "hindsight",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='hindsight-benchmark')].version"
+        }
+      ]
     }
   }
 }
