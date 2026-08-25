@@ -181,7 +181,16 @@ class MemPalaceMemory(Memory):
     ) -> None:
         """Pin the local embedder and the retrieval strategy MemPalace uses."""
         super().__init__(**params)
-        self.root = Path(root or os.environ.get("MEMPALACE_ROOT", DEFAULT_ROOT))
+        # resolved, not left relative: `mine` resolves the directory it is
+        # given to an absolute path and then calls `relative_to` on each
+        # file, so handing it files built from a relative root raises
+        # "is not in the subpath of". The default root IS relative, so
+        # this is the normal path, not an edge case.
+        self.root = (
+            Path(root or os.environ.get("MEMPALACE_ROOT", DEFAULT_ROOT))
+            .expanduser()
+            .resolve()
+        )
         # there is no extraction LLM: `models()` reads this and reports None
         self.model: str | None = None
         self.embedding_model = embedding_model
