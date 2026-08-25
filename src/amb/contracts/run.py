@@ -79,6 +79,9 @@ class Run(BaseModel):
     # of the run's comparison identity, so variants coexist as rows
     ingestion_model: str | None = None
     embedding_model: str | None = None
+    # "full" | "partial" | "none" — how much of the system's spend this
+    # run accounts for; reporting renders each differently
+    usage_coverage: str = "full"
     system_params: dict = Field(default_factory=dict)
     variant: str | None = None
     mode: str = "direct"  # "direct" (harness-driven) or "agentic" (model-driven)
