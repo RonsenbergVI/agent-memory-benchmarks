@@ -244,6 +244,7 @@ class Runner:
             k=cfg.k,
             ingestion_model=internal.get("ingestion_model"),
             embedding_model=internal.get("embedding_model"),
+            usage_coverage=type(probe).usage_coverage,
             # explicit overrides join the run's identity; the two model
             # params are already lifted into their own fields above
             system_params={
