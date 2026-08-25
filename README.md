@@ -102,6 +102,8 @@ Projects must be permissively licensed (MIT, Apache 2.0, BSD) or use a credible 
 
 **Every system runs LoCoMo. Whether it also runs LongMemEval depends on how fast it ingested LoCoMo.**
 
+The LongMemEval half of that rule is dormant while the dataset is paused — see [Datasets](#datasets) below. The tiering stands and per-session ingestion cost is still measured on every run, so the gate is ready the moment it rejoins.
+
 LoCoMo does double duty: it is the entry test and the runtime screen in one pass. A system that cannot complete it end to end is not benchmarked at all, and there is no separate qualifying step to negotiate over. A system that completes it is then measured on ingestion cost per session, and that number decides whether it moves on.
 
 The threshold is derived rather than chosen. LongMemEval's oracle variant is 948 sessions against a six-hour ceiling per run, so ingestion above roughly 40 seconds per session cannot finish, and a run that cannot finish spends the full budget and publishes nothing. Systems under that mark get the deep tier; systems over it stay on LoCoMo, with their measured per-session cost published alongside the result so the reason is visible rather than editorial.
@@ -109,6 +111,18 @@ The threshold is derived rather than chosen. LongMemEval's oracle variant is 948
 Two properties make this fair rather than punitive. **The gate is re-evaluated on every full rerun, never decided once** — a new release or a corrected configuration moves a system between tiers in the next cycle, so the rule is a target to clear rather than a wall. And because runs execute concurrently, a batch takes as long as the slowest system in it; capping per-session cost bounds the thing that actually constrains the benchmark instead of proxying for it.
 
 The full rationale, and the per-session figures each verdict rests on, are in [METHODOLOGY.md](METHODOLOGY.md).
+
+### Datasets
+
+**Running:** LoCoMo · ConvoMem *(planned)*
+
+**LongMemEval — paused, not dropped.**
+
+The oracle variant hands every system a small candidate set, so precision is nearly free and the field compresses into 0.856–0.993 F1. A full run per system for a nearly flat table is the wrong use of the budget while the roster is still growing. It rejoins when a battery has room for a third dataset.
+
+Existing results stay published in [RESULTS.md](RESULTS.md#longmemeval-oracle), with the tag that produced them.
+
+To be explicit, since I maintain one of the systems here: LongMemEval is the dataset where **fraise places last** — 0.856 against a leader at 0.993. That is not why it's paused, and the numbers aren't moving. Losing on it is how fraise got better: the LongMemEval result is what identified recall as the binding constraint, and the retrieval work since came directly out of it. I expect a different number when it comes back. If not, that will be published too.
 
 ## Status
 
