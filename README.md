@@ -128,6 +128,7 @@ Pre-alpha. Methodology is being defined and the test harness is in development. 
 | Letta | [letta-ai/letta](https://github.com/letta-ai/letta) | Apache-2.0 | Hierarchical (OS-style) | [RESULTS.md](RESULTS.md) |
 | Graphiti | [getzep/graphiti](https://github.com/getzep/graphiti) | Apache-2.0 | Temporal knowledge graph | [RESULTS.md](RESULTS.md) |
 | Fraise | [RonsenbergVI/fraise](https://github.com/RonsenbergVI/fraise) | MIT | Temporal knowledge graph + vector / text hybrid search | [RESULTS.md](RESULTS.md) |
+| Hindsight | [vectorize-io/hindsight](https://github.com/vectorize-io/hindsight) | MIT | Memory units + hybrid search | [RESULTS.md](RESULTS.md) |
 
 ### Candidates
 
@@ -137,7 +138,6 @@ Each candidate is vetted against the [inclusion criteria](#inclusion-criteria) i
 | --- | --- | --- |
 | ReMe | [modelscope/ReMe](https://github.com/modelscope/ReMe) | [#72](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/72) |
 | Redis Agent Memory Server | [redis/agent-memory-server](https://github.com/redis/agent-memory-server) | [#73](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/73) |
-| Hindsight | [hindsight-ai/hindsight](https://github.com/hindsight-ai/hindsight) | [#74](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/74) |
 | EverOS (EverMind) | [EverMind-AI/EverOS](https://github.com/EverMind-AI/EverOS) | [#75](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/75) |
 | LangMem | [langchain-ai/langmem](https://github.com/langchain-ai/langmem) | [#76](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/76) |
 | MemOS | [MemTensor/MemOS](https://github.com/MemTensor/MemOS) | [#77](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/77) |
