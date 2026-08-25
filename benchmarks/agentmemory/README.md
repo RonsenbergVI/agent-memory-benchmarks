@@ -14,7 +14,9 @@ The adapter asks for `k × 10` (capped at the API's 100) and trims to k locally 
 
 The server runs with LLM compression on (`AGENTMEMORY_AUTO_COMPRESS=true`) and OpenAI embeddings, so its configuration matches the rest of the comparison rather than sitting in agentmemory's keyless BM25-only default.
 
-**The extraction model is `gpt-4.1-mini`, not the `gpt-5-mini` everything else uses.** agentmemory hardcodes `max_tokens` in its OpenAI request (`src/providers/openai.ts:82`) and never sends `max_completion_tokens`, which is the only form OpenAI's reasoning models accept. With gpt-5-mini every compression call returns 400, and the failure is destructive rather than degraded: the observation is dropped without ever being indexed, so the system retrieves nothing at all. No environment variable changes the parameter name.
+The extraction model is `gpt-5-mini`, matching the rest of the comparison — but that needs a build-time patch. agentmemory sends `max_tokens` in its OpenAI request and never `max_completion_tokens`, the only form OpenAI's reasoning models accept, and exposes no setting for it. On gpt-5-mini every compression call returns 400, and the failure is destructive rather than degraded: the observation is dropped without ever being indexed, so the system retrieves nothing at all.
+
+`patch-openai-params.js` renames the parameter in the OpenAI provider at image build time, located by its Azure-aware `buildChatUrl` call. The Anthropic, OpenRouter and MiniMax providers share the same bundle and keep `max_tokens`, which is correct for them. The script asserts before and after, so a version bump that moves the call fails the build rather than silently restoring the 400s.
 
 `CONSOLIDATION_ENABLED=false` keeps consolidation off — that is a separate periodic pipeline, not extraction.
 

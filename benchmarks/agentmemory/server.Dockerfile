@@ -31,6 +31,10 @@ RUN printf '{"name":"agentmemory-benchmark","version":"1.0.0","private":true,"ov
  && npm install "@agentmemory/agentmemory@${AGENTMEMORY_VERSION}" --omit=optional --no-fund --no-audit \
  && ln -s /opt/agentmemory/node_modules/.bin/agentmemory /usr/local/bin/agentmemory
 
+# gpt-5-mini rejects the `max_tokens` agentmemory sends; see the script.
+COPY benchmarks/agentmemory/patch-openai-params.js /tmp/patch-openai-params.js
+RUN node /tmp/patch-openai-params.js && rm /tmp/patch-openai-params.js
+
 ENV AGENTMEMORY_III_VERSION=${III_VERSION} \
     AGENTMEMORY_DATA_DIR=/data \
     TINI_SUBREAPER=1

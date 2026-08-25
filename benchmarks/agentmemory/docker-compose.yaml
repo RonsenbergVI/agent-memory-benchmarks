@@ -32,15 +32,12 @@ services:
       # 0.4/0.6, and a fusion ratio rather than a gate on the vector leg.
       - EMBEDDING_PROVIDER=openai
       - OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-      # LLM compression on. NOT gpt-5-mini like the rest of the
-      # comparison: agentmemory hardcodes `max_tokens` in its OpenAI
-      # request (src/providers/openai.ts) and never sends
-      # `max_completion_tokens`, which is the only form OpenAI's
-      # reasoning models accept — they answer 400, compression fails,
-      # and the observation is dropped without being indexed. No env var
-      # changes the parameter name. gpt-4.1-mini is non-reasoning and
-      # accepts max_tokens.
-      - OPENAI_MODEL=gpt-4.1-mini
+      # LLM compression on gpt-5-mini, matching the rest of the
+      # comparison. agentmemory sends `max_tokens`, which reasoning
+      # models reject; the server image renames it to
+      # `max_completion_tokens` in the OpenAI provider — see
+      # server.Dockerfile.
+      - OPENAI_MODEL=gpt-5-mini
       - AGENTMEMORY_AUTO_COMPRESS=true
       # consolidation is a separate feature — a periodic pipeline plus
       # consolidate-on-session-end — that the LLM key would otherwise
