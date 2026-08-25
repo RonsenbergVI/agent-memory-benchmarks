@@ -2,13 +2,15 @@
 
 Integration for [EverMind-AI/EverOS](https://github.com/EverMind-AI/EverOS). EverOS runs in-process — memories are Markdown files under `EVEROS_ROOT` with SQLite and LanceDB indexes beside them — so there is no server for compose to stand up.
 
-## The ingestion model is not gpt-5-mini
+## gpt-5-mini needs one accommodation
 
-Every other integration ingests with `gpt-5-mini`. EverOS cannot: `everalgo` hard-codes `temperature=0.0` and EverOS builds its `LLMConfig` from only `model` / `api_key` / `base_url`, so there is no configuration path to change it. OpenAI's reasoning models reject any temperature but 1 with a 400, which makes gpt-5-mini unusable here as shipped.
+`everalgo` asks for `temperature=0.0` on every call, and EverOS builds its `LLMConfig` from only `model` / `api_key` / `base_url` — so there is no configuration path to change it, and OpenAI's reasoning models answer every call with `'temperature' does not support 0.0`.
 
-The default is therefore `gpt-4.1-mini` — EverOS's own. `--param model=` takes any non-reasoning model, and the run records whichever ran, so a different choice lands as its own row rather than displacing this one. Embeddings are `text-embedding-3-small` at 1536 dimensions, matching the rest of the comparison.
+`_pin_temperature` lifts the configured temperature to 1 for those models. It is the same accommodation mem0 carries in this repo for the same models and the same 400, and the narrowest one available: everalgo reads `LLMConfig.temperature`, a real field on its own public config, so no everalgo internal is patched and a non-reasoning model is left exactly as EverOS shipped it. It fails loudly if everalgo ever moves that field, rather than silently reverting to 400s. `--param reasoning=false` opts out.
 
-Spend **is** measured: EverOS reaches OpenAI in-process through the openai SDK, so `OpenAIUsageTracker` sees every call.
+With it, EverOS ingests with `gpt-5-mini` and embeds with `text-embedding-3-small` at 1536 dimensions — model-matched to the rest of the comparison.
+
+Spend **is** made by this system, but see the note on token counting below.
 
 ## Three things the adapter has to do that a server would do for you
 
@@ -34,7 +36,8 @@ docker compose -p everos-smoke -f benchmarks/everos/docker-compose.yaml \
 
 | `--param` | Default | What it changes |
 | --- | --- | --- |
-| `model` | `gpt-4.1-mini` | Extraction model. Must be non-reasoning — see above. |
+| `model` | `gpt-5-mini` | Extraction model, matching the rest of the comparison. |
+| `reasoning` | auto | Whether the model rejects `temperature=0.0`. Auto-detected from the model name; `false` restores everalgo's own temperature. |
 | `embedding_model` | `text-embedding-3-small` | Embedder, at `embedding_dimensions` (1536). |
 | `search_method` | `hybrid` | `hybrid` is vector + keyword. `agentic` adds an LLM planning pass — query understanding rather than retrieval, so not comparable with the other systems. |
 | `root` | `EVEROS_ROOT`, else `.everos` | Where the Markdown and indexes live. |

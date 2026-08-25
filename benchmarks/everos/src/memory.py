@@ -35,9 +35,13 @@ compatible protocol EverOS speaks natively. The spend is in-process
 through the openai SDK, so ``OpenAIUsageTracker`` sees it — this
 system's cost is measured, not assumed.
 
-The ingestion model is the one place this integration cannot match the
-others: see ``DEFAULT_INGESTION_MODEL`` below for why it is not
-gpt-5-mini.
+gpt-5-mini needs one accommodation to work at all here: everalgo asks
+for ``temperature=0.0`` on every call and OpenAI's reasoning models
+reject anything but the default, so ``_pin_temperature`` lifts the
+configured temperature for those models. It is the same accommodation
+mem0 carries for the same models and the same 400, and the narrowest
+one available — everalgo reads ``LLMConfig.temperature``, so nothing
+internal is patched. ``--param reasoning=false`` opts out.
 
 Two properties shape this adapter and are not obvious:
 
@@ -72,14 +76,7 @@ from amb.base import Memory
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
-# EverOS's own default, and not gpt-5-mini like the rest of the
-# comparison, on purpose: everalgo hard-codes temperature=0.0 and EverOS
-# builds its LLMConfig with only model/api_key/base_url, so there is no
-# configuration path to change it. OpenAI's reasoning models reject any
-# temperature but 1 with a 400, which makes gpt-5-mini unusable here as
-# shipped. `--param model=` takes any non-reasoning model; the run
-# records whichever ran, so it lands as its own row either way.
-DEFAULT_INGESTION_MODEL = "gpt-4.1-mini"
+DEFAULT_INGESTION_MODEL = "gpt-5-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 DEFAULT_EMBEDDING_DIMENSIONS = 1536
 # EverOS's own default retrieval: "hybrid" is vector + keyword. "agentic"
@@ -88,6 +85,16 @@ DEFAULT_EMBEDDING_DIMENSIONS = 1536
 DEFAULT_SEARCH_METHOD = "hybrid"
 # relative, so it lands under the container's WORKDIR; EVEROS_ROOT moves it
 DEFAULT_ROOT = ".everos"
+# The one temperature OpenAI's reasoning models accept. everalgo asks for
+# 0.0 and EverOS builds its LLMConfig from only model/api_key/base_url,
+# so there is no configuration path to change it and gpt-5-mini answers
+# every call with a 400. `reasoning` lifts the configured temperature to
+# this instead — the same accommodation mem0 carries for the same models
+# and the same 400, and the narrowest one that exists: everalgo reads
+# `LLMConfig.temperature`, so nothing internal is patched.
+REASONING_TEMPERATURE = 1.0
+# model families that reject any temperature but the default
+_REASONING_MODELS = ("gpt-5", "o1", "o3", "o4")
 # the app every conversation of this benchmark is filed under
 APP_ID = "amb"
 # app_id / project_id / sender_id become directory segments, so EverOS
@@ -140,6 +147,7 @@ class EverOSMemory(Memory):
         embedding_model: str | None = DEFAULT_EMBEDDING_MODEL,
         embedding_dimensions: int | str = DEFAULT_EMBEDDING_DIMENSIONS,
         search_method: str = DEFAULT_SEARCH_METHOD,
+        reasoning: bool | str | None = None,
         **params: object,
     ) -> None:
         """Pin the models and the retrieval method EverOS will use."""
@@ -150,11 +158,54 @@ class EverOSMemory(Memory):
         # --param values arrive as strings
         self.embedding_dimensions = int(embedding_dimensions)
         self.search_method = search_method
+        # None auto-detects from the model name; --param reasoning=false
+        # restores everalgo's own temperature for a model that accepts it
+        if isinstance(reasoning, str):
+            reasoning = reasoning.strip().lower() not in ("false", "0", "no")
+        self.reasoning = (
+            self._is_reasoning_model(self.model) if reasoning is None else reasoning
+        )
         # the conversation this instance was built for; teardown needs it
         # and the base contract does not pass it
         self._conversation_id: str | None = None
         self._sessions: set[str] = set()
         self._extracted = 0
+
+    @staticmethod
+    def _is_reasoning_model(model: str | None) -> bool:
+        """Whether this model rejects every temperature but the default."""
+        return bool(model) and str(model).startswith(_REASONING_MODELS)
+
+    def _pin_temperature(self) -> None:
+        """Lift everalgo's configured temperature for a reasoning model.
+
+        everalgo asks for 0.0 on every call and EverOS gives its
+        ``LLMConfig`` only model/api_key/base_url, so a reasoning model
+        answers with `'temperature' does not support 0.0`. The provider
+        reads ``LLMConfig.temperature``, so changing that field's default
+        is enough — no everalgo internal is patched, and a non-reasoning
+        model is left exactly as EverOS shipped it.
+
+        Must run before the LLM client is built, which the runtime's own
+        ``LLMLifespanProvider`` does at startup.
+
+        Raises:
+            RuntimeError: if everalgo no longer exposes the field this
+                accommodation sets.
+        """
+        if not self.reasoning:
+            return
+        from everalgo.llm.config import LLMConfig
+
+        field = LLMConfig.model_fields.get("temperature")
+        if field is None:  # everalgo moved it; fail loudly rather than 400
+            raise RuntimeError(
+                "everalgo LLMConfig has no `temperature` field; the reasoning-model "
+                "accommodation in this adapter needs updating (--param reasoning=false "
+                "to skip it)"
+            )
+        field.default = REASONING_TEMPERATURE
+        LLMConfig.model_rebuild(force=True)
 
     @staticmethod
     def _slug(value: str) -> str:
@@ -204,6 +255,7 @@ class EverOSMemory(Memory):
         self._configure_env()
         self.root.mkdir(parents=True, exist_ok=True)
         self._scaffold_config()
+        self._pin_temperature()
         self._start_runtime()
 
     def _scaffold_config(self) -> None:
@@ -467,4 +519,5 @@ class EverOSMemory(Memory):
             "sessions": len(self._sessions),
             "extracted_sessions": self._extracted,
             "search_method": self.search_method,
+            "reasoning": self.reasoning,
         }
