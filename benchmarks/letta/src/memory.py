@@ -291,7 +291,13 @@ class LettaMemory(Memory):
             turn_ids, session_id = self._provenance.get(str(p.id), ([], None))
             hits.append(
                 MemoryHit(
-                    content=getattr(p, "text", ""),
+                    # `passages.search` returns Result objects carrying
+                    # `content`; `passages.list` returns passages carrying
+                    # `text`. Reading only `text` left every hit's content
+                    # empty — invisible to retrieval scoring, which reads
+                    # the provenance map, but the answering model in
+                    # `--model` runs was being handed nothing.
+                    content=getattr(p, "content", None) or getattr(p, "text", "") or "",
                     turn_ids=list(turn_ids),
                     session_ids=[session_id] if session_id else [],
                     metadata={"id": str(p.id)},
