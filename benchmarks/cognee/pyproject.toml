@@ -1,9 +1,5 @@
 [project]
-# the workspace member cannot be called `cognee`: the SDK on PyPI owns
-# that name, and uv reads a member depending on its own name as a
-# self-dependency. The `--system cognee` handle is the entry-point key
-# below, which is unaffected.
-name = "cognee-benchmark"
+name = "cognee"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -13,13 +9,9 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "amb",
-    # the extras carry the database drivers: neo4j for the graph store,
-    # asyncpg/pgvector/psycopg2 for Postgres. `postgres-binary` ships the
-    # psycopg2 wheel, so the image needs no build toolchain.
     "cognee[neo4j,postgres-binary]>=1.5,<1.6",
 ]
 
-# every integration ships its module as `src` — SDKs own the pretty names
 [project.entry-points."amb.systems"]
 cognee = "src.benchmark:CogneeBenchmark"
 
