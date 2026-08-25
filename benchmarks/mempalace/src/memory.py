@@ -71,12 +71,13 @@ from amb.base import Memory
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
-# MemPalace's own default embedder: all-MiniLM-L6-v2, 384-dim, local ONNX.
-# "embeddinggemma" is the other bundled option. Anything else is taken as
-# a model id for MemPalace's `openai-compat` backend, which is how this
-# runs on text-embedding-3-small like the rest of the comparison — see
-# `_configure_env`.
-DEFAULT_EMBEDDING_MODEL = "minilm"
+# Matched to the rest of the comparison rather than left on MemPalace's
+# own default. Its bundled embedders are local ONNX ("minilm",
+# all-MiniLM-L6-v2 384-dim, and "embeddinggemma"); anything else is taken
+# as a model id for its `openai-compat` backend — see `_configure_env`.
+# `--param embedding_model=minilm` restores the local, zero-spend
+# configuration, which is the one whose reported zero tokens is true.
+DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 # the embedders MemPalace runs on-device; everything else goes over HTTP
 LOCAL_EMBEDDERS = ("minilm", "embeddinggemma")
 DEFAULT_EMBEDDING_API_URL = "https://api.openai.com/v1"
