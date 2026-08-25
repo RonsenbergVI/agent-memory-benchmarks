@@ -55,6 +55,8 @@ INGEST_PASSAGES = "passages"
 # which is the only mode where a letta run exercises its own model
 INGEST_AGENT = "agent"
 DEFAULT_INGEST = INGEST_PASSAGES
+# the archival write verb, attached to the agent under `ingest=agent`
+ARCHIVAL_INSERT_TOOL = "archival_memory_insert"
 
 
 class LettaMemory(Memory):
@@ -160,11 +162,18 @@ class LettaMemory(Memory):
 
     def _agent_id(self, conversation_id: str) -> str:
         if conversation_id not in self._agents:
+            # `ingest=agent` needs the archival write verb actually
+            # attached. Without it the agent still tries to remember what
+            # it is told, but reaches for `memory_insert` — a core-memory
+            # block edit — and the archive this benchmark reads stays
+            # empty, so the run stores nothing while looking healthy.
+            tools = [ARCHIVAL_INSERT_TOOL] if self.ingest == INGEST_AGENT else None
             agent = self.client.agents.create(
                 name=f"amb-{conversation_id}",
                 memory_blocks=[],
                 model=self.model,
                 embedding=self.embedding_model,
+                **({"tools": tools} if tools else {}),
             )
             self._agents[conversation_id] = agent.id
         return self._agents[conversation_id]
