@@ -39,6 +39,20 @@ services:
       HINDSIGHT_API_DATABASE_URL: postgresql://hindsight:hindsight@db:5432/hindsight
       HINDSIGHT_API_VECTOR_EXTENSION: pgvector
       HINDSIGHT_API_TEXT_SEARCH_EXTENSION: pg_search
+      # Embeddings: OpenAI rather than the server's local default, so the
+      # embedder matches the rest of the comparison. The key is NOT set
+      # here — the provider falls back to HINDSIGHT_API_LLM_API_KEY,
+      # which the entrypoint already maps across from OPENAI_API_KEY.
+      #
+      # The dimension is deliberately not set: it is looked up from the
+      # model (1536 for text-embedding-3-small) and pushed into the
+      # pgvector column at startup. Changing it against a store that
+      # already holds embeddings is a hard error, so a switch of embedder
+      # needs `docker compose -p <name> down -v` first. 1536 is inside
+      # pgvector's 2000-dim HNSW ceiling; text-embedding-3-large (3072)
+      # would not be.
+      HINDSIGHT_API_EMBEDDINGS_PROVIDER: openai
+      HINDSIGHT_API_EMBEDDINGS_OPENAI_MODEL: text-embedding-3-small
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8888/health || exit 1"]
       interval: 5s
@@ -62,6 +76,7 @@ services:
       # recorded in the run's identity: the models are the server's, and
       # two differently-configured servers are different experiments
       - HINDSIGHT_API_LLM_MODEL=gpt-5-mini
+      - HINDSIGHT_API_EMBEDDING_MODEL=text-embedding-3-small
       - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
     command: run --system hindsight --dataset locomo
