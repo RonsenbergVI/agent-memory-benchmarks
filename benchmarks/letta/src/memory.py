@@ -208,22 +208,32 @@ class LettaMemory(Memory):
         under-reports its own cost.
         """
         agent_id = self._agent_id(conversation_id)
-        before = self._passage_ids(agent_id)
+        before = set(self._passages(agent_id))
         for turn in session.turns:
             self.client.agents.messages.create(
                 agent_id=agent_id,
                 messages=[{"role": "user", "content": f"{turn.speaker}: {turn.text}"}],
             )
-        for passage_id in self._passage_ids(agent_id) - before:
+        for passage_id, text in self._passages(agent_id).items():
+            if passage_id in before:
+                continue
             # session only: the agent wrote its own wording, so there is
             # no turn to attribute and no text to match one against
             self._provenance[passage_id] = ([], session.session_id)
+            # the passage the agent wrote is what letta embedded, so this
+            # is the same exact arithmetic the write path uses — it is
+            # just discovered after the insert rather than before it
+            self._count_embedding(text)
 
-    def _passage_ids(self, agent_id: str) -> set[str]:
-        """Every passage id the agent's archive currently holds."""
+    def _passages(self, agent_id: str) -> dict[str, str]:
+        """The agent's archive right now, as passage id -> text."""
         response = self.client.agents.passages.list(agent_id=agent_id)
         passages = getattr(response, "results", response) or []
-        return {str(p.id) for p in passages if getattr(p, "id", None)}
+        return {
+            str(p.id): getattr(p, "text", "") or ""
+            for p in passages
+            if getattr(p, "id", None)
+        }
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return the k best archival passages by semantic search.
