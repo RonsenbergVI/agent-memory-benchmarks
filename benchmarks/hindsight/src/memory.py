@@ -98,9 +98,15 @@ class HindsightMemory(Memory):
         self.budget = budget
         self.max_source_facts_tokens = int(max_source_facts_tokens)
         self.timeout = float(timeout)
-        # the extraction model is the server's, read back in `models()`
-        self.model: str | None = None
-        self.embedding_model: str | None = None
+        # Read here rather than in `setup()`: the Runner builds a probe
+        # instance and asks it for `models()` and `version()` *without*
+        # calling setup(), so anything populated there is None in the
+        # run's identity — which is how a run recorded no ingestion model
+        # at all, leaving two differently-configured servers
+        # indistinguishable. The models are the server's configuration;
+        # compose sets these alongside the ones it gives the server.
+        self.model = os.environ.get("HINDSIGHT_API_LLM_MODEL")
+        self.embedding_model = os.environ.get("HINDSIGHT_API_EMBEDDING_MODEL")
         # document id -> session id. `retain` takes the document id, so
         # this is chosen rather than discovered, and a hit names it back.
         self._documents: dict[str, str] = {}
@@ -112,9 +118,26 @@ class HindsightMemory(Memory):
         return {"ingestion_model": self.model, "embedding_model": self.embedding_model}
 
     def version(self) -> str | None:
-        """The server's version — the server is the system under test."""
+        """The server's version — the server is the system under test.
+
+        Builds its own client when there is none: the Runner asks a probe
+        instance for this before `setup()` has run, and falling back to
+        the installed client SDK's version there records the *client*
+        line as the system under test. The two drift — the client can be
+        0.9.1 against a 0.9.2 server — and `system_version` is part of
+        the run's identity.
+        """
+        client = getattr(self, "client", None)
         try:
-            version = self.client.get_version()
+            if client is None:
+                from hindsight_client import Hindsight
+
+                with Hindsight(
+                    base_url=self.base_url, api_key=self._api_key, timeout=self.timeout
+                ) as probe:
+                    version = probe.get_version()
+            else:
+                version = client.get_version()
         except Exception:  # noqa: BLE001 - fall back to the client SDK's dist
             return super().version()
         for attr in ("version", "api_version", "server_version"):
@@ -128,24 +151,12 @@ class HindsightMemory(Memory):
         return f"conv-{conversation_id}"
 
     def setup(self) -> None:
-        """Connect to the Hindsight server and read back its model config."""
+        """Connect to the Hindsight server."""
         from hindsight_client import Hindsight
 
         self.client = Hindsight(
             base_url=self.base_url, api_key=self._api_key, timeout=self.timeout
         )
-        self._read_server_models()
-
-    def _read_server_models(self) -> None:
-        """Record the models the server is configured with, not ours.
-
-        Hindsight extracts inside its own process, so the models are the
-        server's configuration. Reading them back keeps them in the run's
-        identity — two runs against differently-configured servers are
-        different experiments, and would otherwise look identical.
-        """
-        self.model = os.environ.get("HINDSIGHT_API_LLM_MODEL")
-        self.embedding_model = os.environ.get("HINDSIGHT_API_EMBEDDING_MODEL")
 
     def _ensure_bank(self, conversation_id: str) -> str:
         """Create this conversation's bank if the server does not have it yet."""
