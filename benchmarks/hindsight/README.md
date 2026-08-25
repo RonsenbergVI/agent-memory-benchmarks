@@ -10,9 +10,13 @@ The project's published container images stop at **0.6.2** while the source and 
 
 `server.Dockerfile` therefore pip-installs `hindsight-api` at a pinned version (0.9.2) on `python:3.13-slim`, and the stack runs ParadeDB (pgvector + pg_search) as the project intends. `system_version` records what ran, so a later bump lands as a new row rather than displacing this one.
 
-## Cost is not measured for this system
+## Cost is partly measured — the column carries a `*`
 
-Hindsight extracts inside its own server, calling the provider that server is configured with (`HINDSIGHT_API_LLM_PROVIDER` / `_MODEL` / `_API_KEY`, set by compose to `openai` / `gpt-5-mini`). None of that traffic goes through this harness, so `memory_tokens_total: 0` means **unmeasured**, not free — the same shape letta has, and not comparable with a system whose zero is measured.
+Hindsight extracts inside its own server, so no tracker here can observe the traffic. It does report what the extraction cost, though: `retain` returns a `usage` block (`input_tokens`, `output_tokens`, `total_tokens`, `cached_tokens`, `thoughts_tokens`), and the adapter books it, so the expensive half is **billed rather than estimated**.
+
+`recall` has no equivalent field. Its query embedding and its reranker are not counted anywhere, so a run's cost is real but short of the truth — which is why the system declares `usage_coverage = "partial"` and its number is starred in the comparison table.
+
+`thoughts_tokens` are already inside `output_tokens` and are deliberately not added again.
 
 ## Recall is budgeted in tokens, not in hits
 

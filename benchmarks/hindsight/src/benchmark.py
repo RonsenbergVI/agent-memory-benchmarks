@@ -25,6 +25,7 @@
 from typing import ClassVar
 
 from amb.base import Benchmark
+from amb.callbacks import TiktokenUsageTracker
 from src.memory import HindsightMemory
 from src.toolset import HindsightIngestToolset, HindsightSearchToolset
 
@@ -42,5 +43,6 @@ class HindsightBenchmark(Benchmark):
 
     name: ClassVar[str] = "hindsight"
     system_class = HindsightMemory
+    callback_classes = (TiktokenUsageTracker,)
     search_toolset_class = HindsightSearchToolset
     ingest_toolset_class = HindsightIngestToolset

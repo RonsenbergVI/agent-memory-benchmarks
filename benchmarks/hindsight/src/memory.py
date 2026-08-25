@@ -54,6 +54,7 @@ import os
 from typing import Any, ClassVar
 
 from amb.base import Memory
+from amb.constants import TOKEN_TRACKING_KEYS
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
@@ -76,6 +77,10 @@ class HindsightMemory(Memory):
     name: ClassVar[str] = "hindsight"
     description: ClassVar[str] = "Hindsight — agent memory that learns"
     sdk_dist: ClassVar[str | None] = "hindsight-client"
+    # `retain` reports the extraction spend, which is the expensive half,
+    # but `recall` reports nothing — its query embedding and rerank stay
+    # inside the server. Real numbers, short of the truth.
+    usage_coverage: ClassVar[str] = "partial"
 
     def __init__(
         self,
@@ -112,6 +117,33 @@ class HindsightMemory(Memory):
         self._documents: dict[str, str] = {}
         self._conversation_id: str | None = None
         self._retained = 0
+        # what the server reports about its own spend, read by
+        # TiktokenUsageTracker at each lifecycle boundary
+        self._usage: dict[str, int] = dict.fromkeys(TOKEN_TRACKING_KEYS, 0)
+
+    def usage_counters(self) -> dict:
+        """The spend hindsight reported for this instance so far (copy)."""
+        return dict(self._usage)
+
+    def _count_reported_usage(self, response: object) -> None:
+        """Book what the server said one retain cost.
+
+        Hindsight extracts inside its own process, so nothing here can
+        observe the traffic — but it reports the extraction's usage on
+        the response, which makes that half billed rather than guessed.
+        `thoughts_tokens` are already inside `output_tokens`, so they are
+        deliberately not added again.
+
+        `recall` has no equivalent field, so search-time spend — the
+        query embedding and the reranker — is not counted anywhere. That
+        is why this system declares `partial` rather than `full`.
+        """
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        self._usage["llm_calls"] += 1
+        self._usage["llm_input_tokens"] += getattr(usage, "input_tokens", 0) or 0
+        self._usage["llm_output_tokens"] += getattr(usage, "output_tokens", 0) or 0
 
     def models(self) -> dict[str, str | None]:
         """The models Hindsight extracts and embeds with, as the server has them."""
@@ -188,12 +220,13 @@ class HindsightMemory(Memory):
         """
         bank_id = self._ensure_bank(conversation_id)
         document_id = f"{conversation_id}:{session_id}:{len(self._documents)}"
-        self.client.retain(
+        response = self.client.retain(
             bank_id=bank_id,
             content=content,
             document_id=document_id,
             metadata={"conversation_id": conversation_id, "session_id": session_id},
         )
+        self._count_reported_usage(response)
         self._documents[document_id] = session_id
         self._retained += 1
         return document_id
