@@ -217,8 +217,18 @@ class CogneeMemory(Memory):
         return dict(self._usage)
 
     def models(self) -> dict[str, str | None]:
-        """The models cognee calls internally; recorded in every run."""
-        return {"ingestion": self.model, "embedding": self.embedding_model}
+        """The models cognee calls internally; recorded in every run.
+
+        The keys are the contract's (`ingestion_model` / `embedding_model`)
+        — the Runner reads them by those exact names. Returning
+        "ingestion"/"embedding" silently dropped both from every run's
+        identity, so runs against different extraction models were
+        indistinguishable in the results.
+        """
+        return {
+            "ingestion_model": self.model,
+            "embedding_model": self.embedding_model,
+        }
 
     @staticmethod
     def _configure_env() -> None:

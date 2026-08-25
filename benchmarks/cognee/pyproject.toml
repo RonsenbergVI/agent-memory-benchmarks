@@ -1,5 +1,10 @@
 [project]
-name = "cognee"
+# not `cognee`: that is the SDK's own distribution name, and a workspace
+# member of the same name resolves against itself — `uv lock` fails with
+# "cognee depends on itself at an incompatible version". The Dockerfile
+# (`uv sync --package cognee-benchmark`), the release-please extra-files
+# jsonpath and uv.lock all key off this name.
+name = "cognee-benchmark"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
