@@ -128,6 +128,7 @@ Pre-alpha. Methodology is being defined and the test harness is in development. 
 | Letta | [letta-ai/letta](https://github.com/letta-ai/letta) | Apache-2.0 | Hierarchical (OS-style) | [RESULTS.md](RESULTS.md) |
 | Graphiti | [getzep/graphiti](https://github.com/getzep/graphiti) | Apache-2.0 | Temporal knowledge graph | [RESULTS.md](RESULTS.md) |
 | Fraise | [RonsenbergVI/fraise](https://github.com/RonsenbergVI/fraise) | MIT | Temporal knowledge graph + vector / text hybrid search | [RESULTS.md](RESULTS.md) |
+| cognee | [topoteretes/cognee](https://github.com/topoteretes/cognee) | Apache-2.0 | Embedded knowledge graph | [RESULTS.md](RESULTS.md) |
 
 ### Candidates
 
@@ -142,7 +143,6 @@ Each candidate is vetted against the [inclusion criteria](#inclusion-criteria) i
 | LangMem | [langchain-ai/langmem](https://github.com/langchain-ai/langmem) | [#76](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/76) |
 | MemOS | [MemTensor/MemOS](https://github.com/MemTensor/MemOS) | [#77](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/77) |
 | Memobase | [memodb-io/memobase](https://github.com/memodb-io/memobase) | [#78](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/78) |
-| cognee | [topoteretes/cognee](https://github.com/topoteretes/cognee) | [#79](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/79) |
 | memary | [kingjulio8238/Memary](https://github.com/kingjulio8238/Memary) | [#80](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/80) |
 | supermemory | [supermemoryai/supermemory](https://github.com/supermemoryai/supermemory) | [#81](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/81) |
 | MemPalace | [MemPalace/mempalace](https://github.com/MemPalace/mempalace) | [#82](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/82) |
