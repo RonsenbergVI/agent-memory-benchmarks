@@ -128,6 +128,8 @@ class RunReport(Report):
             summary["ingestion_model"] = self.run.ingestion_model
         if self.run.embedding_model:
             summary["embedding_model"] = self.run.embedding_model
+        if not self.run.tracks_usage:
+            summary["tracks_usage"] = False
         if self.run.system_params:
             summary["system_params"] = self.run.system_params
         if self.run.max_turns is not None:
@@ -147,7 +149,11 @@ class RunReport(Report):
         # headline cost: one top-level float so it shows up as a comparison
         # column whenever a usage-tracking callback reported spend
         section = summary.get("memory_tokens")
-        if isinstance(section, dict):
+        # A system whose spend no tracker here can see would report 0,
+        # which reads as "free" beside a system that genuinely spends
+        # nothing. The column is left out entirely for those instead, so
+        # the table shows it as absent rather than as a cheap result.
+        if isinstance(section, dict) and self.run.tracks_usage:
             ingested: dict = section.get("ingest", {})
             summary["memory_tokens_total"] = float(
                 sum(v for k, v in ingested.items() if k.endswith("_tokens"))
@@ -256,6 +262,7 @@ class RunReport(Report):
                 judge_model=summary.get("judge_model"),
                 ingestion_model=summary.get("ingestion_model"),
                 embedding_model=summary.get("embedding_model"),
+                tracks_usage=summary.get("tracks_usage", True),
                 system_params=summary.get("system_params") or {},
                 max_turns=summary.get("max_turns"),
                 sample_seed=summary.get("sample_seed"),
@@ -427,14 +434,25 @@ class ComparisonReport(Report):
                 str(s.get("system_version") or ""),
                 run_date(s.get("run_id")),
             ]
-            cells += [
-                fmt.format(s[key]) if key in s else ""
-                for key, _, fmt in SUMMARY_COLUMNS
-            ]
+            cells += [self._cell(s, key, fmt) for key, _, fmt in SUMMARY_COLUMNS]
             latency = s.get("search_latency", {})
             cells += [f"{latency.get('p50_s', 0):.4f}" if latency else ""]
             rows.append(cells)
         return header, rows
+
+    @staticmethod
+    def _cell(summary: dict, key: str, fmt: str) -> str:
+        """One comparison cell, distinguishing "not measurable" from blank.
+
+        A system whose spend no tracker here can see never writes
+        `memory_tokens_total`, and an empty cell would read as a missing
+        datum rather than as a property of the system. "n/a" says which.
+        """
+        if key in summary:
+            return fmt.format(summary[key])
+        if key == "memory_tokens_total" and not summary.get("tracks_usage", True):
+            return "n/a"
+        return ""
 
     def to_summary_markdown(
         self, k: int = 10, dataset: str | None = None, variant: str | None = None
