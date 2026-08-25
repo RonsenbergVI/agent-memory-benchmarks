@@ -72,8 +72,14 @@ from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
 # MemPalace's own default embedder: all-MiniLM-L6-v2, 384-dim, local ONNX.
-# "embeddinggemma" is the other bundled option (--param embedding_model=...).
+# "embeddinggemma" is the other bundled option. Anything else is taken as
+# a model id for MemPalace's `openai-compat` backend, which is how this
+# runs on text-embedding-3-small like the rest of the comparison — see
+# `_configure_env`.
 DEFAULT_EMBEDDING_MODEL = "minilm"
+# the embedders MemPalace runs on-device; everything else goes over HTTP
+LOCAL_EMBEDDERS = ("minilm", "embeddinggemma")
+DEFAULT_EMBEDDING_API_URL = "https://api.openai.com/v1"
 # MemPalace's own default: the re-rank pool is the top n*3 vector hits.
 # "union" also pulls lexical candidates into that pool — documented as
 # opt-in until its cost is characterised, so it stays one --param away.
@@ -215,8 +221,24 @@ class MemPalaceMemory(Memory):
         Its config is read through cached singletons, and chromadb builds
         its telemetry client at import, so both have to be in place first.
         """
-        if self.embedding_model:
+        if self.embedding_model in LOCAL_EMBEDDERS:
             os.environ.setdefault("MEMPALACE_EMBEDDING_MODEL", self.embedding_model)
+        elif self.embedding_model:
+            # MemPalace reaches an OpenAI-compatible /v1/embeddings endpoint
+            # under the reserved model name "openai-compat", taking the real
+            # model id from its own env var. It fetches over stdlib urllib,
+            # NOT the openai SDK, so this spend is invisible to
+            # OpenAIUsageTracker: a run configured this way reports zero
+            # tokens and that zero is false. Only the local embedders make
+            # mempalace's zero a true one.
+            os.environ.setdefault("MEMPALACE_EMBEDDING_MODEL", "openai-compat")
+            os.environ.setdefault("MEMPALACE_EMBEDDING_API_MODEL", self.embedding_model)
+            os.environ.setdefault(
+                "MEMPALACE_EMBEDDING_API_URL",
+                os.environ.get("OPENAI_BASE_URL", DEFAULT_EMBEDDING_API_URL),
+            )
+            if key := os.environ.get("OPENAI_API_KEY"):
+                os.environ.setdefault("MEMPALACE_EMBEDDING_API_KEY", key)
         # chromadb ships posthog telemetry on by default; a benchmark run
         # has no business phoning home about the corpus it is measuring
         os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
@@ -459,4 +481,5 @@ class MemPalaceMemory(Memory):
             stats["drawers"] = count
         if self.embedding_model:
             stats["embedding_model"] = self.embedding_model
+            stats["embedder_is_local"] = self.embedding_model in LOCAL_EMBEDDERS
         return stats
