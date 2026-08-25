@@ -1,0 +1,35 @@
+[project]
+# not `everos`: that is the SDK's own distribution name, and a workspace
+# member of the same name would shadow the dependency below
+name = "everos-benchmark"
+version = "0.0.0"
+description = "EverOS benchmark."
+readme = "README.md"
+authors = [
+    { name = "René-Jean Corneille", email = "corneille.r.j@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "amb",
+    "everos>=1.2,<2",
+    # everos pins everalgo-agent-memory==0.4.0, which declares
+    # `everalgo-boundary<2.0.0,>=0.2.0` — a range loose enough to admit
+    # 0.3.0, where DetectionResult gained a required `should_wait` and
+    # agent-memory 0.4.0's call site stops constructing it. It fails at
+    # the first memorize(), not at install, so pin the working pair.
+    "everalgo-boundary>=0.2,<0.3",
+]
+
+# every integration ships its module as `src` — SDKs own the pretty names
+[project.entry-points."amb.systems"]
+everos = "src.benchmark:EverOSBenchmark"
+
+[tool.uv.sources]
+amb = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

@@ -6,6 +6,11 @@ area:benchmarks:
       - any-glob-to-any-file:
           - benchmarks/**
 
+memory:everos:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/everos/**
+
 memory:fraise:
   - changed-files:
       - any-glob-to-any-file:
