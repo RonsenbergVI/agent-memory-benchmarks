@@ -1,0 +1,119 @@
+name: Codex Review
+
+on:
+  pull_request:
+    types: [opened]
+
+# a reopened or re-run review supersedes the previous one
+concurrency:
+  group: review-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Review PR
+    runs-on: ubuntu-latest
+    # forks don't get secrets, and not AI review on bot PRs
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' &&
+      !startsWith(github.event.pull_request.head.ref, 'release-please')
+    permissions:
+      contents: read
+    outputs:
+      review: ${{ steps.codex.outputs.final-message }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          persist-credentials: false
+
+      # https://github.com/openai/codex-action
+      - name: Run Codex
+        id: codex
+        uses: openai/codex-action@86365089eb2b84e0a8fb0717b304f8bdcb13b20e # v1.12
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-5.6-luna
+          effort: high
+          prompt: |
+            You are reviewing a pull request. The PR merge commit is checked
+            out; the base branch is origin/${{ github.base_ref }}. Inspect the
+            changes with `git diff origin/${{ github.base_ref }}...HEAD` and
+            read surrounding code as needed.
+
+            Report only findings that matter: correctness bugs, security
+            issues, broken CI or workflow logic, and misleading names or docs.
+            Skip style nits and praise.
+
+            Return each finding as a review comment: `path` relative to the
+            repo root, `line` a line number added or modified by the diff (the
+            new side), and `body` in GitHub-flavored markdown stating what is
+            wrong and a suggested fix. Findings you cannot anchor to a changed
+            line go in the summary instead. `summary` is one short paragraph
+            on the overall state of the PR; if nothing significant is wrong,
+            say so there and return no comments.
+          output-schema: |
+            {
+              "type": "object",
+              "properties": {
+                "summary": {"type": "string"},
+                "comments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {"type": "string"},
+                      "line": {"type": "integer"},
+                      "body": {"type": "string"}
+                    },
+                    "required": ["path", "line", "body"],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": ["summary", "comments"],
+              "additionalProperties": false
+            }
+
+  # separate job so the write token never coexists with the API key
+  comment:
+    name: Post review
+    runs-on: ubuntu-latest
+    needs: review
+    if: needs.review.outputs.review != ''
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          REVIEW_JSON: ${{ needs.review.outputs.review }}
+        with:
+          script: |
+            const review = JSON.parse(process.env.REVIEW_JSON)
+            const base = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              event: 'COMMENT',
+            }
+            try {
+              await github.rest.pulls.createReview({
+                ...base,
+                body: review.summary,
+                comments: review.comments.map(({ path, line, body }) =>
+                  ({ path, line, side: 'RIGHT', body })),
+              })
+            } catch (e) {
+              // one comment anchored outside the diff 422s the whole
+              // review; repost the findings as plain text instead
+              core.warning(`inline comments rejected: ${e.message}`)
+              const findings = review.comments
+                .map(c => `- \`${c.path}:${c.line}\` — ${c.body}`)
+                .join('\n')
+              await github.rest.pulls.createReview({
+                ...base,
+                body: [review.summary, '', findings].join('\n'),
+              })
+            }
