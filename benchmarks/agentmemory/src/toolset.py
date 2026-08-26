@@ -104,8 +104,7 @@ class AgentMemoryIngestToolset(IngestToolset):
                 as shown in the transcript.
 
         Returns:
-            Whether the observation was recorded.
-        """
+            A status message indicating whether the observation was recorded.
         cited = [t for t in source_turn_ids if t in self.turn_ids()]
         if not cited:
             return "not recorded: none of the cited turn ids exist in this session"
