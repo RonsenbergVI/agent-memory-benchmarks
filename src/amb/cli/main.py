@@ -40,8 +40,7 @@ def cli(log_level: str) -> None:
     logging.configure(log_level)
 
 
-# commands live one per module under `commands/` and are attached here, so a
-# command never imports the group it hangs off
+# attached here so a command never imports the group it hangs off
 for command in COMMANDS:
     cli.add_command(command)
 

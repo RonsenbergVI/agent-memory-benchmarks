@@ -33,10 +33,8 @@ class SearchToolset(FunctionToolset):
     """One conversation's memory, exposed to the answering agent as tools.
 
     Ships no tools of its own — subclasses add them with `add_function` and
-    report every search through `record`. Created fresh per question.
-    Everything the agent retrieves is recorded (`retrieved`, `num_searches`,
-    `search_s`) so the harness can score retrieval and latency even though
-    it no longer performs the searches.
+    report every search through `record`, so the harness can score retrieval
+    it no longer performs. Created fresh per question.
     """
 
     def __init__(
@@ -57,10 +55,8 @@ class SearchToolset(FunctionToolset):
     def observe(self, callbacks: Callbacks, sample: Sample, qa: QAPair) -> None:
         """Bind the run's callbacks, so each search the agent runs is seen.
 
-        The Runner calls this on the toolset an integration built: the
-        agent's searches are the harness's only view of retrieval in
-        agentic mode, and they must report through the same hooks as the
-        searches it drives itself.
+        In agentic mode the agent's searches are the harness's only view of
+        retrieval, so they report through the same hooks as harness-driven ones.
         """
         self.callbacks = callbacks
         self.sample = sample
@@ -69,8 +65,7 @@ class SearchToolset(FunctionToolset):
     def record(self, hits: list[MemoryHit], seconds: float) -> list[dict]:
         """Book one search's results and render them as a tool result.
 
-        Provenance ids stay out of the tool result: they are the ground-truth
-        labels retrieval is scored against.
+        Provenance ids stay out of the result — they are retrieval's scoring labels.
         """
         self.search_s += seconds
         self.num_searches += 1
@@ -84,9 +79,8 @@ class SearchToolset(FunctionToolset):
 class MemoryToolset(SearchToolset):
     """The generic search surface: one `search_memory` tool.
 
-    A BM25-style store has exactly one meaningful verb, so this doubles as
-    the naive baseline's own toolset; any system without a richer surface
-    can reuse it.
+    Doubles as the naive baseline's toolset; any system without a richer
+    surface can reuse it.
     """
 
     def __init__(
@@ -114,13 +108,10 @@ class IngestToolset(FunctionToolset):
     write tools with `add_function`, and report every write through
     `record_write`. Created fresh per session.
 
-    The tools must look like real-time usage. An agent storing memories live
-    knows nothing about conversation or session ids, so those never appear
-    in a tool signature — the toolset is bound to the session being ingested
-    and implementations attribute that provenance themselves (memory is
-    conversation-bound, so how an adapter scopes and tags what it stores is
-    its own business). Turn markers are the one citation handle tools may
-    ask for: the turns are in a live agent's context.
+    Tools must look like real-time usage: conversation and session ids never
+    appear in a tool signature — the toolset is bound to the session, and
+    adapters attribute provenance themselves. Turn markers are the one
+    citation handle tools may ask for.
     """
 
     def __init__(

@@ -22,29 +22,21 @@
 
 """Fraise (RonsenbergVI/fraise) — hybrid full-text + graph memory database.
 
-Workspace package ``fraise-benchmark`` (this directory).
-Needs a running fraise server (see benchmarks/fraise/docker-compose.yaml);
-FRAISE_BASE_URL names it, defaulting to localhost. The fraise SDK has no
-extractor of its own, so direct-mode ingestion runs one here: an extraction
-step (gpt-5-mini by default, the same model every other system in the
-comparison ingests with) distills each session into standalone facts stored
-with their entities, and the SDK's OpenAIEmbedder (text-embedding-3-small
-by default) encodes every fact and query in-process through the openai SDK,
-so the token spend is visible to the OpenAIUsageTracker. In agentic mode
-the driving agent is the extractor (through the write toolset), and the
-ingestion model here plays no part.
+Needs a running fraise server (docker-compose.yaml here), named by
+FRAISE_BASE_URL. The SDK has no extractor, so direct-mode ingestion runs
+one in the adapter: gpt-5-mini (the same ingestion model as every other
+system) distills each session into facts, and the SDK's OpenAIEmbedder
+(text-embedding-3-small) encodes facts and queries in-process, so token
+spend is visible to the OpenAIUsageTracker. In agentic mode the driving
+agent is the extractor. ``--param model=none`` restores raw per-turn
+ingestion; ``--param embedding_model=none`` drops the embedder; both give
+fraise's stock hybrid retrieval with no LLM or embedding calls.
 
-``--param model=none`` restores the raw one-fact-per-turn ingestion;
-``--param embedding_model=none`` drops the embedder — with both unset,
-fraise runs its out-of-the-box hybrid retrieval (full-text + graph walk)
-with no LLM or embedding calls at all.
-
-Each conversation is isolated by a `conv-<id>` topic anchor — the FQL
-grammar makes every anchor a hard filter, so recall never crosses
-conversations. A local value -> (turns, session) map restores provenance
-on recall, since hits return only value/score/timestamp. The alpha SDK has
-no delete, so teardown is a no-op — the compose stack runs the server
-without a volume and each `up` starts empty.
+A `conv-<id>` topic anchor isolates each conversation (FQL anchors are
+hard filters); a local value -> (turns, session) map restores provenance,
+since hits return only value/score/timestamp. The alpha SDK has no
+delete, so teardown is a no-op — the server runs without a volume and
+each `up` starts empty.
 """
 
 import json
@@ -60,19 +52,15 @@ if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
     from openai.types.chat.completion_create_params import ResponseFormat
 
-# gpt-5-mini is a reasoning model: its hidden reasoning tokens draw from the
-# same completion budget as the visible JSON, and reasoning length is not
-# deterministic call to call. Without a cap, an unlucky combination of a
-# long reasoning pass and a fact-dense session truncates the response
-# mid-string — observed in practice (json.JSONDecodeError on an otherwise
-# identical, previously-successful session). This cap gives generous
-# headroom over what a single session's extraction has needed so far
-# (~2.7k total tokens, ~2k of it reasoning, on the sessions measured).
+# gpt-5-mini's hidden reasoning tokens share the completion budget and vary
+# call to call; uncapped, a long reasoning pass truncated the JSON mid-string
+# (observed json.JSONDecodeError). Sessions measured ran ~2.7k total tokens
+# (~2k reasoning), so 16k is generous headroom.
 EXTRACTION_MAX_COMPLETION_TOKENS = 16000
 
 DEFAULT_INGESTION_MODEL = "gpt-5-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
-# every recall walks the graph two hops from a match by default
+# graph-walk hops from a match on recall
 DEFAULT_RECALL_DEPTH = 2
 
 EXTRACTION_SYSTEM_PROMPT = """\
@@ -85,7 +73,6 @@ from exactly as shown in the transcript, but never write those markers into
 the fact itself. Name the people, places, and things each fact mentions in
 its entities."""
 
-# strict structured-output schema for one session's extracted memories
 _MEMORIES_SCHEMA = {
     "type": "object",
     "properties": {
@@ -136,12 +123,9 @@ class FraiseMemory(Memory):
         self.embedding_dimensions = (
             int(embedding_dimensions) if embedding_dimensions else None
         )
-        # graph-walk depth on recall, 2 by default (--param depth=N);
-        # an explicit --param depth=none restores the server's own default,
-        # same idiom as the model params above
+        # --param depth=none restores the server's own default
         self.depth = int(depth) if depth else None
-        # (conversation, stored value) -> (turn_ids, session_id): hits return
-        # only the value, so provenance is restored from what we stored
+        # hits return only the value; this map restores turn/session provenance
         self._provenance: dict[tuple[str, str], tuple[list[str], str]] = {}
 
     def version(self) -> str | None:
@@ -179,9 +163,8 @@ class FraiseMemory(Memory):
     def _tokens(values: list[str] | None) -> list[str]:
         """Free-form topics/entities as FQL tokens.
 
-        The grammar splits on whitespace, so a multi-word entity ("New
-        York", extracted or agent-supplied) must become one hyphenated
-        token to survive as a single filter.
+        The grammar splits on whitespace, so multi-word values are
+        hyphenated to survive as a single filter.
         """
         tokens = (re.sub(r"[^A-Za-z0-9]+", "-", v).strip("-") for v in values or [])
         return [t for t in tokens if t]
@@ -198,14 +181,10 @@ class FraiseMemory(Memory):
     ) -> None:
         """Remember one value with the forced conversation/session anchors.
 
-        The anchors keep every conversation's recall isolated; extra topics
-        and entities (agentic mode: the agent's choice) ride along. `turn_ids`
-        feed the local provenance map, which search uses to restore what a
-        hit attests.
+        `turn_ids` feed the local provenance map that search reads back.
         """
-        # FQL phrases have no escape for an apostrophe, so swap it for
-        # the typographic one; the value round-trips identically, which
-        # the provenance map relies on
+        # FQL phrases have no apostrophe escape; the typographic swap
+        # round-trips identically, which the provenance map relies on
         value = content.replace("'", "’")
         remember_topics = [
             f"conv-{conversation_id}",
@@ -219,10 +198,7 @@ class FraiseMemory(Memory):
             )
         except Exception:
             # a 400 here has been a live FQL-grammar edge case (e.g. "found
-            # top" on content our token-only client validation doesn't
-            # catch) — log the exact payload so the offending value/topic/
-            # entity is diagnosable instead of just the server's column
-            # offset into a query string we never see
+            # top"); log the exact payload so the offending input is diagnosable
             logger.bind(scope="fraise").error(
                 "remember failed: value={!r} topics={!r} entities={!r}",
                 value,
@@ -235,11 +211,8 @@ class FraiseMemory(Memory):
     def ingest_session(self, conversation_id: str, session: Session) -> None:
         """Store the session: extracted facts by default, raw turns without a model.
 
-        With an ingestion model, one LLM call distills the session into
-        standalone facts — the fraise SDK has no extractor, so the adapter
-        supplies the step every other system runs inside its SDK or server.
-        The cited turn markers become each fact's provenance; entities feed
-        the server's graph walk.
+        The extractor's cited turn markers become each fact's provenance;
+        entities feed the server's graph walk.
         """
         if not session.turns:
             return
@@ -269,10 +242,9 @@ class FraiseMemory(Memory):
     def _extract_memories(self, conversation_id: str, session: Session) -> list[dict]:
         """One extraction call: the session's transcript in, its facts out.
 
-        A truncated/malformed response (see `EXTRACTION_MAX_COMPLETION_TOKENS`)
-        is logged and treated as no facts rather than raised — matching mem0's
-        own extractor, which hits the same class of malformed response from
-        the same family of models and skips it rather than failing the run.
+        A truncated/malformed response is logged and treated as no facts —
+        matching mem0's extractor, which skips the same failure rather than
+        failing the run.
         """
         timestamp = f" of {session.timestamp}" if session.timestamp else ""
         transcript = f"Conversation{timestamp}\n" + "\n".join(
@@ -282,8 +254,7 @@ class FraiseMemory(Memory):
             {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
             {"role": "user", "content": transcript},
         ]
-        # the literal is a valid ResponseFormatJSONSchema; the cast bridges
-        # the nested-schema dict the checker cannot narrow into the TypedDict
+        # the cast bridges the nested-schema dict the checker cannot narrow
         response_format = cast(
             "ResponseFormat",
             {
@@ -295,8 +266,7 @@ class FraiseMemory(Memory):
                 },
             },
         )
-        # setup() builds self._openai only when a model is set, so the
-        # extraction path implies one
+        # setup() builds self._openai only when a model is set
         assert self.model is not None
         response = self._openai.chat.completions.create(
             model=self.model,
@@ -305,8 +275,7 @@ class FraiseMemory(Memory):
             response_format=response_format,
         )
         choice = response.choices[0]
-        # a refusal or empty completion has content=None — the same class of
-        # malformed response as unparseable JSON, so it takes the same exit
+        # refusal/empty completion has content=None — same exit as bad JSON
         if choice.message.content is not None:
             try:
                 return json.loads(choice.message.content)["memories"]
@@ -332,13 +301,10 @@ class FraiseMemory(Memory):
     ) -> list[MemoryHit]:
         """Recall inside the conversation, with provenance restored.
 
-        `query` travels as one quoted phrase term — literal inside its
-        quotes, so it can never collide with the grammar's reserved words —
-        and doubles as the embed text when an embedder is configured. No
-        bare keyword terms are ever sent. `self.depth` bounds how many
-        graph hops a match may walk to pull in related facts — 2 by
-        default, `--param depth=N` to change it, `--param depth=none` for
-        the server's own default.
+        `query` travels as one quoted phrase term, never bare keywords —
+        literal inside its quotes, so it cannot collide with the grammar's
+        reserved words — and doubles as the embed text. `self.depth` bounds
+        the graph hops a match may walk.
         """
         recall_topics = [f"conv-{conversation_id}", *(topics or [])]
         try:
@@ -350,9 +316,7 @@ class FraiseMemory(Memory):
                 depth=self.depth,
             )
         except Exception:
-            # same diagnostic idiom as store(): log the exact inputs so a
-            # rejected query is diagnosable from the benchmark log alone,
-            # which outlives the server container and its logs
+            # log the exact inputs — the benchmark log outlives the server
             logger.bind(scope="fraise").error(
                 "recall failed: query={!r} topics={!r} entities={!r}",
                 query,
@@ -376,12 +340,7 @@ class FraiseMemory(Memory):
         return hits
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
-        """Return the k best facts for the query, inside the conversation.
-
-        The question goes over as the quoted phrase term only — never
-        tokenized into bare keywords, where grammar words like "topic",
-        "since" or "remember" would break the server's parse.
-        """
+        """Return the k best facts for the query, inside the conversation."""
         if not query.strip():
             return []
         return self.recall_hits(conversation_id, query=query, k=k)

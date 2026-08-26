@@ -22,19 +22,12 @@
 
 """Graphiti (getzep/graphiti) — temporal knowledge graph memory on Neo4j.
 
-Workspace package ``graphiti-benchmark`` (this directory).
-Needs a running Neo4j (see benchmarks/graphiti/docker-compose.yaml) and
-OPENAI_API_KEY for entity extraction/embeddings. Each conversation is
-isolated in its own graphiti group_id.
-
-The models graphiti ingests with default to gpt-5-mini /
-text-embedding-3-small, pinned so every system in the comparison ingests
-with the same models. Override with ``--param model=...`` /
-``--param embedding_model=...``; an explicit ``--param model=none`` (or
-``embedding_model=none``) falls back to graphiti-core's own default.
-The LLM client runs with a raised completion ceiling (``LLM_MAX_TOKENS``)
-so gpt-5-mini's reasoning bursts cannot truncate structured output
-mid-JSON, and teardown closes every async client before its event loop.
+Needs a running Neo4j (docker-compose.yaml here) and OPENAI_API_KEY.
+Each conversation is isolated in its own graphiti group_id. Ingestion
+models are pinned to gpt-5-mini / text-embedding-3-small so every system
+in the comparison ingests with the same models; override with
+``--param model=...`` / ``--param embedding_model=...``, or ``none`` to
+fall back to graphiti-core's own default.
 """
 
 import asyncio
@@ -49,14 +42,11 @@ from amb.contracts import MemoryHit, Session
 DEFAULT_INGESTION_MODEL = "gpt-5-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 
-# gpt-5-mini is a reasoning model: its hidden reasoning tokens share the
-# completion budget (max_output_tokens) with the visible JSON, and
-# reasoning length is not deterministic call to call. graphiti-core's
-# 16384 default has been exhausted in practice on an entity-summary batch
-# — the JSON came back cut off mid-string (~300 chars), all retries
-# truncated the same way, and the whole run died. 4x that is headroom,
-# not a target: unused budget costs nothing. Same lesson as fraise's
-# EXTRACTION_MAX_COMPLETION_TOKENS.
+# gpt-5-mini's hidden reasoning tokens share max_output_tokens with the
+# visible JSON: graphiti-core's 16384 default was exhausted on an
+# entity-summary batch — JSON cut off mid-string (~300 chars), every retry
+# truncated the same way, run died. 4x is headroom (unused budget costs
+# nothing); same lesson as fraise's EXTRACTION_MAX_COMPLETION_TOKENS.
 LLM_MAX_TOKENS = 65536
 
 
@@ -78,8 +68,7 @@ class GraphitiMemory(Memory):
     ) -> None:
         """Pin the Neo4j connection and the models graphiti ingests with."""
         super().__init__(**params)
-        # where the database lives is infrastructure, so it comes from the
-        # environment (compose sets it; localhost defaults for local runs)
+        # infrastructure comes from the environment (compose sets it)
         self.neo4j_uri = neo4j_uri or os.environ.get(
             "NEO4J_URI", "bolt://localhost:7687"
         )
@@ -87,20 +76,16 @@ class GraphitiMemory(Memory):
         self.neo4j_password = neo4j_password or os.environ.get(
             "NEO4J_PASSWORD", "password"
         )
-        # explicit none (--param model=none) leaves graphiti-core's own
-        # default in place
         self.model = model
         self.embedding_model = embedding_model
-        # episode uuid -> session_id: graphiti edges cite the episodes they
-        # were extracted from, which is our provenance channel
+        # episode uuid -> session_id: edges cite episodes = our provenance channel
         self._episodes: dict[str, str] = {}
 
     def setup(self) -> None:
         """Connect to Neo4j and build the graph indices."""
         from graphiti_core import Graphiti
 
-        # one loop for the whole lifecycle: the async neo4j driver binds its
-        # connection pool to the loop it first runs on
+        # one loop for the lifecycle: async neo4j binds its pool to its first loop
         self._loop = asyncio.new_event_loop()
         self.client = Graphiti(
             self.neo4j_uri,
@@ -113,15 +98,14 @@ class GraphitiMemory(Memory):
     def _model_clients(self) -> dict:
         """Return llm_client/embedder overrides for Graphiti().
 
-        Each override is omitted when its model is explicitly unset
-        (``--param model=none``), so graphiti-core keeps its own default.
+        An explicitly unset model (``--param model=none``) omits its
+        override, so graphiti-core keeps its own default.
         """
         clients = {}
         if self.model:
             from graphiti_core.llm_client import LLMConfig, OpenAIClient
 
-            # max_tokens goes on the client, not the LLMConfig — graphiti's
-            # base client reads only its own constructor parameter
+            # max_tokens goes on the client; LLMConfig's is ignored
             clients["llm_client"] = OpenAIClient(
                 config=LLMConfig(model=self.model, small_model=self.model),
                 max_tokens=LLM_MAX_TOKENS,
@@ -154,10 +138,7 @@ class GraphitiMemory(Memory):
         result = self._await(
             self.client.add_episode(
                 name=f"{conversation_id}:{session.session_id}",
-                # the turns alone: Session.__str__ would prepend a
-                # `[session <id> @ <time>]` header no real deployment
-                # writes, and graphiti already gets the time natively
-                # through reference_time below
+                # turns, no Session.__str__ header; time goes via reference_time
                 episode_body="\n".join(
                     f"{turn.speaker}: {turn.text}" for turn in session.turns
                 ),
@@ -181,9 +162,8 @@ class GraphitiMemory(Memory):
     ) -> None:
         """Add one agent-authored memory as its own episode (agentic mode).
 
-        Edges extracted from the episode cite it, and the local episode map
-        resolves it to its session — same provenance channel as direct
-        ingestion, one episode per memory instead of per session.
+        Same provenance channel as ingest_session, one episode per memory
+        instead of per session.
         """
         from graphiti_core.nodes import EpisodeType
 
@@ -232,14 +212,11 @@ class GraphitiMemory(Memory):
     def teardown(self) -> None:
         """Close the graphiti client and its event loop.
 
-        Deliberately does NOT close the AsyncOpenAI clients inside
-        graphiti's llm/embedder/reranker: closing them per sample was the
-        prime suspect in native crashes (SIGSEGV/SIGABRT) on the
-        high-churn longmemeval cells — hundreds of rapid loop/SSL/client
-        create-close cycles per run. The cost of leaving them is a
-        harmless "Event loop is closed" spray from their GC finalizers;
-        the cost of closing them appears to be the process. Revisit only
-        with a faulthandler-attributed stack proving otherwise.
+        Deliberately leaves graphiti's AsyncOpenAI clients open: closing
+        them per sample was the prime suspect in SIGSEGV/SIGABRT crashes
+        on the high-churn longmemeval cells. Leaving them only sprays
+        harmless "Event loop is closed" from GC finalizers; revisit only
+        with a faulthandler-attributed stack.
         """
         self._episodes.clear()
         try:

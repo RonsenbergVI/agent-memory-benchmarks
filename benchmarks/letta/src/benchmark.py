@@ -38,7 +38,5 @@ class LettaBenchmark(Benchmark):
     search_toolset_class = LettaSearchToolset
     ingest_toolset_class = LettaIngestToolset
     # letta spends its tokens inside its server, invisible to the default
-    # tracker's in-process SDK wrappers (and the adapter makes no openai
-    # calls of its own): the adapter computes the spend (usage_counters)
-    # and this opt-in tracker books it
+    # tracker: the adapter computes the spend and this opt-in tracker books it
     callback_classes = (TiktokenUsageTracker,)

@@ -55,8 +55,7 @@ class MarkdownRenderer(Renderer):
                 raise TypeError(f"no markdown for {type(block).__name__}")
 
 
-# Output formats, by name. Plain text is a renderer away: implement
-# `Renderer` and register it here — no section changes.
+# output formats by name; a new format registers here, no section changes
 RENDERERS: dict[str, Callable[[], Renderer]] = {"markdown": MarkdownRenderer}
 FORMATS = tuple(RENDERERS)
 

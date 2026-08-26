@@ -52,25 +52,18 @@ def scatter(
 ) -> Path:
     r"""Render the trade-off scatter and write it to `output`.
 
-    Each system keeps the hue it wears on every other chart (sorted-name
-    assignment); identity still rests on the direct labels, the hue is
-    reinforcement. `better` is an optional corner cue naming the direction
-    a system should move — mathtext arrows (r"$\\uparrow$ better"), since
-    unicode arrows are missing from common fonts; a `\\downarrow` in it
-    moves the cue to the bottom-right corner, clear of the origin cluster.
-    `baseline` draws a horizontal reference line — the floor to beat; the
-    caller explains it in the subtitle, since a text label on the line
-    would collide with the dot labels. Returns the path written. Raises
-    nothing on empty input — the caller checks, so it can report which
-    metrics were available.
+    `better` is a corner cue in mathtext arrows (unicode arrows are missing
+    from common fonts); a `\\downarrow` moves it to the bottom-right, clear
+    of the origin cluster. `baseline` draws the floor-to-beat line, explained
+    in the subtitle since a line label would collide with the dot labels.
+    Empty input is the caller's job to check. Returns the path written.
     """
     fig, ax, c = styled_axes(dark)
 
     hue_map = hues([p.label for p in points], c)
     colors = [hue_map[p.label] for p in points]
     xs, ys = [p.x for p in points], [p.y for p in points]
-    # a soft halo under each dot, then the dot itself: >=8px, its system's
-    # hue, 2px surface ring so overlaps stay legible
+    # halo under each dot; 2px surface ring keeps overlaps legible
     ax.scatter(xs, ys, s=260, c=colors, alpha=0.15, linewidths=0, zorder=2)
     ax.scatter(
         xs,
@@ -85,7 +78,7 @@ def scatter(
     if baseline is not None:
         ax.axhline(baseline, color=c["muted"], linewidth=1.0, alpha=0.5, zorder=1)
 
-    # every dot is directly labelled: identity never rests on colour
+    # every dot directly labelled: identity never rests on colour
     place_labels(ax, points, color=c["text"])
     pad_limits(ax, points, x_label, y_label)
     if better:
@@ -118,14 +111,12 @@ def lines(
 ) -> Path:
     """Render one line per system over k and write it to `output`.
 
-    A system run at a single k appears as a lone dot; its line grows as
-    sweeps accumulate. Hues follow the sorted-name series order, so a
-    system keeps its colour from chart to chart. Returns the path written;
-    raises nothing on empty input — the caller checks.
+    A single-k system appears as a lone dot; hues follow sorted-name order so
+    a system keeps its colour from chart to chart. Empty input is the caller's
+    job to check. Returns the path written.
 
     Raises:
-        ValueError: past 8 series the palette is exhausted; filter or
-            facet instead of inventing a 9th hue.
+        ValueError: past 8 series the palette is exhausted; filter or facet.
     """
     if len(series) > len(LIGHT["categories"]):
         raise ValueError(
@@ -149,8 +140,7 @@ def lines(
         )
 
     if series:
-        # x: the k values actually run, as discrete ticks, with room on
-        # the right for line-end labels
+        # discrete ticks at the k values run, right room for line-end labels
         ks = sorted({x for line in series for x in line.xs})
         span = (ks[-1] - ks[0]) or 1.0
         ax.set_xticks(ks)
@@ -161,8 +151,8 @@ def lines(
             ratio=is_ratio(y_label),
         )
 
-        # the legend is identity's baseline; swept systems (true lines)
-        # also get a direct end label while there are few enough to read
+        # legend carries identity; swept lines also get a direct end label
+        # while there are few enough to read
         legend = ax.legend(loc="best", frameon=False, fontsize=9)
         for text in legend.get_texts():
             text.set_color(c["muted"])
@@ -193,10 +183,9 @@ def bars(
 ) -> Path:
     """Render one metric as horizontal bars, one per system, largest on top.
 
-    Magnitude across a handful of named systems is a bar's job; identity
-    sits on the axis, so every bar wears the single series hue and its
-    value in ink at its end. Returns the path written; raises nothing on
-    empty input — the caller checks.
+    Identity sits on the axis, so every bar wears the single series hue with
+    its value at its end. Empty input is the caller's job to check. Returns
+    the path written.
     """
     fig, ax, c = styled_axes(dark)
     ax.grid(False, axis="y")  # gridlines only along the value axis
@@ -233,20 +222,16 @@ def table(
 ) -> Path:
     """Render a small comparison table as a figure and write it to `output`.
 
-    The README embeds this instead of a markdown table so every published
-    number lives under `plots/`, where CI blocks hand edits. Text wears the
-    text tokens — ink for values, muted for the header — and the only
-    frame is hairline row separators in the grid colour. The first two
-    columns are identity (left-aligned); the rest are numbers (right-
-    aligned). Returns the path written; raises nothing on empty input —
-    the caller checks.
+    The README embeds this instead of markdown so every published number lives
+    under `plots/`, where CI blocks hand edits. First two columns are identity
+    (left-aligned); the rest are numbers (right-aligned). Empty input is the
+    caller's job to check. Returns the path written.
     """
     fig, ax, c = styled_axes(dark)
     ax.grid(False)
     ax.set_axis_off()
 
-    # column widths from the content itself, in character units; the
-    # figure grows with the table so text never squeezes
+    # column widths from content; the figure grows so text never squeezes
     cells = [header, *rows]
     widths = [max(len(str(row[j])) for row in cells) for j in range(len(header))]
     gutter = 3.0
@@ -279,7 +264,7 @@ def table(
     for i, row in enumerate(rows):
         y = 1.0 - (i + 1.5) * step
         place(row, y, c["text"], 10.0, "normal")
-        # hairline separator above each body row, header line included
+        # hairline separator above each body row
         ax.axhline(
             y + step / 2,
             xmin=0.0,
@@ -308,7 +293,6 @@ def _finish(
     ax.set_xlabel(pretty(x_label), color=c["muted"], fontsize=9)
     ax.set_ylabel(pretty(y_label), color=c["muted"], fontsize=9)
     if title:
-        # headline in ink, context line in muted underneath it
         ax.set_title(
             title,
             color=c["text"],
