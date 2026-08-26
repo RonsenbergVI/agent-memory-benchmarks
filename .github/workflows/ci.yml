@@ -170,7 +170,14 @@ jobs:
     name: Pre-commit Hooks
     runs-on: ubuntu-latest
     steps:
+      # head branch (not the merge ref) + deploy key so auto-fixes can be
+      # pushed back and the push retriggers CI (GITHUB_TOKEN pushes don't)
       - uses: actions/checkout@v4
+        with:
+          ref: >-
+            ${{ github.event.pull_request.head.repo.full_name == github.repository
+                && github.event.pull_request.head.ref || '' }}
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -189,6 +196,25 @@ jobs:
       - name: Install the workspace
         run: uv sync --locked --all-extras
       - name: Run pre-commit
+
+        id: precommit
+        # a failure here may just be formatters rewriting files; the commit
+        # step pushes those and the re-run below decides pass/fail
+        continue-on-error: true
+        run: uvx pre-commit run --all-files
+
+      # commits as github-actions[bot] and skips cleanly when nothing changed
+      - name: Commit formatting fixes
+        if: >-
+          steps.precommit.outcome == 'failure' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "style: pre-commit auto-fixes"
+
+      # formatter diffs are committed now, so only unfixable issues remain
+      - name: Fail on unfixable issues
+        if: steps.precommit.outcome == 'failure'
         run: uvx pre-commit run --all-files
   test:
     name: tests
