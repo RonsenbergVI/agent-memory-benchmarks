@@ -2,12 +2,11 @@ name: Codex Review
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
 
 # a reopened or re-run review supersedes the previous one
 concurrency:
   group: review-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   review:
