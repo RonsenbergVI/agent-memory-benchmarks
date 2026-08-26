@@ -32,8 +32,8 @@ env:
 # after retrieval, not inside the index, so a second conversation
 # resident at the same time can crowd this one's hits out of the
 # over-fetch window. One at a time is the only setting where the
-# isolation is exact. It is affordable here because a keyless server
-# runs no LLM — ingestion is ~20ms/turn, not ~50s/session.
+# isolation is exact. Keep this even though it increases wall clock; cost and
+# ingestion latency depend on whether the server is configured to use an LLM.
 jobs:
   locomo:
     name: agentmemory / locomo / direct / k${{ matrix.k }}
