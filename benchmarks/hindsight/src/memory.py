@@ -220,11 +220,17 @@ class HindsightMemory(Memory):
         """
         bank_id = self._ensure_bank(conversation_id)
         document_id = f"{conversation_id}:{session_id}:{len(self._documents)}"
+        metadata: dict[str, object] = {
+            "conversation_id": conversation_id,
+            "session_id": session_id,
+        }
+        if turn_ids is not None:
+            metadata["turn_ids"] = turn_ids
         response = self.client.retain(
             bank_id=bank_id,
             content=content,
             document_id=document_id,
-            metadata={"conversation_id": conversation_id, "session_id": session_id},
+            metadata=metadata,
         )
         self._count_reported_usage(response)
         self._documents[document_id] = session_id
