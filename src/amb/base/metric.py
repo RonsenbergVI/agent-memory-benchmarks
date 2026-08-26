@@ -31,15 +31,13 @@ Record = QuestionRecord | IngestionRecord
 class Metric(ABC):
     """A running metric over observation records.
 
-    update_state() receives a whole record (a QuestionRecord row, an
-    IngestionRecord); the metric grabs the field that applies to it (``key``,
-    defaulting to its name), accumulates it, and produces the final value on
-    result(). Records without the field are ignored. reset_state() starts a
-    new scope.
+    update_state() takes a whole record, grabs the field named by ``key``
+    (default: the metric's name), and accumulates it; records without the
+    field are ignored. result() produces the final value, reset_state()
+    starts a new scope.
     """
 
-    # report a result even when no record carried the field
-    # (e.g. an error count of 0 is a statement, not missing data)
+    # report with zero observations: an error count of 0 is a statement
     report_when_empty: ClassVar[bool] = False
 
     def __init__(self, name: str, key: str | None = None) -> None:
@@ -71,11 +69,10 @@ class Metric(ABC):
 class Scorer(Metric):
     """A metric that scores a (predicted, gold) pair per observation.
 
-    ``predicted_key``/``gold_key`` name the observation fields holding the
-    pair; update_state() grabs them, scores them, and accumulates. How the
-    scores accumulate comes from the mixed-in accumulator, e.g.
-    ``class AnswerF1(Scorer, Mean)``. Observations missing the prediction
-    or with an empty gold value are ignored.
+    ``predicted_key``/``gold_key`` name the fields holding the pair;
+    accumulation comes from the mixed-in accumulator, e.g.
+    ``class AnswerF1(Scorer, Mean)``. Records missing the prediction or
+    with an empty gold value are ignored.
     """
 
     predicted_key: ClassVar[str] = "predicted_answer"

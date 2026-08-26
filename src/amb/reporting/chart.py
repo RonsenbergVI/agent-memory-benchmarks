@@ -35,10 +35,8 @@ if TYPE_CHECKING:
 class Chart:
     """One figure: what it plots, from which runs, and where it lands.
 
-    The unit both consumers share — `Section.blocks()` links exactly the
-    charts `Section.charts()` declares, and `amb plot all` draws exactly
-    those. `summaries` are its group's runs; a chart with a `k` narrows to
-    that budget itself, so its identity travels with it.
+    The unit both consumers share: `Section.blocks()` links exactly the charts
+    `Section.charts()` declares, and `amb plot all` draws exactly those.
     """
 
     kind: str  # bars | lines | scatter | table
@@ -52,9 +50,7 @@ class Chart:
     x: str | None = None
     k: int | None = None
     better: str | None = None
-    # the system whose score is the floor a real system must beat; drawn as
-    # a reference line. Only meaningful on score-vs-cost scatters — a
-    # baseline on cost-vs-cost would mark nothing.
+    # floor system, drawn as a reference line; None on cost-vs-cost scatters
     baseline_system: str | None = None
 
     @property
@@ -94,9 +90,8 @@ class Chart:
 
     def _table(self) -> tuple[list[str], list[list[str]]]:
         """The summary table this chart renders — the README headline rows."""
-        # imported here: run.py owns the table shape and imports nothing
-        # from this module, but the reporting package initializes run
-        # before chart, so a top-level import would be circular
+        # local import: the package initializes run before chart, so a
+        # top-level import would be circular
         from amb.reporting.run import ComparisonReport
 
         return ComparisonReport(self.scoped()).summary_table(self.k or 10)
@@ -104,8 +99,7 @@ class Chart:
     def has_data(self) -> bool:
         """Whether any run in scope reports what this chart plots.
 
-        Sections drop dataless charts before referencing them, so a
-        document never links an image that was skipped.
+        Sections drop dataless charts before referencing them.
         """
         return bool(self.data())
 
@@ -127,9 +121,8 @@ class Chart:
         data = self.data()
         if not data:
             return None
-        # dark renders land beside the light ones (`<stem>_dark.png`): the
-        # README serves them through <picture> for dark-mode readers, and
-        # the publish job regenerates both variants together
+        # dark renders land beside light (`<stem>_dark.png`); the README
+        # serves both through <picture>
         output = self.out_dir / f"{self.stem}_dark.png" if dark else self.path
         match self.kind:
             case "bars":
@@ -186,9 +179,8 @@ def plan_charts(
 ) -> list[Chart]:
     """Every chart the reports show, deduplicated, optionally redirected.
 
-    `out` overrides the destination directory — a chart-only convenience
-    (`amb plot all --out`), never used when documents are written, since
-    their figure links follow the group's own `plots/` layout.
+    `out` overrides the destination (`amb plot all --out`); never used when
+    documents are written, since figure links follow the `plots/` layout.
     """
     seen: dict[str, Chart] = {}
     for report in reports:

@@ -20,16 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Dataset base classes."""
+"""Shared constants: paths, chart palettes, report grouping, results-page copy."""
 
 from enum import StrEnum
 from pathlib import Path
 
 DEFAULT_DATA_DIR: Path = Path(".data")
 ENTRY_POINT_GROUP: str = "amb.systems"
-# run data (results.jsonl, summary.json) and rendered charts are two
-# different trees: CI uploads runs/ artifacts and `amb plot all` writes
-# images into plots/, so the two must never share a directory
+# runs/ (CI artifact uploads) and plots/ (rendered charts) must never share a dir
 DEFAULT_RUNS_DIR: Path = Path("runs")
 DEFAULT_PLOT_DIR: Path = Path("plots")
 
@@ -92,15 +90,12 @@ DARK: dict = {
     ),
 }
 
-# The identity fields that make two sets of runs different experiments
-# rather than repeats of one. Extend a report's `group_by` to split further
-# (e.g. "ingestion_model" when a second model generation lands).
+# Identity fields that make two sets of runs different experiments, not repeats.
 GROUP_BY = ("dataset", "variant")
 
-# Fields that must be uniform inside a group. A direct and an agentic run of
-# one system are different subjects, not two marks on one chart — so a group
-# spanning both is refused rather than blended. Promote "mode" into
-# `group_by` (not this tuple) the day both are worth publishing side by side.
+# Must be uniform inside a group: a direct and an agentic run are different
+# subjects, so a group spanning both is refused, not blended. Promote "mode"
+# into GROUP_BY (not here) the day both are worth publishing side by side.
 GUARD = ("mode",)
 
 # The retrieval metrics a chart set can cover: (filename stem, summary key).
@@ -114,8 +109,7 @@ RETRIEVAL_METRICS = (
 TOKENS = "memory_tokens_total"
 LATENCY = "search_latency.p50_s"
 
-# The order the headline (README) charts are shown in: F1 first, since it is
-# the metric the summary table ranks systems by.
+# Headline (README) chart order: F1 first — the summary table's ranking metric.
 SUMMARY_ORDER = ("f1", "recall", "precision")
 
 

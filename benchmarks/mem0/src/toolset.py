@@ -22,10 +22,9 @@
 
 """Mem0's native tool surface for `--mode agentic`.
 
-The agent is the extractor here: it writes distilled facts through
-`add_memory` (stored verbatim, ``infer=False``) and retrieves through
-mem0's semantic `search_memory`. Conversation isolation stays forced — the
-``user_id`` scope is set by the adapter, never left to the agent.
+The agent is the extractor: `add_memory` stores verbatim (``infer=False``),
+`search_memory` retrieves; the adapter always sets the ``user_id`` scope,
+so conversation isolation is never left to the agent.
 """
 
 import time

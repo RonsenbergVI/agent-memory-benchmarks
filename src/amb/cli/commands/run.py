@@ -34,9 +34,8 @@ from amb.runner import RunConfig, Runner
 class ParamType(click.ParamType):
     """A `KEY=VALUE` memory-system parameter.
 
-    Values are coerced, so `reasoning=false` reaches the system as False
-    rather than the (truthy) string "false". Anything that is not a literal
-    stays a string, and only the first `=` splits, so URLs survive intact.
+    Values are coerced (`reasoning=false` arrives as False, not "false");
+    only the first `=` splits, so URLs survive intact.
     """
 
     name = "key=value"
@@ -178,15 +177,13 @@ def run(system: str, params: tuple[tuple[str, object], ...], **options) -> None:
     Raises:
         click.ClickException: with --judge but no judge model to use.
     """
-    # --param configures the system under test, so it belongs to the
-    # benchmark; everything else is how this run is executed
+    # --param belongs to the system under test; the rest is run execution
     benchmark = get_benchmark(system).benchmark_class()(params=dict(params))
     config = RunConfig(**options)
     data = Runner(benchmark, config).run()
     report = RunReport(data)
     if config.judge:
-        # convenience: the same evaluation step `amb judge` runs on a
-        # saved report, applied before this one is written
+        # the same evaluation step as `amb judge`, applied before saving
         judge_model = config.judge_model or config.model
         if not judge_model:
             raise click.ClickException("--judge needs --judge-model or --model")

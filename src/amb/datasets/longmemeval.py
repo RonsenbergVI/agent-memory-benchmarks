@@ -43,8 +43,7 @@ from amb.contracts import (
     Turn,
 )
 
-# The originally released xiaowu0162/longmemeval is deprecated in favor of
-# the -cleaned repo (noisy history sessions removed).
+# upstream deprecated xiaowu0162/longmemeval; -cleaned removes noisy history sessions
 DEFAULT_REPO = "xiaowu0162/longmemeval-cleaned"
 
 
@@ -68,9 +67,7 @@ class LongMemEvalLoader(DatasetLoader):
         """
         variant = self.resolve_variant(variant)
         repo = self.repo
-        # File naming differs across repo revisions (longmemeval_s,
-        # longmemeval_s.json, ...), so match by variant token instead of
-        # hardcoding a filename.
+        # file names differ across repo revisions; match by variant token, not filename
         token = "oracle" if variant == "oracle" else f"_{variant}"
         files = HfApi().list_repo_files(repo, repo_type="dataset")
         candidates = [
