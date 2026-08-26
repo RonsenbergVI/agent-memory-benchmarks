@@ -22,32 +22,23 @@
 
 """Hindsight (vectorize-io/hindsight) — agent memory that learns.
 
-Workspace package ``hindsight-benchmark`` (this directory). Needs a
-running Hindsight server (see benchmarks/hindsight/docker-compose.yaml);
-HINDSIGHT_BASE_URL names it, defaulting to localhost.
+Needs a running Hindsight server (docker-compose.yaml here), named by
+HINDSIGHT_BASE_URL. Ingestion is Hindsight's own: ``retain`` hands the
+server a session's transcript and its LLM extracts, so the model is the
+*server's* configuration (set by compose) and is reported from the
+server rather than pinned here.
 
-Ingestion is Hindsight's own: ``retain`` hands the server a session's
-transcript and its LLM does the extracting, so there is no extraction
-step in this adapter. The model is the *server's* configuration
-(``HINDSIGHT_API_LLM_PROVIDER`` / ``HINDSIGHT_API_LLM_MODEL``, set by
-compose), not a client-side parameter, so it is reported from the server
-rather than pinned here.
+Each conversation is a Hindsight *bank* — required on both ``retain``
+and ``recall``, so recall cannot cross conversations by construction.
+Teardown deletes the one bank, safe beside the conversations running
+under ``--workers N``.
 
-Each conversation is a Hindsight *bank* — the system's own isolation
-primitive, required on both ``retain`` and ``recall``, so recall cannot
-cross conversations by construction rather than by filter. Teardown
-deletes the bank, which is scoped to exactly one conversation and safe
-beside the others running under ``--workers N``.
-
-One mismatch with the rest of the harness is worth stating plainly:
-**Hindsight's recall is budgeted in tokens, not in hits.** ``max_tokens``
-is what it takes; how many results that buys depends on how long they
-are. The harness asks for k, so this adapter asks for a token budget
-generous enough that k results are never the binding constraint and then
-takes the first k the server ranked. That makes k comparable with the
-other systems, but note that Hindsight is not being asked the question
-its API is shaped around — ``--param max_tokens=N`` drives the budget
-directly for anyone who wants to measure it on its own terms.
+Hindsight's recall is budgeted in tokens, not hits: ``max_tokens`` is
+what its API takes. The adapter asks for a budget generous enough that
+k results are never the binding constraint, then takes the first k the
+server ranked — comparable with the other systems, though not the
+question the API is shaped around; ``--param max_tokens=N`` drives the
+budget directly.
 """
 
 import os
@@ -59,15 +50,13 @@ from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
 DEFAULT_BASE_URL = "http://localhost:8888"
-# Generous on purpose: the budget must not be what limits the result
-# count, or "k" would silently mean "as many as fit". At ~4k tokens per
-# LoCoMo session's worth of facts this leaves k the binding constraint.
+# the budget must never limit the result count, or "k" would silently mean
+# "as many as fit"; ~4k tokens covers a LoCoMo session's worth of facts
 DEFAULT_MAX_TOKENS = 32000
 # the server's own default ranking effort; "high" spends more on recall
 DEFAULT_BUDGET = "mid"
-# the budget for the source-fact map, which is how an `observation`
-# result is traced back to a document; big enough that provenance is
-# never the thing that gets truncated
+# provenance for `observation` results (see `_sessions_of`); big enough
+# that provenance is never the thing that gets truncated
 DEFAULT_MAX_SOURCE_FACTS_TOKENS = 16000
 
 
@@ -77,15 +66,13 @@ class HindsightMemory(Memory):
     name: ClassVar[str] = "hindsight"
     description: ClassVar[str] = "Hindsight — agent memory that learns"
     sdk_dist: ClassVar[str | None] = "hindsight-client"
-    # `retain` reports the extraction spend, which is the expensive half,
-    # but `recall` reports nothing — its query embedding and rerank stay
-    # inside the server. Real numbers, short of the truth.
+    # `retain` reports the extraction spend, the expensive half; `recall`
+    # reports nothing — its query embedding and rerank stay inside the server
     usage_coverage: ClassVar[str] = "partial"
 
     def __init__(
         self,
         base_url: str | None = None,
-        api_key: str | None = None,
         max_tokens: int | str = DEFAULT_MAX_TOKENS,
         budget: str = DEFAULT_BUDGET,
         max_source_facts_tokens: int | str = DEFAULT_MAX_SOURCE_FACTS_TOKENS,
@@ -97,19 +84,17 @@ class HindsightMemory(Memory):
         self.base_url = os.environ.get("HINDSIGHT_BASE_URL", DEFAULT_BASE_URL)
         if base_url:
             self.base_url = base_url
-        self._api_key = api_key or os.environ.get("HINDSIGHT_API_KEY")
+        # a secret; environment only, never --param
+        self._api_key = os.environ.get("HINDSIGHT_API_KEY")
         # --param values arrive as strings
         self.max_tokens = int(max_tokens)
         self.budget = budget
         self.max_source_facts_tokens = int(max_source_facts_tokens)
         self.timeout = float(timeout)
-        # Read here rather than in `setup()`: the Runner builds a probe
-        # instance and asks it for `models()` and `version()` *without*
-        # calling setup(), so anything populated there is None in the
-        # run's identity — which is how a run recorded no ingestion model
-        # at all, leaving two differently-configured servers
-        # indistinguishable. The models are the server's configuration;
-        # compose sets these alongside the ones it gives the server.
+        # Read here, not in setup(): the Runner's probe instance asks for
+        # models()/version() without calling setup() — populating there once
+        # recorded no ingestion model at all in a run's identity. Compose
+        # sets these alongside the ones it gives the server.
         self.model = os.environ.get("HINDSIGHT_API_LLM_MODEL")
         self.embedding_model = os.environ.get("HINDSIGHT_API_EMBEDDING_MODEL")
         # document id -> session id. `retain` takes the document id, so
@@ -117,8 +102,7 @@ class HindsightMemory(Memory):
         self._documents: dict[str, str] = {}
         self._conversation_id: str | None = None
         self._retained = 0
-        # what the server reports about its own spend, read by
-        # TiktokenUsageTracker at each lifecycle boundary
+        # server-reported spend, read by TiktokenUsageTracker
         self._usage: dict[str, int] = dict.fromkeys(TOKEN_TRACKING_KEYS, 0)
 
     def usage_counters(self) -> dict:
@@ -128,15 +112,9 @@ class HindsightMemory(Memory):
     def _count_reported_usage(self, response: object) -> None:
         """Book what the server said one retain cost.
 
-        Hindsight extracts inside its own process, so nothing here can
-        observe the traffic — but it reports the extraction's usage on
-        the response, which makes that half billed rather than guessed.
-        `thoughts_tokens` are already inside `output_tokens`, so they are
+        Billed from the usage hindsight reports on the response, not
+        estimated. `thoughts_tokens` are already inside `output_tokens` —
         deliberately not added again.
-
-        `recall` has no equivalent field, so search-time spend — the
-        query embedding and the reranker — is not counted anywhere. That
-        is why this system declares `partial` rather than `full`.
         """
         usage = getattr(response, "usage", None)
         if usage is None:
@@ -152,12 +130,10 @@ class HindsightMemory(Memory):
     def version(self) -> str | None:
         """The server's version — the server is the system under test.
 
-        Builds its own client when there is none: the Runner asks a probe
-        instance for this before `setup()` has run, and falling back to
-        the installed client SDK's version there records the *client*
-        line as the system under test. The two drift — the client can be
-        0.9.1 against a 0.9.2 server — and `system_version` is part of
-        the run's identity.
+        Builds its own client when there is none: the Runner probes this
+        before `setup()`, and the client-SDK fallback would record the
+        client line, which drifts (0.9.1 client against a 0.9.2 server)
+        into `system_version`, part of the run's identity.
         """
         client = getattr(self, "client", None)
         try:
@@ -263,15 +239,13 @@ class HindsightMemory(Memory):
                 query=query,
                 max_tokens=self.max_tokens,
                 budget=self.budget,
-                # not a retrieval knob — the provenance channel for the
-                # half of the results that have no document of their own.
-                # See `_sessions_of`.
+                # not a retrieval knob — the provenance channel for results
+                # with no document of their own (see `_sessions_of`)
                 include_source_facts=True,
                 max_source_facts_tokens=self.max_source_facts_tokens,
             )
         except Exception:
-            # the payload is worth having in the benchmark log, which
-            # outlives the container
+            # log the payload — the benchmark log outlives the container
             logger.bind(scope="hindsight").error(
                 "recall failed: bank={!r} query={!r}",
                 self._bank_id(conversation_id),
@@ -307,19 +281,15 @@ class HindsightMemory(Memory):
     def _sessions_of(self, result: Any, source_facts: dict) -> list[str]:
         """The sessions a recalled memory came from, deduped, in hit order.
 
-        Hindsight returns two kinds of result and only one of them names a
-        document. A ``world`` memory is tied to the document it was
-        extracted from, so `document_id` (and the metadata written beside
-        it) answers directly. An ``observation`` is Hindsight's derived
-        layer — synthesised across sources, with `document_id`,
+        A ``world`` memory names the document it was extracted from, so
+        `document_id` (or the metadata beside it) answers directly. An
+        ``observation`` is synthesised across sources — `document_id`,
         `metadata` and `chunk_id` all None — and is attributable only
-        through the source facts it was built from, which is what
-        `include_source_facts` is asked for.
-
-        Without that second hop roughly half of a run's hits carry no
-        provenance at all, and the harness drops those questions rather
-        than scoring them 0.0 — which silently reports the remaining,
-        easier half as if it were the whole run.
+        through its source facts, which is what `include_source_facts`
+        buys. Without that hop roughly half of a run's hits carry no
+        provenance, and the harness drops those questions rather than
+        scoring them 0.0 — silently reporting the easier half as the
+        whole run.
         """
         if direct := self._session_of_one(result):
             return [direct]
@@ -347,9 +317,8 @@ class HindsightMemory(Memory):
     def teardown(self) -> None:
         """Delete this conversation's bank, and only this conversation's.
 
-        Scoped to one bank id on purpose: the banks of the conversations
-        running beside this one under `--workers N` are on the same
-        server, and anything wider would take them with it.
+        The conversations running beside this one under `--workers N`
+        share the server; anything wider would take them with it.
         """
         if self._conversation_id is not None:
             try:

@@ -1,8 +1,7 @@
 services:
-  # ParadeDB bundles pgvector and pg_search — the pair Hindsight's own
-  # compose files recommend. pg_search is real BM25; the "native" backend
-  # is Postgres ts_rank, which is a materially different text half, so the
-  # recommended one is what gets measured.
+  # ParadeDB bundles pgvector and pg_search, the pair Hindsight's own compose
+  # recommends; pg_search is real BM25 where the "native" backend is ts_rank —
+  # a materially different text half, so the recommended one is measured
   db:
     image: paradedb/paradedb:0.25.4-pg17
     environment:
@@ -31,26 +30,21 @@ services:
       - path: ../../.env
         required: false
     environment:
-      # Hindsight extracts inside this server, so the model is its
-      # configuration, not the adapter's. gpt-5-mini is the same model
-      # every other system in the comparison ingests with.
+      # extraction runs inside this server, so the model is its configuration,
+      # not the adapter's; gpt-5-mini matches every other system's ingestion
       HINDSIGHT_API_LLM_PROVIDER: openai
       HINDSIGHT_API_LLM_MODEL: gpt-5-mini
       HINDSIGHT_API_DATABASE_URL: postgresql://hindsight:hindsight@db:5432/hindsight
       HINDSIGHT_API_VECTOR_EXTENSION: pgvector
       HINDSIGHT_API_TEXT_SEARCH_EXTENSION: pg_search
-      # Embeddings: OpenAI rather than the server's local default, so the
-      # embedder matches the rest of the comparison. The key is NOT set
-      # here — the provider falls back to HINDSIGHT_API_LLM_API_KEY,
-      # which the entrypoint already maps across from OPENAI_API_KEY.
-      #
-      # The dimension is deliberately not set: it is looked up from the
-      # model (1536 for text-embedding-3-small) and pushed into the
-      # pgvector column at startup. Changing it against a store that
-      # already holds embeddings is a hard error, so a switch of embedder
-      # needs `docker compose -p <name> down -v` first. 1536 is inside
-      # pgvector's 2000-dim HNSW ceiling; text-embedding-3-large (3072)
-      # would not be.
+      # OpenAI embeddings, matching the rest of the comparison. The key is
+      # deliberately not set here — the provider falls back to
+      # HINDSIGHT_API_LLM_API_KEY, which the entrypoint maps from OPENAI_API_KEY.
+      # The dimension is unset on purpose: looked up from the model (1536) and
+      # pushed into the pgvector column at startup, and changing it against a
+      # store that already holds embeddings is a hard error — switch embedders
+      # only after `down -v`. 1536 fits pgvector's 2000-dim HNSW ceiling;
+      # text-embedding-3-large (3072) would not.
       HINDSIGHT_API_EMBEDDINGS_PROVIDER: openai
       HINDSIGHT_API_EMBEDDINGS_OPENAI_MODEL: text-embedding-3-small
     healthcheck:

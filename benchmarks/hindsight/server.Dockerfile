@@ -1,10 +1,7 @@
-# The Hindsight server itself — the system under test.
-#
-# Built from the published `hindsight-api` distribution rather than the
-# project's own container image: those images stop at 0.6.2 while the
-# source and the PyPI distribution are both at 0.9.x, and 0.6.2 predates
-# the pg_search text-search backend the project itself recommends. This
-# measures the current line instead of a year-old one.
+# The Hindsight server itself — the system under test. Built from the
+# published `hindsight-api` distribution, not the project's own images:
+# those stop at 0.6.2, which predates the pg_search backend the project
+# itself recommends, while PyPI is at 0.9.x.
 FROM python:3.13-slim
 
 ARG HINDSIGHT_API_VERSION=0.9.2
@@ -17,8 +14,7 @@ RUN pip install --no-cache-dir "hindsight-api==${HINDSIGHT_API_VERSION}"
 
 EXPOSE 8888
 
-# Hindsight wants its LLM key under its own name. `env_file` can inject
-# OPENAI_API_KEY but cannot rename it, and compose interpolation only
-# sees an exported shell variable — so the mapping happens here, which
-# works whether the key arrives from ../../.env or from CI's environment.
+# Hindsight wants its LLM key under its own name; `env_file` cannot rename
+# a variable and compose interpolation only sees exported shell vars, so the
+# mapping happens here — from ../../.env or CI's environment alike.
 ENTRYPOINT ["/bin/sh", "-c", "exec env HINDSIGHT_API_LLM_API_KEY=\"${HINDSIGHT_API_LLM_API_KEY:-$OPENAI_API_KEY}\" hindsight-api"]

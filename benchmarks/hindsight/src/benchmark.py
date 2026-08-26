@@ -31,18 +31,13 @@ from src.toolset import HindsightIngestToolset, HindsightSearchToolset
 
 
 class HindsightBenchmark(Benchmark):
-    """The benchmark object the `hindsight` entry point resolves to.
-
-    The default `OpenAIUsageTracker` stays, but it cannot see what this
-    system spends: Hindsight extracts inside its own server, calling the
-    provider that server is configured with. The recorded zero is what
-    the harness observed, not what the run cost — the same shape letta
-    has, and the reason its README says so where a reader of the cost
-    charts will find it.
-    """
+    """The benchmark object the `hindsight` entry point resolves to."""
 
     name: ClassVar[str] = "hindsight"
     system_class = HindsightMemory
+    # hindsight spends inside its server, invisible to the default tracker
+    # (its zero is what the harness observed, not what the run cost — same
+    # shape as letta); this opt-in tracker books what the server reports
     callback_classes = (TiktokenUsageTracker,)
     search_toolset_class = HindsightSearchToolset
     ingest_toolset_class = HindsightIngestToolset
