@@ -48,8 +48,8 @@ class Callback(ABC):
     def on_ingest_begin(self, sample: Sample, system: Memory) -> None:
         """Before the sample's first session is stored.
 
-        Not fired at all when there is nothing to ingest (`--reuse`), so an
-        observer can tell "no ingestion" from "instant ingestion".
+        Not fired under `--reuse`: "no ingestion" stays distinct from
+        "instant ingestion".
         """
 
     def on_session_begin(
@@ -63,8 +63,7 @@ class Callback(ABC):
     def on_write(self, sample: Sample, session: Session, seconds: float) -> None:
         """After one agent-driven write, with what it cost (agentic mode).
 
-        Fired by IngestToolset.record_write, so every integration reports
-        its writes through the one call it already makes.
+        Fired by IngestToolset.record_write.
         """
 
     def on_ingest_end(self, sample: Sample, system: Memory, stats: dict) -> None:
@@ -76,8 +75,7 @@ class Callback(ABC):
     def on_conversation_end(self, sample: Sample, stats: IngestionRecord) -> None:
         """After the sample's last question; may enrich its stats record.
 
-        The record is already validated by now, so this hook sets attributes
-        on it rather than keys in a dict.
+        The record is validated by now — set attributes, not dict keys.
         """
 
     def on_question_begin(self, sample: Sample, qa: QAPair) -> None:
@@ -86,8 +84,7 @@ class Callback(ABC):
     def on_search_begin(self, sample: Sample, qa: QAPair) -> None:
         """Before a harness-driven search (direct mode only).
 
-        An agentic run's searches are the agent's to schedule and happen
-        inside the toolset, which reports each one through `on_search`.
+        Agentic searches happen inside the toolset and report via `on_search`.
         """
 
     def on_search(
@@ -99,10 +96,9 @@ class Callback(ABC):
     ) -> None:
         """After one search, with what it returned and what it cost.
 
-        The one search event both modes share: the Runner fires it for the
-        search it drives, SearchToolset.record fires it for each search an
-        agent drives. Whoever owns the boundary times it, since only they
-        can see it.
+        The one event both modes share: the Runner fires it in direct mode,
+        SearchToolset.record per agent-driven search — whoever owns the
+        boundary times it.
         """
 
     def on_answer_begin(self, sample: Sample, qa: QAPair) -> None:

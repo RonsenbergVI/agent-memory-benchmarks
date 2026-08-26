@@ -978,20 +978,20 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "amb", editable = "." },
-    { name = "fraise-sdk", specifier = ">=0.1.0b3,<0.2" },
+    { name = "fraise-sdk", specifier = ">=0.1.0b4,<0.2" },
     { name = "openai", specifier = ">=2,<4" },
 ]
 
 [[package]]
 name = "fraise-sdk"
-version = "0.1.0b3"
+version = "0.1.0b4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/c6/1ae5acd8375c06e584364f32a4c1fa4282e8797c646a87438872dfd6b7cb/fraise_sdk-0.1.0b3.tar.gz", hash = "sha256:b007ca3ffb0b2c77bbf62f87683b3795d6e4afbf98326b81a3d10796c99e3a36", size = 17704, upload-time = "2026-08-23T09:05:44.615Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/91/8e/8354a7860e82c0f0a0b780427a4e472a4e3f2567fa9810762e87b0b93c67/fraise_sdk-0.1.0b4.tar.gz", hash = "sha256:248a6bdbdc5d3ee06fd2de2989a4c6053a14ee0fb53ba1438fc650a02e2072f4", size = 17676, upload-time = "2026-08-26T08:23:16.073Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/9f/8c4aac2fd9eb5320a4fe319d682eaf5ec9fdd6122967f80cc4c260788e7d/fraise_sdk-0.1.0b3-py3-none-any.whl", hash = "sha256:38b9afcf1af255cf131215a9ca6b21de569c3d399fa283be45f2de00b78639c8", size = 31321, upload-time = "2026-08-23T09:05:43.583Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/01/723ce0c8c448528c53f43df195615c2351366b43097f04c7dff870d4e4d6/fraise_sdk-0.1.0b4-py3-none-any.whl", hash = "sha256:07fc54efc589ad06a5f2002adaf8bfc972e30d0d63698b6b1b0eb02a66397602", size = 31299, upload-time = "2026-08-26T08:23:14.958Z" },
 ]
 
 [[package]]
@@ -1333,7 +1333,7 @@ wheels = [
 
 [[package]]
 name = "huggingface-hub"
-version = "1.27.0"
+version = "1.28.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1346,9 +1346,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3e/9b/ddf3d02a8681f1b9ce52fda03d755dad6b74c4f8172304c4c8d2975450f9/huggingface_hub-1.27.0.tar.gz", hash = "sha256:c1fed40ea82a6b41b477f5243546549b792ae0a93abcea608cff66089bf8f8df", size = 942668, upload-time = "2026-08-07T12:48:05.161Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/ae/222a91937ebee7f62c0ca8f5ee0afd97577caf24c0abb927d1f5c7e9f6d2/huggingface_hub-1.28.0.tar.gz", hash = "sha256:46a2e950c09234de54093d587d1675382f0d08dbd600d9fb599b5932f5b2c6cb", size = 959609, upload-time = "2026-08-18T12:27:15.101Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/d8/95b735e183957c1f26d94c52977f09d466d55119cbbc1558ea4975e4c216/huggingface_hub-1.27.0-py3-none-any.whl", hash = "sha256:7df6827c2f956c60fbaa64646e979e566db76f619dd0a9729dfb8c5a3eb4f68d", size = 784926, upload-time = "2026-08-07T12:48:02.905Z" },
+    { url = "https://files.pythonhosted.org/packages/51/0e/eafef18f1a75e125e68395db21131db0cf868a128ecd2fce69b4df6c584b/huggingface_hub-1.28.0-py3-none-any.whl", hash = "sha256:58a8bacb03072edfc38067065e9dc24bbb34805410fcd36a1632de0b329660bb", size = 793202, upload-time = "2026-08-18T12:27:12.719Z" },
 ]
 
 [[package]]

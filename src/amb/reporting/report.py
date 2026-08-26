@@ -22,12 +22,9 @@
 
 """Generated documents: reports, their sections, and the charts they show.
 
-RESULTS.md and the README's results section are *outputs of this module*,
-never hand-edited files that happen to agree with `plots/`. One rule makes
-that safe: **a section declares its charts, and renders its figures from
-that same list.** Not two lists kept in sync — one list with two consumers,
-so a document cannot link a chart nobody drew, and `amb plot all` cannot
-draw a set no document shows.
+A section declares its charts and renders its figures from that same list —
+one list, two consumers — so a document cannot link a chart nobody drew and
+`amb plot all` cannot draw a set no document shows.
 """
 
 from collections.abc import Callable, Sequence
@@ -56,10 +53,9 @@ from amb.reporting.run import ComparisonReport
 def splice(path: Path, marks: tuple[str, str], block: str, template: str) -> None:
     """Replace the marked region of `path`, creating it when missing.
 
-    With both markers present only the text between them changes — the
-    surrounding prose is never touched. Otherwise `template` (holding
-    ``{block}``) writes the region fresh: appended when the file exists, as
-    the whole file when it does not.
+    With both markers present only the text between them changes; otherwise
+    `template` (holding ``{block}``) writes the region fresh — appended when
+    the file exists, as the whole file when not.
     """
     start, end = marks
     body = f"{start}\n{block}\n{end}"
@@ -78,11 +74,9 @@ def splice(path: Path, marks: tuple[str, str], block: str, template: str) -> Non
 def precision_pinned(summaries: list[dict]) -> bool:
     """Whether every summary in scope reports precision exactly 1.0.
 
-    True on dataset variants whose haystack ships only evidence (e.g.
-    LongMemEval's oracle) — no hit can ever be a false positive there, so
-    precision carries no information and F1 (= 2R/(1+R) when precision is
-    pinned at 1) is a pure function of recall. Both drop out of the chart
-    set in that case, and the section says why.
+    True on evidence-only haystacks (e.g. LongMemEval's oracle): no hit can
+    be a false positive, so precision carries no information and F1 = 2R/(1+R)
+    is a pure function of recall — both drop out of the chart set.
     """
     scores = [s["retrieval_precision"] for s in summaries if "retrieval_precision" in s]
     return bool(scores) and all(p == 1.0 for p in scores)
@@ -122,10 +116,9 @@ class RunGroup:
 
     @property
     def plot_dir(self) -> Path:
-        """Where this group's charts live: `plots/<dataset>[/<qualifier>...]`.
+        """`plots/<dataset>[/<qualifier>...]`.
 
-        Chart filenames are not namespaced, so two groups sharing one
-        directory would overwrite each other; the key nests them apart.
+        Chart filenames are not namespaced, so the key nests groups apart.
         """
         parts = [slug(value) for _, value in self.key if value]
         return DEFAULT_PLOT_DIR.joinpath(*parts)
@@ -143,9 +136,8 @@ class RunGroup:
     def metrics(self, only: Sequence[str] = ()) -> tuple[tuple[str, str], ...]:
         """The retrieval metrics worth charting for this group.
 
-        `only` (filename stems) overrides the choice outright. Otherwise
-        every metric is charted, except where precision is structurally
-        pinned at 1.0 and only recall carries information.
+        `only` (filename stems) overrides; otherwise all metrics, or recall
+        alone when precision is structurally pinned at 1.0.
         """
         selected = tuple(only) or (
             ("recall",)
@@ -162,13 +154,11 @@ def group_runs(
 ) -> list[RunGroup]:
     """Split run summaries into the groups sections are built from.
 
-    Groups come back in a stable order, with unqualified values (a dataset
-    with no variant) before qualified ones.
+    Stable order, unqualified values (a dataset with no variant) first.
 
     Raises:
         ValueError: when a group's runs disagree on a `guard` field —
-            blending them into one chart would compare different
-            experiments as if they were one.
+            blending them would chart different experiments as one.
     """
     grouped: dict[tuple[tuple[str, str], ...], list[dict]] = {}
     for summary in summaries:
@@ -197,10 +187,8 @@ def group_runs(
 class BenchmarkReport(Report):
     """One generated document: its sections, its file, how it is written.
 
-    `marks` decides the write mode. Without them the file is generated
-    whole — everything it says comes from the runs, so there is nothing to
-    preserve. With them only the marked region is rewritten, for a file
-    like README.md whose hand-written prose surrounds the results.
+    Without `marks` the file is generated whole; with them only the marked
+    region is rewritten (README.md — hand-written prose surrounds the results).
     """
 
     def __init__(
@@ -218,8 +206,7 @@ class BenchmarkReport(Report):
         self.sections = sections
         self.marks = marks
         self.template = template
-        # the run groups this report covers, one section each — kept for the
-        # CLI's "wrote N section(s)" line
+        # kept for the CLI's "wrote N section(s)" line
         self.groups = groups or []
 
     @property
@@ -230,8 +217,7 @@ class BenchmarkReport(Report):
     def charts(self) -> list[Chart]:
         """Every chart this report shows, deduplicated by output path.
 
-        Reports overlap (the summary's sweep lines also appear elsewhere),
-        so the same figure is planned once and drawn once.
+        Reports overlap, so the same figure is planned once and drawn once.
         """
         seen: dict[str, Chart] = {}
         for section in self.sections:
@@ -273,13 +259,10 @@ def results_report(
 ) -> BenchmarkReport:
     """Build RESULTS.md: the full table, then every group's chart detail.
 
-    Written whole rather than spliced — nothing in it is hand-authored, so
-    there is no prose to preserve. `k` is unused here (the file covers
-    every k the runs used); it is in the signature so every report builder
-    is callable the same way.
+    Written whole — nothing in it is hand-authored. `k` is unused (the file
+    covers every k) but keeps all report builders callable the same way.
     """
-    # imported here: sections use RunGroup/precision_pinned from this
-    # module, so a top-level import would be circular
+    # local import: a top-level one would be circular (sections uses this module)
     from amb.reporting.sections import ComparisonTable, GroupCharts, Prose
 
     header: list[Block] = [
@@ -311,11 +294,9 @@ def summary_report(
 ) -> BenchmarkReport:
     """Build the README's results section: one headline per group at `k`.
 
-    Spliced into the file's marked region: README.md is hand-written
-    around it.
+    Spliced into the file's marked region; README.md is hand-written around it.
     """
-    # imported here: sections use RunGroup/precision_pinned from this
-    # module, so a top-level import would be circular
+    # local import: a top-level one would be circular (sections uses this module)
     from amb.reporting.sections import GroupSummary, Prose
 
     intro = f"Newest run per system at k={k} — full detail in [RESULTS.md](RESULTS.md)."
@@ -336,10 +317,8 @@ def summary_report(
     )
 
 
-# Every report this repo generates, by name. A new one — an ablation page,
-# a per-provider page — is an entry here plus its builder; both CLI
-# commands pick it up, `amb report` writing it and `amb plot all` drawing
-# the charts it declares.
+# every generated report, by name; a new entry + builder is picked up by both
+# `amb report` and `amb plot all`
 REPORTS: dict[str, Callable[..., BenchmarkReport]] = {
     "results": results_report,
     "summary": summary_report,
@@ -360,9 +339,8 @@ def build_reports(
 ) -> list[BenchmarkReport]:
     """Build the named reports (default: all) over the comparison's runs.
 
-    The one entry point both `amb report` and `amb plot all` call, so the
-    documents and the chart set are planned from the same objects and
-    cannot disagree.
+    The one entry point for both `amb report` and `amb plot all`, so documents
+    and the chart set are planned from the same objects and cannot disagree.
 
     Raises:
         ValueError: on an unknown report name, or when a group's runs
@@ -374,8 +352,7 @@ def build_reports(
     if variant is not None:
         summaries = [s for s in summaries if (s.get("variant") or "") == variant]
     if not summaries:
-        # naming a combination nothing ran is a mistake worth reporting, not
-        # a document with an empty section in it
+        # a scope nothing ran is a mistake worth reporting, not an empty section
         scope = ", ".join(
             f"{name} {value!r}"
             for name, value in (("dataset", dataset), ("variant", variant))

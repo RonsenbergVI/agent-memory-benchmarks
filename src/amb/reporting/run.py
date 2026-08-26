@@ -44,12 +44,7 @@ SUMMARY_COLUMNS = (
 
 
 def run_date(run_id: str | None) -> str:
-    """A run's date, read off its timestamp id (YYYY-MM-DD, or '').
-
-    Rows in a comparison can come from different runs, so freshness is
-    per row — the newest overall date in a chart subtitle can't say when
-    each system last ran.
-    """
+    """A run's date, read off its timestamp id (YYYY-MM-DD, or '')."""
     if run_id and len(run_id) >= 8 and run_id[:8].isdigit():
         return f"{run_id[:4]}-{run_id[4:6]}-{run_id[6:8]}"
     return ""
@@ -68,10 +63,8 @@ def markdown_table(header: list[str], rows: list[list[str]]) -> str:
 class RunReport(Report):
     """The metrics report over one run's raw data.
 
-    Consumes the Run a benchmark returned; the metrics are an input,
-    defaulting to the standard set. `metric_set` holds instances (reset
-    before each pass); `category_metric_set` is a factory because every
-    question category needs its own instances.
+    `metric_set` holds instances (reset before each pass); `category_metric_set`
+    is a factory because every question category needs its own instances.
     """
 
     def __init__(
@@ -88,8 +81,7 @@ class RunReport(Report):
     def summary(self) -> dict:
         """Score the run: one pass of every record through the metric set.
 
-        Ingest stats then rows; each metric grabs the fields that apply to it
-        and its result lands under its (possibly dotted) name.
+        Each metric's result lands under its (possibly dotted) name.
         """
         metric_set = (
             self.metric_set if self.metric_set is not None else default_metrics()
@@ -122,32 +114,33 @@ class RunReport(Report):
             "num_samples": len(self.run.ingestion_records),
             "num_questions": len(self.run.question_records),
         }
-        # the memory system's own models and any remaining explicit --param
-        # overrides: part of identity, so variants coexist as rows
+        # the system's own models and --param overrides are identity: variants
+        # must coexist as rows
         if self.run.ingestion_model:
             summary["ingestion_model"] = self.run.ingestion_model
         if self.run.embedding_model:
             summary["embedding_model"] = self.run.embedding_model
+        if self.run.usage_coverage != "full":
+            summary["usage_coverage"] = self.run.usage_coverage
         if self.run.system_params:
             summary["system_params"] = self.run.system_params
         if self.run.max_turns is not None:
-            # marks a truncated run: only part of the corpus was ingested, so
-            # these scores are not full-run numbers
+            # marks a truncated run: scores are not full-run numbers
             summary["max_turns"] = self.run.max_turns
         if self.run.sample_seed is not None:
             # which conversations were drawn is part of what was measured
             summary["sample_seed"] = self.run.sample_seed
         if self.run.workers > 1:
-            # latencies were measured under N-way contention — a different
-            # experiment from the single-worker rows, never blended
+            # latencies measured under N-way contention: a different experiment
+            # from single-worker rows, never blended
             summary["workers"] = self.run.workers
         for metric in metric_set:
             if metric.count or metric.report_when_empty:
                 self._place(summary, metric.name, metric.result())
-        # headline cost: one top-level float so it shows up as a comparison
-        # column whenever a usage-tracking callback reported spend
+        # headline cost as one top-level float; omitted entirely when coverage
+        # is "none" — an unobservable spend reported as 0 would read as "free"
         section = summary.get("memory_tokens")
-        if isinstance(section, dict):
+        if isinstance(section, dict) and self.run.usage_coverage != "none":
             ingested: dict = section.get("ingest", {})
             summary["memory_tokens_total"] = float(
                 sum(v for k, v in ingested.items() if k.endswith("_tokens"))
@@ -174,11 +167,9 @@ class RunReport(Report):
     def judge(self, model: "str | Model", force: bool = False) -> int:
         """Grade predicted answers against gold, writing onto the rows.
 
-        An evaluation step, deliberately outside the run loop: a saved run
-        can be (re-)judged — different judge model, tightened rubric —
-        without re-running the memory system. Returns how many rows were
-        judged; rows without a prediction or a gold answer are skipped, and
-        already-judged rows are kept unless `force`.
+        Outside the run loop so a saved run can be re-judged without re-running
+        the memory system. Returns rows judged; rows missing a prediction or
+        gold answer are skipped, already-judged rows kept unless `force`.
         """
         # imported lazily so judging is the only path that needs LLM deps
         from amb.agent import judge_answer
@@ -202,15 +193,11 @@ class RunReport(Report):
     # -- persistence -----------------------------------------------------
 
     def run_dir(self, root: Path | None = None) -> Path:
-        """This run's own directory under the report root.
+        """`<root>/<dataset>[/<variant>]/<system>/<mode>/<run_id>`.
 
-        Laid out as `<root>/<dataset>[/<variant>]/<system>/<mode>/<run_id>`.
-        The mode level keeps the two experiment kinds apart on disk the same
-        way they are kept apart in every comparison. The variant level only
-        appears when the run named one (`--variant`) — most datasets have
-        none, but a dataset with several (e.g. LongMemEval's oracle/s/m) is
-        a different experiment per variant, and without this level they'd
-        share one directory and silently collide in `--latest`.
+        The variant level appears only when the run named one; without it,
+        variants (e.g. LongMemEval oracle/s/m — a different experiment each)
+        would share one directory and silently collide in `--latest`.
         """
         parts = [self.run.dataset]
         if self.run.variant:
@@ -256,6 +243,7 @@ class RunReport(Report):
                 judge_model=summary.get("judge_model"),
                 ingestion_model=summary.get("ingestion_model"),
                 embedding_model=summary.get("embedding_model"),
+                usage_coverage=summary.get("usage_coverage", "full"),
                 system_params=summary.get("system_params") or {},
                 max_turns=summary.get("max_turns"),
                 sample_seed=summary.get("sample_seed"),
@@ -271,8 +259,8 @@ class RunReport(Report):
     def to_markdown(self) -> str:
         """Render the run's summary as a two-column markdown table.
 
-        Nested sections (dotted metric names, by_category) are shown as
-        their dict text — the cross-run tables live on ComparisonReport.
+        Nested sections show as dict text; cross-run tables live on
+        ComparisonReport.
         """
         return markdown_table(
             ["field", "value"],
@@ -283,19 +271,13 @@ class RunReport(Report):
 class ComparisonReport(Report):
     """The final cross-system comparison, aggregated from run summaries.
 
-    Deliberately unaware of providers, datasets, and metrics: it loads
-    whatever summaries exist and the data itself says who is what — identity
-    comes from each summary's ``system``/``dataset`` fields, and every
-    top-level float in a summary is treated as a reported metric, so new
-    metrics and new systems appear in the comparison without code changes.
+    Identity comes from each summary's fields and every top-level float is a
+    reported metric, so new metrics and systems appear without code changes.
     """
 
-    # max_turns is part of identity: a truncated smoke run is a different
-    # thing from a full run and must never displace one in latest(). The
-    # system's own models and --param overrides are identity too: a fraise
-    # run with an embedder is a different subject than one without. So is
-    # k: recall@1 and recall@10 measure the same system at different
-    # retrieval budgets, and a --k sweep must land as separate rows.
+    # max_turns is identity: a truncated smoke run must never displace a full
+    # run in latest(). So are the system's own models/--param overrides, and k:
+    # a --k sweep must land as separate rows.
     IDENTITY = (
         "dataset",
         "variant",
@@ -337,10 +319,9 @@ class ComparisonReport(Report):
 
     @classmethod
     def collect(cls, root: Path | None = None) -> "ComparisonReport":
-        """Load every summary under root, wherever it sits.
+        """Load every summary under root.
 
-        Identity is read from each file's content, not from the directory
-        layout.
+        Identity is read from file content, not directory layout.
         """
         root = root or DEFAULT_RUNS_DIR
         summaries = []
@@ -382,23 +363,14 @@ class ComparisonReport(Report):
     def summary_table(
         self, k: int = 10, dataset: str | None = None, variant: str | None = None
     ) -> tuple[list[str], list[list[str]]]:
-        """Build the compact table: newest run per system at one k.
+        """Build the compact table: newest run per system at one k, best F1 first.
 
-        The full-detail table (`to_markdown`) keeps every identity row
-        distinct; this one answers "how do the systems compare" in one row
-        per system, best retrieval F1 first, for the README. `dataset`
-        scopes it to one dataset — comparing "newest per system" across
-        several datasets at once would silently mix unrelated exams into
-        one ranking, so the caller must resolve one first (see
-        `to_markdown`'s mixed-dataset guard for the same concern).
-        `variant` scopes it further, to one dataset variant (e.g.
-        LongMemEval's oracle/s/m are different experiments, not different
-        runs of the same one) — required whenever the dataset has more
-        than one variant present.
+        `dataset` must scope to one dataset — ranking "newest per system"
+        across several would mix unrelated exams. `variant` scopes further and
+        is required whenever the dataset has more than one variant present.
 
         Returns:
             The header labels and the formatted rows, ranked best F1 first.
-            Formatting into a document is the renderer's job.
         """
         newest: dict[str, dict] = {}
         for s in self.summaries:
@@ -427,26 +399,61 @@ class ComparisonReport(Report):
                 str(s.get("system_version") or ""),
                 run_date(s.get("run_id")),
             ]
-            cells += [
-                fmt.format(s[key]) if key in s else ""
-                for key, _, fmt in SUMMARY_COLUMNS
-            ]
+            cells += [self._cell(s, key, fmt) for key, _, fmt in SUMMARY_COLUMNS]
             latency = s.get("search_latency", {})
             cells += [f"{latency.get('p50_s', 0):.4f}" if latency else ""]
             rows.append(cells)
         return header, rows
 
+    @staticmethod
+    def _cell(summary: dict, key: str, fmt: str) -> str:
+        """One comparison cell, saying how much of the cost it accounts for.
+
+        Three states stay apart: a full number is comparable; partial coverage
+        is starred, not quietly ranked against complete numbers; unmeasurable
+        says "n/a" — a blank would read as a missing datum, not a property.
+        """
+        coverage = summary.get("usage_coverage", "full")
+        if key in summary:
+            cell = fmt.format(summary[key])
+            if key == "memory_tokens_total" and coverage == "partial":
+                return f"{cell}*"
+            return cell
+        if key == "memory_tokens_total" and coverage == "none":
+            return "n/a"
+        return ""
+
+    # cost-column footnotes, emitted only when a row actually uses one
+    USAGE_FOOTNOTES = {
+        "*": "incomplete — the system spends where this harness cannot fully see it",
+        "n/a": "not measurable — none of this system's spend is observable here",
+    }
+
     def to_summary_markdown(
         self, k: int = 10, dataset: str | None = None, variant: str | None = None
     ) -> str:
-        """Render `summary_table` as a markdown table."""
-        return markdown_table(*self.summary_table(k, dataset, variant))
+        """Render `summary_table` as a markdown table, with its cost notes."""
+        header, rows = self.summary_table(k, dataset, variant)
+        table = markdown_table(header, rows)
+        try:
+            column = header.index("memory tokens")
+        except ValueError:
+            return table
+        notes = self._usage_notes([row[column] for row in rows])
+        return table if not notes else table + "\n\n" + notes + "\n"
+
+    @classmethod
+    def _usage_notes(cls, cells: list[str]) -> str:
+        """Explain the cost marks this table actually used, and only those."""
+        used = [
+            f"`{mark}` {text}"
+            for mark, text in cls.USAGE_FOOTNOTES.items()
+            if any(cell == mark or cell.endswith(mark) for cell in cells)
+        ]
+        return "  \n".join(used)
 
     def table(self) -> tuple[list[str], list[list[str]]]:
         """Build the full comparison: one row per run, every identity column.
-
-        Every metric column is session-level and populated for every
-        system — one exam, fully comparable.
 
         Returns:
             The header labels and the formatted rows, in the report's

@@ -31,8 +31,7 @@ from amb.constants import ENTRY_POINT_GROUP
 class BenchmarkSpec(BaseModel):
     """A registered integration, loaded lazily.
 
-    Lazy loading means listing systems does not require every integration's
-    SDK to be importable.
+    Lazy so listing systems does not require every integration's SDK import.
     """
 
     # EntryPoint is not a pydantic-aware type, so it is held as-is
