@@ -142,7 +142,6 @@ class EverOSMemory(Memory):
 
     def __init__(
         self,
-        root: str | None = None,
         model: str | None = DEFAULT_INGESTION_MODEL,
         embedding_model: str | None = DEFAULT_EMBEDDING_MODEL,
         embedding_dimensions: int | str = DEFAULT_EMBEDDING_DIMENSIONS,
@@ -152,7 +151,7 @@ class EverOSMemory(Memory):
     ) -> None:
         """Pin the models and the retrieval method EverOS will use."""
         super().__init__(**params)
-        self.root = Path(root or os.environ.get("EVEROS_ROOT", DEFAULT_ROOT))
+        self.root = Path(os.environ.get("EVEROS_ROOT", DEFAULT_ROOT))
         self.model = model
         self.embedding_model = embedding_model
         # --param values arrive as strings
