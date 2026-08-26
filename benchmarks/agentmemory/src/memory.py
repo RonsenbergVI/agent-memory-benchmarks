@@ -37,11 +37,11 @@ requires one.
 Ingestion is agentmemory's own hook path. Each dataset session opens an
 agentmemory *session* and each turn is posted as one ``prompt_submit``
 observation — the shape the project's own Claude Code hooks produce, and
-the only one whose content is the utterance itself. Running keyless (no
-LLM provider key, the server's default) it stores the turn verbatim as
-the observation's ``narrative`` and retrieves with BM25 plus on-device
-embeddings. Setting a provider key on the server would turn on LLM
-compression instead; that is a different system and a different row.
+Ingestion is agentmemory's own hook path. Each dataset session opens an
+agentmemory *session* and each turn is posted as one ``prompt_submit``
+observation — the shape the project's own Claude Code hooks produce.
+This integration is typically run with OpenAI embeddings (and, when enabled on
+ the server, LLM compression) performed inside the Node service.
 
 Two properties of the service shape this adapter and are not obvious:
 
