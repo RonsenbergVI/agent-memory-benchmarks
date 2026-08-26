@@ -1,6 +1,10 @@
 services:
   fraise:
-    image: ghcr.io/fraisehq/fraise@sha256:57196b2a7113b3ecddb1c7d4725d24dd873238c15994476742a17720ec3de2e4
+    # v0.1.0-rc.1 (commit 0a3364fe). ghcr publishes no semver tags for this
+    # image — only `edge` and per-commit tags — so the release is pinned by
+    # digest, and the version it corresponds to is recorded here because the
+    # digest alone does not say.
+    image: ghcr.io/fraisehq/fraise@sha256:33f3a452a573af82f877a2ed624446b5bcce5a483683029c5e024c41c2e4dd79
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9876/ || exit 1"]
       interval: 5s
