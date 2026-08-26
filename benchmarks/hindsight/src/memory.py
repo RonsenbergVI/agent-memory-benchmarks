@@ -250,9 +250,10 @@ class HindsightMemory(Memory):
         """
         if not query.strip():
             return []
+        bank_id = self._ensure_bank(conversation_id)
         try:
             response = self.client.recall(
-                bank_id=self._bank_id(conversation_id),
+                bank_id=bank_id,
                 query=query,
                 max_tokens=self.max_tokens,
                 budget=self.budget,
