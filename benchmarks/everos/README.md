@@ -40,7 +40,7 @@ docker compose -p everos-smoke -f benchmarks/everos/docker-compose.yaml \
 | `reasoning` | auto | Whether the model rejects `temperature=0.0`. Auto-detected from the model name; `false` restores everalgo's own temperature. |
 | `embedding_model` | `text-embedding-3-small` | Embedder, at `embedding_dimensions` (1536). |
 | `search_method` | `hybrid` | `hybrid` is vector + keyword. `agentic` adds an LLM planning pass — query understanding rather than retrieval, so not comparable with the other systems. |
-| `root` | `EVEROS_ROOT`, else `.everos` | Where the Markdown and indexes live. |
+| (env) `EVEROS_ROOT` | `.everos` | Where the Markdown and indexes live. |
 
 ## Notes
 
