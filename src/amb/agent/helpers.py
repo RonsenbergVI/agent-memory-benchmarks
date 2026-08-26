@@ -33,10 +33,8 @@ def format_context(hits: list[MemoryHit]) -> str:
 def format_session(session: Session) -> str:
     """Render one session as the transcript the ingest agent reads.
 
-    What a live agent would have seen — speakers, text, the date — plus a
-    turn marker per line, the citation handle write tools take for
-    provenance. Conversation and session ids stay harness-side: an agent
-    storing memories in real time knows neither.
+    Each line carries a turn marker — the citation handle write tools take.
+    Conversation and session ids stay harness-side: a live agent knows neither.
     """
     header = (
         f"Conversation of {session.timestamp}" if session.timestamp else "Conversation"

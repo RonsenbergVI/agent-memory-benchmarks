@@ -63,9 +63,7 @@ def answer_with_memory(
 ) -> GenerationResult:
     """Answer one question with the model driving retrieval (agentic mode).
 
-    The model searches through the toolset's tools — the system's own, so
-    the prompt names none of them; what the model looked at is recorded on
-    the toolset.
+    Searches run through the system's own tools and are recorded on the toolset.
     """
     agent = Agent(
         model,
@@ -92,8 +90,7 @@ def ingest_with_agent(
 ) -> GenerationResult:
     """Store one session with the model driving the writes (agentic mode).
 
-    The model decides what is worth remembering and how to call the memory
-    system's write tools; what it wrote is recorded on the toolset.
+    The model decides what to store; writes are recorded on the toolset.
     """
     agent = Agent(
         model,

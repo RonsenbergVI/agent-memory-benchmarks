@@ -32,10 +32,9 @@ from src.toolset import FraiseIngestToolset, FraiseSearchToolset
 class FraiseBenchmark(Benchmark):
     """The benchmark object the `fraise` entry point resolves to.
 
-    The adapter's extraction and embedding traffic runs in-process through
-    the openai SDK, where the default usage tracker sees it; with both
-    models unpinned (`--param model=none embedding_model=none`) fraise
-    spends nothing and records a truthful zero.
+    Extraction/embedding traffic runs in-process through the openai SDK,
+    where the default usage tracker sees it; with both models unpinned
+    (`--param model=none embedding_model=none`) fraise records a truthful zero.
     """
 
     name: ClassVar[str] = "fraise"

@@ -20,11 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""LoCoMo (Maharana et al., ACL 2024).
+"""LoCoMo (Maharana et al., ACL 2024): long multi-session conversations with QA.
 
-Very long-term multi-session conversations with QA annotations.
-
-There is no official HuggingFace release, so the raw JSON is fetched from the
+No official HuggingFace release — the raw JSON is fetched from the
 snap-research/locomo GitHub repository (override with AMB_LOCOMO_URL).
 """
 

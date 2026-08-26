@@ -119,6 +119,8 @@ Retrieval is scored at **every level the dataset's labels and the system's hits 
 
 ## Conventions
 
+- **Comments are rationed.** Say the why once, in one line, at the decision point — not a paragraph on every choice. A block comment is reserved for an invariant that cost real debugging time (a concurrency rule, a calibration record, a pin's provenance) and leads with the fact, not the story. Never narrate what the code already says, never repeat the docstring, never leave a comment that only makes sense in the pull request that added it. A file where everything is explained reads as if nothing is.
+- **Docstrings state the contract, then stop.** Lint makes them mandatory (`D`/`DOC`); it does not make them essays. First line carries the point; add lines only for behavior a caller cannot see in the signature.
 - **Data contracts are pydantic models** (`contracts`), validated at the `Run` boundary.
 - **The CLI is click**, one command per module under `cli/commands/`, attached from the `COMMANDS` tuple — a new command is a new module plus one entry there, nothing in `main.py`. `--param KEY=VALUE` coerces types (`true`/`false`, numbers) — argparse-style raw strings would make `reasoning=false` truthy.
 - **Docker**: databases use named volumes so ingestion survives `down`; wipe with `down -v`. Exception: fraise runs its server without a volume on purpose — the alpha SDK has no delete verb, so teardown is a no-op and a fresh `up` starting empty *is* the wipe; don't add one. Don't set path env vars in a Dockerfile — `WORKDIR /amb` already makes the default relative paths land on the mounted volumes.

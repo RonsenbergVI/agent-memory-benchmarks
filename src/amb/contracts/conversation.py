@@ -33,11 +33,7 @@ class Turn(BaseModel):
 
 
 class Session(BaseModel):
-    """A contiguous block of turns.
-
-    Sessions are typically separated from each other by hours or days of
-    in-world time.
-    """
+    """A contiguous block of turns, typically hours or days of in-world time apart."""
 
     session_id: str
     timestamp: str | None = None
@@ -74,7 +70,6 @@ class QAPair(BaseModel):
     question: str
     answer: str | None = None
     category: str | None = None
-    # ids of turns and/or sessions that contain the evidence for the answer
     evidence_turn_ids: list[str] = Field(default_factory=list)
     evidence_session_ids: list[str] = Field(default_factory=list)
     # in-world date at which the question is asked (LongMemEval)

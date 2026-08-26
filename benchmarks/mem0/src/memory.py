@@ -22,17 +22,11 @@
 
 """Mem0 (mem0ai/mem0) — vector store + LLM fact extraction.
 
-Workspace package ``mem0-benchmark`` (this directory); like every
-integration, its module is ``src`` since SDKs own the pretty import names.
-Vectors go to the Qdrant server named by QDRANT_HOST/QDRANT_PORT (set by the
-Docker environment in benchmarks/mem0/); without those it falls back to
-mem0's embedded local store. Extraction/embeddings use OpenAI (needs
-OPENAI_API_KEY).
-
-The models mem0 uses to ingest come from the command line —
-``--param model=... --param embedding_model=...`` — falling back to the
-defaults below. Pass ``--param config=...`` (a full Memory.from_config
-dict) to bypass all of it and point at other backends.
+Vectors go to the Qdrant server named by QDRANT_HOST/QDRANT_PORT (compose
+sets them); without those, mem0's embedded local store. Extraction and
+embeddings use OpenAI (needs OPENAI_API_KEY); models come from
+``--param model=... embedding_model=...`` with the defaults below, and
+``--param config=...`` (a full Memory.from_config dict) bypasses it all.
 """
 
 import os
@@ -46,10 +40,8 @@ from amb.logs import logger
 DEFAULT_INGESTION_MODEL = "gpt-5-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 
-# parallel workers each build a client, and every mem0 Qdrant store does
-# check-then-create on the same collection — concurrent setups race that
-# gap and the losers die on 409 Conflict. One build at a time; after the
-# first, the collection exists for everyone.
+# mem0's Qdrant store does check-then-create on a shared collection;
+# concurrent worker setups race that gap and the losers die on 409 Conflict.
 _SETUP_LOCK = threading.Lock()
 
 
@@ -74,9 +66,8 @@ class Mem0Memory(Memory):
         self.model = model or DEFAULT_INGESTION_MODEL
         self.embedding_model = embedding_model or DEFAULT_EMBEDDING_MODEL
         # mem0's name-based reasoning detection misses gpt-5-mini, so it sends
-        # temperature/top_p and the model rejects them (400). The explicit flag
-        # selects the parameter set that omits them, which is safe for
-        # non-reasoning models too — set False to restore mem0's sampling args.
+        # temperature/top_p and the model 400s; the explicit flag omits them
+        # (safe for non-reasoning models too — False restores sampling args).
         self.reasoning = reasoning
         self._conversations: set[str] = set()
 
@@ -99,9 +90,7 @@ class Mem0Memory(Memory):
                     "config": {"model": self.embedding_model},
                 },
             }
-            # where the vector store lives is infrastructure, so it comes
-            # from the environment (compose sets it); without it mem0 falls
-            # back to its embedded local store
+            # vector-store location is infrastructure: the environment sets it
             if host := os.environ.get("QDRANT_HOST"):
                 config["vector_store"] = {
                     "provider": "qdrant",
@@ -153,9 +142,8 @@ class Mem0Memory(Memory):
     ) -> None:
         """Store one agent-authored memory verbatim (agentic mode).
 
-        `infer=False` skips mem0's own LLM extraction: in agentic mode the
-        *agent* is the extractor, so the fact lands as written, with its
-        provenance in the metadata search reads back.
+        `infer=False` skips mem0's own extraction — the agent is the
+        extractor, so the fact lands as written, provenance in metadata.
         """
         self.memory.add(
             content,
@@ -171,8 +159,8 @@ class Mem0Memory(Memory):
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return mem0's k best memories for the query."""
-        # mem0 2.0 API: entity scoping goes in `filters`, result count is
-        # `top_k` (`limit` would be silently swallowed by **kwargs)
+        # mem0 2.0 API: result count is `top_k` — `limit` is silently
+        # swallowed by **kwargs
         response = self.memory.search(
             query,
             filters={"user_id": conversation_id},
@@ -190,8 +178,8 @@ class Mem0Memory(Memory):
         for r in results:
             metadata = r.get("metadata") or {}
             session_id = metadata.get("session_id")
-            # turn ids exist only on agentic-mode memories, whose provenance
-            # is exact; mem0's own extraction spans a session
+            # turn ids exist only on agentic-mode memories; mem0's own
+            # extraction spans a session
             turn_ids = metadata.get("turn_ids") or []
             hits.append(
                 MemoryHit(

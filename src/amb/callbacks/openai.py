@@ -37,24 +37,18 @@ class OpenAIUsageTracker(Callback):
     """Counts tokens for memory systems that call the openai SDK in-process.
 
     Attached by default on every Benchmark: wrappers on the SDK's sync and
-    async request methods read the billed ``usage`` off every response
-    (mem0, graphiti, fraise), so the report gets a token_usage dict per
-    sample (ingestion) and a memory_tokens delta per question (search); a
-    system that makes no in-process calls records a truthful zero. Systems
-    that spend inside their own server attach their own counting strategy
-    instead (letta's TiktokenUsageTracker). Class-level patching is
-    process-wide — fine here, the benchmark runs one system instance at a
-    time.
+    async request methods read the billed ``usage`` off every response,
+    giving a token_usage dict per sample and a memory_tokens delta per
+    question; a system with no in-process calls records a truthful zero.
+    Server-side spenders attach their own strategy instead (letta's
+    TiktokenUsageTracker). Patching is process-wide — fine, one system
+    instance runs at a time.
 
-    Counters live in a `ContextVar`, not a `threading.local()`. Both keep
-    one sample's spend off another's under `--workers` — a thread starts
-    with its own empty context — but only the ContextVar survives the
-    thread hop an integration makes when it marshals its SDK calls onto a
-    background event loop. `asyncio.run_coroutine_threadsafe` copies the
-    *submitting* thread's context, so the counters the worker installed
-    are the ones the loop thread books into. Under thread-local storage
-    those calls were intercepted, handed to `_record`, and silently
-    dropped, and the system reported a confident zero it had not earned.
+    Counters live in a `ContextVar`, not `threading.local()`: integrations
+    that marshal SDK calls onto a background event loop rely on
+    `asyncio.run_coroutine_threadsafe` copying the *submitting* thread's
+    context. Under thread-local storage those calls were intercepted and
+    silently dropped, and the system reported a zero it had not earned.
     """
 
     KEYS = TOKEN_TRACKING_KEYS
@@ -62,9 +56,8 @@ class OpenAIUsageTracker(Callback):
     def __init__(self) -> None:
         """Start with nothing patched and no sample being measured."""
         self._originals: list = []
-        # the dict is shared by reference, so a call booked from another
-        # thread that inherited this context lands in the sample's own
-        # counters rather than a copy of them
+        # shared by reference: a booking from an inheriting thread lands in
+        # the sample's own counters, not a copy
         self._counters: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
             "amb_usage_counters", default=None
         )
@@ -82,11 +75,7 @@ class OpenAIUsageTracker(Callback):
         return counters if counters is not None else dict.fromkeys(self.KEYS, 0)
 
     def on_run_begin(self, config: "RunConfig", run: Run) -> None:
-        """Patch the SDK once for the whole run.
-
-        Per-sample install/remove breaks under `--workers`: the first
-        sample to finish would unpatch the SDK while others still run.
-        """
+        """Patch once per run — per-sample unpatching races under `--workers`."""
         self._install()
 
     def on_run_end(self, run: Run) -> None:
@@ -141,8 +130,7 @@ class OpenAIUsageTracker(Callback):
         else:
             counters["llm_calls"] += 1
             if usage is not None:
-                # chat completions say prompt/completion, responses API
-                # says input/output
+                # chat completions: prompt/completion; responses API: input/output
                 counters["llm_input_tokens"] += (
                     getattr(usage, "prompt_tokens", None)
                     or getattr(usage, "input_tokens", 0)
@@ -155,19 +143,14 @@ class OpenAIUsageTracker(Callback):
                 )
 
     def _targets(self) -> list[tuple[type, str, str, bool]]:
-        """Return every openai entry point that reports usage.
+        """List every usage-reporting entry point as (owner, method, kind, is_async).
 
-        Yields (owner, method, kind, is_async) quadruples. Whether a
-        target is async is declared here rather than detected: the SDK's
-        async methods are decorated, and `inspect.iscoroutinefunction`
-        answers False for `AsyncCompletions.create` on openai 3.2/3.3
-        even though awaiting it is the only way to call it. Detection
-        therefore handed async chat completions to the *sync* wrapper,
-        which "recorded" the un-awaited coroutine: the call was counted
-        and every one of its tokens was lost. The resource classes are
-        the reliable signal — Async* is async, and that cannot drift with
-        a decorator change. openai is imported lazily so retrieval-only
-        runs never touch it.
+        is_async is declared, not detected: `inspect.iscoroutinefunction`
+        answers False for the decorated `AsyncCompletions.create` on openai
+        3.2/3.3, so detection handed async calls to the sync wrapper, which
+        counted the un-awaited coroutine and lost every token. The Async*
+        class name cannot drift with a decorator change. openai is imported
+        lazily so retrieval-only runs never touch it.
         """
         from openai.resources import embeddings
         from openai.resources.chat import completions
@@ -186,8 +169,7 @@ class OpenAIUsageTracker(Callback):
             targets += [
                 (responses.Responses, "create", "llm", False),
                 (responses.AsyncResponses, "create", "llm", True),
-                # graphiti-core calls parse(), which posts directly rather
-                # than delegating to create()
+                # graphiti-core calls parse(), which posts directly, not via create()
                 (responses.Responses, "parse", "llm", False),
                 (responses.AsyncResponses, "parse", "llm", True),
             ]
@@ -201,8 +183,7 @@ class OpenAIUsageTracker(Callback):
         try:
             targets = self._targets()
         except ImportError:
-            # no openai SDK in this env: nothing in-process to count (the
-            # proxy feed, when wired, still works)
+            # no openai SDK: nothing in-process to count (the proxy feed still works)
             return
         for owner, name, kind, is_async in targets:
             original = getattr(owner, name, None)

@@ -22,11 +22,9 @@
 
 """Graphiti's native tool surface for `--mode agentic`.
 
-The agent writes episodes (graphiti extracts entities and edges from them
-server-side of the SDK) and searches the resulting graph. The conversation's
-``group_id`` scope is set by the adapter — never by the model. Provenance is
-session-level: edges cite the episodes they were extracted from, and the
-adapter maps episodes to sessions locally.
+The agent writes episodes and searches the resulting graph. The
+conversation's ``group_id`` scope is set by the adapter — never by the
+model. Provenance is session-level via the adapter's episode->session map.
 """
 
 import time
