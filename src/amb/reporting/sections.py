@@ -34,8 +34,7 @@ from amb.reporting.run import ComparisonReport, run_date
 def freshness(summaries: list[dict]) -> str:
     """`· run YYYY-MM-DD` of the newest run in scope, or "" without one.
 
-    Every chart subtitle carries it, so a saved image dates itself — a
-    screenshot or a stale README embed can't pass off old numbers as new.
+    Carried in every chart subtitle so a saved image dates itself.
     """
     stamp = run_date(max((s.get("run_id") or "" for s in summaries), default=""))
     return f" · run {stamp}" if stamp else ""
@@ -85,25 +84,21 @@ class ComparisonTable(Section):
 class GroupCharts(Section):
     """One group's chart sets — the single-k detail, one set per k it ran.
 
-    Every k the group's runs used gets its own set, so the document covers
-    the whole sweep instead of one budget somebody remembered to pass on
-    the command line. Charts no run has data for are dropped up front,
-    never linked and never drawn.
+    Every k the runs used gets its own set, covering the whole sweep.
+    Charts no run has data for are dropped up front, never linked or drawn.
     """
 
     group: RunGroup
     level: int = 3
     metric_filter: tuple[str, ...] = ()
-    # the group's k-sweep lines, shown before the per-k sets. The same
-    # figures GroupSummary links — planned with identical paths, so the
+    # k-sweep lines; same figures (and paths) GroupSummary links, so the
     # reports' chart sets deduplicate to one drawing
     sweeps: list[Chart] = field(default_factory=list, init=False, repr=False)
-    # per k: its bar charts and its trade-off scatters, both non-empty only
+    # per k: its bar charts and its trade-off scatters
     sets: list[tuple[int, list[Chart], list[Chart]]] = field(
         default_factory=list, init=False, repr=False
     )
-    # charts the metric set calls for that no run has data for: reported
-    # rather than silently absent
+    # planned charts with no data: reported rather than silently absent
     skipped: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
@@ -185,7 +180,7 @@ class GroupCharts(Section):
                 if stem.startswith("latency")
                 else r"$\uparrow$ better, $\leftarrow$ cheaper"
             ),
-            # a cost-vs-cost scatter names no score, so it has no floor
+            # cost-vs-cost names no score, so no floor
             baseline_system=None if stem == "tokens_latency" else "naive",
         )
 
@@ -254,9 +249,7 @@ class GroupCharts(Section):
 class GroupSummary(Section):
     """One group's headline: a row per system at one k, plus its k sweeps.
 
-    The overview half of the pair — `GroupCharts` is the detail. The sweep
-    lines belong here because they answer "how does this system behave as
-    the budget grows" in one chart per metric.
+    The overview half of the pair — `GroupCharts` is the detail.
     """
 
     group: RunGroup
@@ -265,10 +258,8 @@ class GroupSummary(Section):
     level: int = 3
     metric_filter: tuple[str, ...] = ()
     lines: list[Chart] = field(default_factory=list, init=False, repr=False)
-    # the compact table at `k`, rendered as a figure: the README embeds an
-    # image from plots/, where CI blocks hand edits, instead of markdown
-    # numbers anyone could quietly change (the exact numbers stay in
-    # RESULTS.md, which is guarded the same way)
+    # the compact table at `k` rendered as a figure: the README embeds an image
+    # from plots/, where CI blocks hand edits, not editable markdown numbers
     summary: Chart | None = field(default=None, init=False, repr=False)
     skipped: int = field(default=0, init=False)
 
@@ -317,8 +308,7 @@ class GroupSummary(Section):
         if self.summary:
             blocks.append(Figure(alt=self.summary.alt, path=self.summary.path))
         else:
-            # no run at this k: fall back to the markdown table rather than
-            # linking an image that was never drawn
+            # no run at this k: markdown table, not a link to an undrawn image
             header, rows = self.comparison.summary_table(
                 self.k, dataset=self.group.dataset, variant=self.group.variant or None
             )

@@ -75,12 +75,10 @@ class Run(BaseModel):
     run_id: str
     system: str
     dataset: str
-    # the memory system's own models and explicit --param overrides: part
-    # of the run's comparison identity, so variants coexist as rows
+    # models and --param overrides join the run's identity, so variants coexist as rows
     ingestion_model: str | None = None
     embedding_model: str | None = None
-    # "full" | "partial" | "none" — how much of the system's spend this
-    # run accounts for; reporting renders each differently
+    # "full" | "partial" | "none": how much of the system's spend this run accounts for
     usage_coverage: str = "full"
     system_params: dict = Field(default_factory=dict)
     variant: str | None = None
@@ -88,14 +86,11 @@ class Run(BaseModel):
     k: int = 10
     model: str | None = None
     judge_model: str | None = None
-    # set when ingestion was truncated: scores are not comparable to a full
-    # run, since the corpus was only partly ingested
+    # set when ingestion was truncated: scores not comparable to a full run
     max_turns: int | None = None
     sample_seed: int | None = None
-    # conversations run in parallel: latency percentiles measured under
-    # N-way contention are a different experiment from single-tenant ones,
-    # so the worker count joins the run's comparison identity (1 = the
-    # historical default every earlier run used)
+    # latency under N-way contention is a different experiment from single-tenant,
+    # so the worker count joins the run's identity (1 = historical default)
     workers: int = 1
     system_version: str | None = None
     question_records: list[QuestionRecord] = Field(default_factory=list)

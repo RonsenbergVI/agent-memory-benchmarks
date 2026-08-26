@@ -35,17 +35,15 @@ if TYPE_CHECKING:
 class TimingTracker(Callback):
     """Times every phase of a run — the harness's own core measurement.
 
-    Produces `ingest_s` and `write_s` on each sample's stats,
-    `conversation_s` on its record, and `search_s` / `answer_s` (plus
-    `num_searches`, where an agent chose how often to search) on every
-    question row. Attached by `Runner.core_callback_classes` ahead of the
-    benchmark's own callbacks, so a run cannot be missing its latencies.
+    Writes `ingest_s`/`write_s` on sample stats, `conversation_s` on its
+    record, and `search_s`/`answer_s` (plus `num_searches` in agentic
+    mode) on every question row. Attached by
+    `Runner.core_callback_classes`, so a run cannot be missing latencies.
 
-    State is keyed by sample, not thread: `--workers` runs samples
-    concurrently, and in agentic mode the searches and writes are reported
-    from pydantic-ai's own worker thread, so thread-local marks would lose
-    exactly the events this mode exists to measure. Every hook carries its
-    sample, and a run never has two samples of the same id in flight.
+    State is keyed by sample, not thread: agentic-mode searches and writes
+    arrive from pydantic-ai's own worker thread, so thread-local marks
+    would lose exactly the events this mode exists to measure. A run never
+    has two samples of the same id in flight.
     """
 
     def __init__(self) -> None:
@@ -55,12 +53,7 @@ class TimingTracker(Callback):
         self._agentic = False
 
     def on_run_begin(self, config: "RunConfig", run: Run) -> None:
-        """Note the mode: it decides whether search counts are observations.
-
-        In direct mode the harness searches exactly once per question, so
-        recording that is bookkeeping, not measurement; in agentic mode how
-        often the agent searched is a result.
-        """
+        """Note the mode: agentic search counts are results, direct's are fixed at 1."""
         self._agentic = config.mode == "agentic"
 
     def _state(self, sample: Sample) -> dict:
@@ -75,8 +68,6 @@ class TimingTracker(Callback):
         """Seconds since the phase was marked, or None if it never began."""
         mark = self._state(sample).pop(f"mark:{phase}", None)
         return None if mark is None else time.perf_counter() - mark
-
-    # -- lifecycle ---------------------------------------------------------
 
     def on_sample_begin(self, sample: Sample, system: Memory) -> None:
         """Start this sample's clocks."""

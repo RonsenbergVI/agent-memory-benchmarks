@@ -22,24 +22,19 @@
 
 """Letta (letta-ai/letta) — OS-style hierarchical agent memory.
 
-Workspace package ``letta-benchmark`` (this directory).
-Needs a running Letta server (see benchmarks/letta/docker-compose.yaml). The
-adapter benchmarks Letta's archival memory: one agent per conversation, turns
-inserted as archival passages, search via passage retrieval.
+Needs a running Letta server (benchmarks/letta/docker-compose.yaml): one agent
+per conversation, turns inserted as archival passages, search via passage
+retrieval.
 
 Token accounting: letta spends inside its server, invisible to the harness's
-in-process SDK wrappers, so the adapter accounts for it itself. Embeddings
-are computed — every stored passage
-and search query is tokenized with the embedding model's own tiktoken
-encoding, and embeddings bill exactly their input, so the arithmetic equals
-the wire. Calibrated 2026-08-11 against a counting reverse proxy on the
-server's OpenAI traffic: identical to the token (53,735 over 1,000 passages
-+ 189 queries; the proxy is retired, see git history). The counts assume one
-embeddings call per passage insert / search and no server-side chunking —
-both held for letta 0.16.8; recheck on version bumps. Under
-``--param ingest=agent`` the agent's own LLM turns are read off the usage
-letta reports on each response, so that half is billed rather than
-computed.
+in-process SDK wrappers, so the adapter computes it — every stored passage and
+search query is tokenized with the embedding model's own tiktoken encoding.
+Calibrated 2026-08-11 against a counting reverse proxy on the server's OpenAI
+traffic: identical to the token (53,735 over 1,000 passages + 189 queries; the
+proxy is retired, see git history). Assumes one embeddings call per passage
+insert / search and no server-side chunking — both held for letta 0.16.8;
+recheck on version bumps. Under ``--param ingest=agent`` the agent's own LLM
+turns are billed from the usage letta reports on each response.
 """
 
 import os
@@ -49,14 +44,10 @@ from amb.base import Memory
 from amb.callbacks import OpenAIUsageTracker
 from amb.contracts import MemoryHit, Session
 
-# write passages straight through the SDK; no LLM is invoked
-INGEST_PASSAGES = "passages"
-# hand the turns to the agent and let it decide what is worth keeping,
-# which is the only mode where a letta run exercises its own model
-INGEST_AGENT = "agent"
+INGEST_PASSAGES = "passages"  # SDK writes, no LLM invoked
+INGEST_AGENT = "agent"  # the only mode where a letta run exercises its own model
 DEFAULT_INGEST = INGEST_PASSAGES
-# the archival write verb, attached to the agent under `ingest=agent`
-ARCHIVAL_INSERT_TOOL = "archival_memory_insert"
+ARCHIVAL_INSERT_TOOL = "archival_memory_insert"  # attached under `ingest=agent`
 
 
 class LettaMemory(Memory):
@@ -76,39 +67,30 @@ class LettaMemory(Memory):
     ) -> None:
         """Point the adapter at a Letta server and pin its agent models.
 
-        The server requires a model handle at agent creation even though
-        retrieval mode never invokes the LLM; the embedding model is what
-        actually embeds and searches the archival passages. Both are
-        letta handles (provider/name), settable via --param.
+        The server requires an LLM handle at agent creation even though
+        retrieval mode never invokes it; the embedding model is what actually
+        embeds and searches. Both are letta handles (provider/name).
         """
         super().__init__(**params)
         self.model = model
         self.embedding_model = embedding_model
-        # "passages" writes through the SDK and never invokes the LLM —
-        # the surface every published letta run measured. "agent" hands
-        # the turns to the agent, which decides what is worth keeping and
-        # calls archival_memory_insert itself. Both are documented access
-        # patterns; they measure different things, so they are different
-        # rows. See `_ingest_via_agent`.
+        # "passages" (SDK writes, what published runs measured) and "agent"
+        # (see `_ingest_via_agent`) measure different things: different rows
         self.ingest = ingest
-        # where the server lives is infrastructure, so it comes from the
-        # environment (compose sets it; localhost default for local runs)
+        # server location is infrastructure: from the environment (compose sets it)
         self.base_url = base_url or os.environ.get(
             "LETTA_BASE_URL", "http://localhost:8283"
         )
         self._agents: dict[str, str] = {}
-        # passage id -> (turn_ids, session_id): scoring provenance, kept
-        # local — the passages themselves carry only their text
+        # passage id -> (turn_ids, session_id): local scoring provenance
         self._provenance: dict[str, tuple[list[str], str]] = {}
-        # tokenizer-computed embedding spend (see module docstring), read
-        # by TiktokenUsageTracker at the run's lifecycle boundaries
+        # computed embedding spend (module docstring), read by TiktokenUsageTracker
         self._usage = dict.fromkeys(OpenAIUsageTracker.KEYS, 0)
 
     def version(self) -> str | None:
         """The letta server's version — that is the system under test.
 
-        Falls back to the client SDK's version when the server is not
-        reachable at version-capture time.
+        Falls back to the client SDK's version when the server is unreachable.
         """
         import json
         import urllib.request
@@ -138,11 +120,8 @@ class LettaMemory(Memory):
     def _count_reported_usage(self, response: object) -> None:
         """Book the LLM spend letta reports for one agent turn.
 
-        The agent's own model runs inside letta's server, so the tiktoken
-        arithmetic below cannot reach it — but letta hands the usage back
-        on the response, so this half is *billed* rather than estimated.
-        `reasoning_tokens` are already inside `completion_tokens`, so
-        they are deliberately not added again.
+        Billed from letta's reported usage, not estimated. `reasoning_tokens`
+        are already inside `completion_tokens` — deliberately not added again.
         """
         usage = getattr(response, "usage", None)
         if usage is None:
@@ -162,11 +141,9 @@ class LettaMemory(Memory):
 
     def _agent_id(self, conversation_id: str) -> str:
         if conversation_id not in self._agents:
-            # `ingest=agent` needs the archival write verb actually
-            # attached. Without it the agent still tries to remember what
-            # it is told, but reaches for `memory_insert` — a core-memory
-            # block edit — and the archive this benchmark reads stays
-            # empty, so the run stores nothing while looking healthy.
+            # `ingest=agent` needs the archival write verb attached: without it
+            # the agent reaches for `memory_insert` (a core-memory block edit)
+            # and the archive stays empty while the run looks healthy.
             tools = [ARCHIVAL_INSERT_TOOL] if self.ingest == INGEST_AGENT else None
             agent = self.client.agents.create(
                 name=f"amb-{conversation_id}",
@@ -189,8 +166,7 @@ class LettaMemory(Memory):
         """Insert one archival passage inside the conversation's agent.
 
         `session_id` and `turn_ids` feed the local provenance map, which
-        search uses to restore what a hit attests. The letta agent the
-        passage lands in keeps every conversation's memory isolated.
+        search uses to restore what a hit attests.
         """
         created = self.client.agents.passages.create(
             agent_id=self._agent_id(conversation_id), text=text
@@ -217,34 +193,20 @@ class LettaMemory(Memory):
     def _ingest_via_agent(self, conversation_id: str, session: Session) -> None:
         """Hand the turns to the agent and let it write what it keeps.
 
-        This is the mode where letta actually uses its LLM. The turns go
-        in as user messages and the agent calls `archival_memory_insert`
-        itself, which is the access pattern letta documents for agents,
-        as against the `passages.*` endpoints it documents for
-        developers.
-
-        What that costs the measurement is worth stating. The agent
-        decides what is worth keeping, so ingestion is *selective*: a
-        later retrieval miss can be the search failing or the agent
-        never having stored the fact, and this cannot tell them apart.
-        The passages it writes are its own wording rather than the turn,
-        so turn-level provenance is gone — the passages this session
-        produced are recovered by diffing the agent's archive, which
-        attests the session and nothing finer.
-
-        Cost is fully accounted even so: letta reports the agent's own
-        LLM usage on each response, so that half is billed rather than
-        estimated, and the passages it wrote are tokenized like any
-        other.
+        The mode where letta actually uses its LLM: turns go in as user
+        messages and the agent calls `archival_memory_insert` itself (letta's
+        documented agent access pattern, vs the developer `passages.*`
+        endpoints). Ingestion is *selective* — a retrieval miss can be search
+        failing or the agent never storing the fact, indistinguishably — and
+        the agent writes its own wording, so provenance is session-level only,
+        recovered by diffing the archive. Cost stays fully accounted: LLM
+        usage is billed from letta's responses, passages tokenized as usual.
         """
         agent_id = self._agent_id(conversation_id)
         before = set(self._passages(agent_id))
-        # Serial, and it must stay that way: letta documents that
-        # "sending multiple concurrent requests to the same agent can
-        # lead to undefined behavior". `--workers N` is safe because
-        # every conversation gets its own agent, so the parallelism is
-        # across agents; sending a session's turns concurrently to speed
-        # this up would put it back inside one.
+        # Serial by requirement: letta documents that "sending multiple
+        # concurrent requests to the same agent can lead to undefined
+        # behavior". `--workers N` is safe — that parallelism is across agents.
         for turn in session.turns:
             response = self.client.agents.messages.create(
                 agent_id=agent_id,
@@ -254,12 +216,9 @@ class LettaMemory(Memory):
         for passage_id, text in self._passages(agent_id).items():
             if passage_id in before:
                 continue
-            # session only: the agent wrote its own wording, so there is
-            # no turn to attribute and no text to match one against
+            # agent wording: no turn to attribute, session-level provenance only
             self._provenance[passage_id] = ([], session.session_id)
-            # the passage the agent wrote is what letta embedded, so this
-            # is the same exact arithmetic the write path uses — it is
-            # just discovered after the insert rather than before it
+            # letta embedded the agent's passage — same arithmetic as the write path
             self._count_embedding(text)
 
     def _passages(self, agent_id: str) -> dict[str, str]:
@@ -275,10 +234,9 @@ class LettaMemory(Memory):
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return the k best archival passages by semantic search.
 
-        `passages.search` is the embedding-based endpoint (the same one the
-        agent's own archival_memory_search tool uses); `passages.list` with
-        its `search=` argument is literal text matching and returns noise
-        for natural-language questions.
+        `passages.search` is the embedding-based endpoint (what the agent's own
+        archival_memory_search tool uses); `passages.list(search=)` is literal
+        text matching and returns noise for natural-language questions.
         """
         agent_id = self._agent_id(conversation_id)
         response = self.client.agents.passages.search(
@@ -291,12 +249,8 @@ class LettaMemory(Memory):
             turn_ids, session_id = self._provenance.get(str(p.id), ([], None))
             hits.append(
                 MemoryHit(
-                    # `passages.search` returns Result objects carrying
-                    # `content`; `passages.list` returns passages carrying
-                    # `text`. Reading only `text` left every hit's content
-                    # empty — invisible to retrieval scoring, which reads
-                    # the provenance map, but the answering model in
-                    # `--model` runs was being handed nothing.
+                    # search Results carry `content`, list passages carry `text`;
+                    # reading only `text` handed `--model` runs empty hits.
                     content=getattr(p, "content", None) or getattr(p, "text", "") or "",
                     turn_ids=list(turn_ids),
                     session_ids=[session_id] if session_id else [],

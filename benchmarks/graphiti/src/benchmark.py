@@ -30,10 +30,10 @@ from src.toolset import GraphitiIngestToolset, GraphitiSearchToolset
 
 
 class GraphitiBenchmark(Benchmark):
-    """The benchmark object the `graphiti` entry point resolves to.
+    """Graphiti benchmark wiring.
 
     graphiti-core's extraction/embedding traffic runs in-process through
-    the (async) openai SDK, where the default usage tracker sees it.
+    the openai SDK, so the default usage tracker sees it.
     """
 
     name: ClassVar[str] = "graphiti"

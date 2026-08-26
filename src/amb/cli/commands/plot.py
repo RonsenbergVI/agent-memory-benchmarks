@@ -116,8 +116,7 @@ def scatter(  # noqa: PLR0913 - one option per axis/filter, all independent
             f"runs span several datasets ({', '.join(sorted(map(str, datasets)))}); "
             "pass --dataset to pick one"
         )
-    # neither are runs at different k: recall@1 beside recall@10 on one
-    # axis compares budgets, not systems
+    # mixed k compares budgets, not systems
     ks = {s.get("k") for s in summaries}
     if len(ks) > 1:
         raise click.ClickException(
@@ -216,8 +215,7 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
             f"runs span several datasets ({', '.join(sorted(map(str, datasets)))}); "
             "pass --dataset to pick one"
         )
-    # neither are the two experiment kinds: a direct and an agentic run of
-    # one system are different subjects, not two points on one line
+    # direct and agentic runs are different subjects, not points on one line
     modes = {s.get("mode") for s in summaries}
     if len(modes) > 1:
         raise click.ClickException(
@@ -304,19 +302,12 @@ def draw_all(  # noqa: PLR0913 - one option per filter, all independent
 ) -> None:
     """Draw every chart the generated reports declare.
 
-    The chart set is not defined here: `amb report`'s documents declare the
-    figures they show, and this command draws exactly those, into
-    `plots/<dataset>/` (or `plots/<dataset>/<variant>/` for a dataset whose
-    variants are separate experiments). So a chart can never be missing
-    from a document, nor written for one nobody shows. Every dataset and
-    variant present is covered in one call — narrow it with the filters.
-
-    Per metric (precision/recall/f1 by default — see --metric and its
-    auto-detection): `session_<metric>_k<k>` bars comparing systems, and
-    `k_<metric>` lines across the whole sweep. Cross metric:
-    `tokens_<metric>_k<k>` and `latency_<metric>_k<k>` trade-off scatters,
-    plus `tokens_latency_k<k>`. The single-k sets are written for every k
-    the runs used, each carrying its k in the filename.
+    `amb report`'s documents declare the figures; this draws exactly those
+    into `plots/<dataset>[/<variant>]/`, so charts and documents cannot
+    drift apart. Per metric: `session_<metric>_k<k>` bars and `k_<metric>`
+    sweep lines; cross metric: `tokens_<metric>_k<k>`,
+    `latency_<metric>_k<k>`, and `tokens_latency_k<k>` scatters. Single-k
+    sets are written for every k the runs used, each k in the filename.
 
     Raises:
         click.ClickException: if no runs, a group spans several modes, or
@@ -341,8 +332,7 @@ def draw_all(  # noqa: PLR0913 - one option per filter, all independent
 
     charts = plan_charts(reports)
     if out is not None:
-        # chart filenames are not namespaced by dataset, so collapsing two
-        # sets into one directory would have them overwrite each other
+        # chart filenames aren't namespaced by dataset; one directory would collide
         sets = sorted({str(chart.out_dir) for chart in charts})
         if len(sets) > 1:
             raise click.ClickException(

@@ -40,18 +40,16 @@ from amb.contracts import IngestionRecord, QAPair, Run, Sample, Session
 
 
 class RunConfig(BaseModel):
-    """Everything one benchmark run needs, all of it from the CLI.
+    """One run's arguments from the CLI.
 
-    These are the run's arguments, not the system's: memory-system
-    parameters (`--param`) belong to the Benchmark that is being run.
+    Memory-system parameters (`--param`) belong to the Benchmark instead.
     """
 
     dataset: str
     variant: str | None = None
-    mode: RunType = RunType.DIRECT  # "direct": the harness drives ingest and search;
-    # "agentic": a model drives both through the system's own tools.
-    # In either mode, answers are generated (the qa phase's second half)
-    # iff a model is available — optional in direct, required in agentic.
+    # direct: the harness drives ingest and search; agentic: a model drives
+    # both through the system's own tools
+    mode: RunType = RunType.DIRECT
     k: int = 10
     limit: int | None = None  # max conversations
     sample_seed: int | None = None  # random-sample `limit` conversations
@@ -60,10 +58,9 @@ class RunConfig(BaseModel):
     reuse: bool = False  # skip ingestion, search what the store holds
     max_turns: int | None = None  # turn budget ingested per conversation
     max_questions: int | None = None  # max questions per conversation
-    model: str | None = None  # answer model, pydantic-ai id; enables answer
-    # generation in direct mode, mandatory in agentic mode
-    judge: bool = False  # CLI convenience: judge right after the run (the
-    # judge itself is an evaluation step, not part of the run loop)
+    # answer model (pydantic-ai id): answers are generated iff set; agentic needs it
+    model: str | None = None
+    judge: bool = False  # judge right after the run (an evaluation step, not run loop)
     judge_model: str | None = None  # judge model, pydantic-ai id
     data_dir: Path = DEFAULT_DATA_DIR  # dataset cache
     out: Path = DEFAULT_RUNS_DIR  # where run data is written
@@ -81,14 +78,11 @@ def draw_samples[T](samples: list[T], limit: int | None, seed: int) -> list[T]:
 class Runner:
     """Executes one benchmark under one run config.
 
-    Subclass it only to change the *experiment* — how samples are drawn,
-    how a question is asked. Changing how one memory system behaves belongs
-    on that system's Benchmark instead.
+    Subclass only to change the experiment; per-system behavior belongs on
+    that system's Benchmark.
     """
 
-    # measurements no run may be missing: latency is the benchmark's own
-    # headline result, so it is the harness's to attach, not an
-    # integration's to opt into
+    # latency is the headline result: attached by the harness, never opt-in
     core_callback_classes: ClassVar[tuple[type[Callback], ...]] = (TimingTracker,)
 
     def __init__(
@@ -99,8 +93,7 @@ class Runner:
     ) -> None:
         """Bind a benchmark to a run config, optionally with fixed samples.
 
-        `samples` bypasses the dataset loader entirely — the escape hatch
-        for tests and notebooks that already hold the conversations.
+        `samples` bypasses the dataset loader — for tests and notebooks.
         """
         self.benchmark = benchmark
         self.config = config
@@ -115,15 +108,12 @@ class Runner:
     def load_samples(self) -> list[Sample]:
         """Load the dataset's samples, honouring `--limit` and `--seed`.
 
-        Without a seed, `--limit` takes the first N samples (stable, cheap:
-        loaders stop reading early). With one, the whole dataset is loaded
-        and N samples are drawn reproducibly — the same seed always picks
-        the same conversations, so runs stay comparable.
+        Without a seed, `--limit` takes the first N (loaders stop early);
+        with one, N samples are drawn reproducibly from the full dataset.
         """
         if self.samples is not None:
             return self.samples
-        # imported here: datasets import the base package, so a module-level
-        # import would be circular
+        # module-level import would be circular via amb.datasets
         from amb.datasets import get_loader
 
         loader = get_loader(self.config.dataset, self.config.data_dir)
@@ -138,10 +128,8 @@ class Runner:
     def select_sessions(self, sample: Sample) -> list[Session]:
         """Sessions to ingest, honouring the `--turns` budget.
 
-        Sessions are taken in chronological order until the budget runs out;
-        the one that straddles the boundary is truncated, so the result is
-        always a valid prefix of the conversation. Without a budget the whole
-        conversation is returned.
+        Taken in order until the budget runs out; the straddling session is
+        truncated, so the result is always a valid prefix of the conversation.
         """
         budget = self.config.max_turns
         if budget is None:
@@ -163,9 +151,7 @@ class Runner:
     def select_questions(self, sample: Sample, sessions: list[Session]) -> list[QAPair]:
         """Questions to ask: the answerable ones, capped by `--questions`.
 
-        The unanswerable are removed *before* the cap, so `--questions 10`
-        means ten questions that can actually be answered rather than ten
-        candidates of which some are dead.
+        The unanswerable are removed before the cap is applied.
         """
         return self.answerable_questions(sample, sessions)[: self.config.max_questions]
 
@@ -174,19 +160,16 @@ class Runner:
     ) -> list[QAPair]:
         """The sample's questions whose evidence survived the turn budget.
 
-        When a turn budget drops the evidence a question depends on, that
-        question cannot be answered from what was ingested; keeping it would
-        report a retrieval failure that the data, not the system, caused.
-        Questions without evidence labels are kept, since there is no way
-        to tell whether their evidence survived.
+        Keeping one whose evidence was truncated away would report a failure
+        the data, not the system, caused. Questions without evidence labels
+        are kept.
         """
         questions = sample.qa
         if self.config.max_turns is None:
             return list(questions)
         ingested_turns = {t.turn_id for s in sessions for t in s.turns}
         original = {s.session_id: len(s.turns) for s in sample.conversation.sessions}
-        # a truncated session may have lost the evidence turn, so only
-        # sessions ingested whole can vouch for session-level labels
+        # only sessions ingested whole can vouch for session-level labels
         whole_sessions = {
             s.session_id for s in sessions if len(s.turns) == original[s.session_id]
         }
@@ -210,9 +193,8 @@ class Runner:
         Computes no scores and writes no files — that is the report's job.
 
         Raises:
-            ValueError: in agentic mode, when the benchmark declares no
-                toolsets or the config names no model — an agentic run
-                never falls back to a default model or to direct behavior.
+            ValueError: in agentic mode without toolsets or a model; there
+                is no fallback to defaults or direct behavior.
         """
         cfg = self.config
         if cfg.mode == "agentic":
@@ -227,15 +209,12 @@ class Runner:
                     "agentic mode needs --model: an agentic run never falls "
                     "back to a default model or to direct behavior"
                 )
-        # one probe instance answers what will be measured: the system's
-        # version and the models it will call internally
+        # probe reports what will be measured: system version, internal models
         probe = self.benchmark.create_system()
         internal = probe.models()
         data = Run(
-            # the timestamp alone collides across parallel CI cells (two
-            # cells starting the same second produced the same run_id and
-            # fought over one directory); the random suffix keeps every
-            # run's directory and identity unique
+            # parallel CI cells starting the same second collided on run_id
+            # and fought over one directory; the suffix keeps them unique
             run_id=datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ") + f"-{uuid4().hex[:6]}",
             system=self.name,
             dataset=cfg.dataset,
@@ -245,23 +224,20 @@ class Runner:
             ingestion_model=internal.get("ingestion_model"),
             embedding_model=internal.get("embedding_model"),
             usage_coverage=type(probe).usage_coverage,
-            # explicit overrides join the run's identity; the two model
-            # params are already lifted into their own fields above
+            # the two model params are lifted into their own fields above
             system_params={
                 key: value
                 for key, value in self.benchmark.params.items()
                 if key not in ("model", "embedding_model")
             },
-            # str() so tests can pass a pydantic-ai Model instance through
-            # the config; real runs always carry the id string already
+            # str() lets tests pass a pydantic-ai Model instance through the config
             model=None if cfg.model is None else str(cfg.model),
             max_turns=cfg.max_turns,
             sample_seed=cfg.sample_seed,
             workers=cfg.workers,
             system_version=probe.version(),
         )
-        # core callbacks first, so no benchmark override can drop the
-        # harness's own measurements
+        # core callbacks first, so no benchmark override drops harness measurements
         self.callbacks = Callbacks(
             [cls() for cls in self.core_callback_classes]
             + self.benchmark.create_callbacks().callbacks
@@ -272,10 +248,8 @@ class Runner:
             for sample in samples:
                 self._run_sample(sample, data)
         else:
-            # samples are independent (each isolates its own conversation),
-            # so they parallelize; sessions within one stay strictly ordered.
-            # Each worker collects into its own Run, merged in dataset
-            # order so output is deterministic regardless of scheduling.
+            # samples are independent and parallelize; sessions within one stay
+            # ordered. Shards merge in dataset order, so output is deterministic.
             with ThreadPoolExecutor(max_workers=cfg.workers) as pool:
                 shards = [
                     data.model_copy(
@@ -324,15 +298,12 @@ class Runner:
     def ingestion(self, system: Memory, sample: Sample, data: Run) -> IngestionRecord:
         """Feed the sample's sessions into the memory system, timed.
 
-        `max_turns` truncates the conversation for smoke runs. Returns the
-        sample's stats record, which the caller extends with the conversation
-        time.
+        Returns the stats record the caller extends with conversation time.
         """
         sessions = self.select_sessions(sample)
         log = logger.bind(scope=self.name)
         if self.config.reuse:
-            # the store already holds this corpus (a prior --keep run);
-            # charge zero ingestion and go straight to the questions
+            # store already holds this corpus (prior --keep run); charge zero ingestion
             log.info("{}: reusing existing store, skipping ingestion", sample.sample_id)
             stats = {
                 "sample_id": sample.sample_id,
@@ -355,9 +326,8 @@ class Runner:
             len(sample.conversation.sessions),
             sample.conversation.num_turns,
         )
-        # the empty-ingest early return above deliberately skips this, so
-        # the timer charges a truthful zero there; here the clock must start
-        # or TimingTracker.on_ingest_end overwrites ingest_s with 0.0
+        # the reuse early-return above skips this on purpose; here the clock
+        # must start or TimingTracker.on_ingest_end overwrites ingest_s with 0.0
         self.callbacks.on_ingest_begin(sample, system)
         t0 = time.perf_counter()
         agent_stats: dict = {}
@@ -382,9 +352,7 @@ class Runner:
         }
         dropped = len(sample.qa) - len(self.answerable_questions(sample, sessions))
         if dropped:
-            # questions whose evidence fell outside the turn budget: they are
-            # unanswerable by construction, so scoring them would punish the
-            # memory system for data it was never given
+            # evidence fell outside the turn budget: unanswerable by construction
             stats["questions_dropped"] = dropped
         log.debug(
             "{}: ingested in {:.1f}s; {} of {} questions answerable",
@@ -401,9 +369,7 @@ class Runner:
     ) -> dict:
         """Agentic ingestion: a model writes each session via the system's tools.
 
-        Returns the extra stats fields the agent's involvement adds — write
-        counts and the agent's own token spend (its LLM traffic is part of
-        what this mode costs, distinct from the memory system's).
+        Returns the agent's extra stats: write counts and its own token spend.
         """
         # imported lazily so retrieval-only runs need no LLM deps/keys
         from amb.agent import ingest_with_agent
@@ -472,9 +438,7 @@ class Runner:
                 toolset = self.benchmark.create_search_toolset(
                     system, sample.conversation.conversation_id, k=cfg.k
                 )
-                # the agent's searches are the harness's only view of
-                # retrieval here: they must report through the same hooks
-                # as the searches the harness drives itself
+                # agent searches report through the same hooks as harness-driven ones
                 toolset.observe(self.callbacks, sample, qa)
                 assert cfg.model is not None  # guaranteed by run()
                 t0 = time.perf_counter()
@@ -501,10 +465,8 @@ class Runner:
                 row["num_hits"] = len(hits)
                 self.callbacks.on_search(sample, qa, hits, elapsed)
 
-            # raw retrieval data at every level available. Session ids are
-            # the comparable headline (every system can attest a memory's
-            # session); turn ids are the stricter bonus for systems that
-            # store verbatim turns.
+            # session ids are the comparable headline; turn ids the stricter
+            # bonus for systems that store verbatim turns
             scored = False
             if qa.evidence_session_ids and (
                 not hits or any(h.session_ids for h in hits)
@@ -530,8 +492,7 @@ class Runner:
                 )
 
             if cfg.mode != "agentic" and cfg.model:
-                # direct mode with a model: the qa phase's second half,
-                # answering from the retrieved context
+                # the qa phase's second half: answer from the retrieved context
                 from amb.agent import answer_question
 
                 t0 = time.perf_counter()
