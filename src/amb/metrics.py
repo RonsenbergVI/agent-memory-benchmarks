@@ -31,8 +31,7 @@ from amb.base import Metric, Scorer
 def normalize_answer(text: str) -> str:
     """Normalize an answer for token comparison (the SQuAD convention).
 
-    Lowercase, strip punctuation and the articles a/an/the, and collapse
-    whitespace, so F1 and exact match measure content rather than form.
+    Lowercase, strip punctuation and the articles a/an/the, collapse whitespace.
     """
     text = text.lower()
     text = "".join(ch for ch in text if ch not in string.punctuation)
@@ -78,8 +77,7 @@ class ValueCounts(Metric):
 class DictSum(Metric):
     """Key-wise sums over dict-valued observations.
 
-    For fields whose keys are declared by the data producer, such as a
-    usage-tracking callback's ``token_usage``.
+    For fields whose keys the data producer declares, e.g. ``token_usage``.
     """
 
     def __init__(self, name: str, key: str | None = None) -> None:
@@ -217,10 +215,9 @@ class ExactMatch(Scorer, Mean):
 class RetrievalMetric(Scorer, Mean):
     """Macro-average of one scores() component at one evidence level.
 
-    Session-level metrics (`retrieval_*`) are the comparable headline —
-    every system can attest which session a memory came from. Turn-level
-    metrics (`turn_*`) are a stricter bonus for systems that store verbatim
-    turns. The Scorer guard skips observations without the level's labels.
+    Session-level (`retrieval_*`) is the comparable headline — every system
+    can attest a memory's session. Turn-level (`turn_*`) is a stricter bonus
+    for verbatim-turn stores. The Scorer guard skips rows missing the labels.
     """
 
     component: ClassVar[str]
@@ -311,10 +308,8 @@ class TurnF1(RetrievalMetric):
 def default_metrics() -> list[Metric]:
     """The standard metric set a run is scored with when none is given.
 
-    Session-level retrieval is the comparable headline; turn-level is the
-    stricter bonus. The dotted names land as nested summary sections: the
-    `memory_tokens` section is what the summary's headline cost total reads,
-    and `search_latency` is what the comparison's p50 column reads.
+    Dotted names land as nested summary sections: `memory_tokens` feeds the
+    summary's headline cost total, `search_latency` the comparison's p50 column.
     """
     return [
         Sum("ingest.total_s", "ingest_s"),
@@ -344,9 +339,8 @@ def default_metrics() -> list[Metric]:
 def default_category_metrics() -> list[Metric]:
     """Fresh instances of the per-question-category metric set.
 
-    A factory because every category accumulates its own state; only
-    row-level metrics belong here, since categories are a property of
-    questions, not of ingestion.
+    A factory because each category accumulates its own state; row-level
+    metrics only, since categories are a property of questions, not ingestion.
     """
     return [
         RetrievalPrecision(),

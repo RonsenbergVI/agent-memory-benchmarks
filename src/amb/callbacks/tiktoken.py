@@ -31,20 +31,14 @@ from amb.contracts import QAPair, Sample
 class TiktokenUsageTracker(Callback):
     """Books token spend the memory system computes about itself.
 
-    For systems that spend inside their own server, where neither the SDK
-    wrappers nor the system's API can observe the traffic: the adapter
-    computes its spend (letta tokenizes every stored passage and search
-    query with tiktoken — exact for embeddings, which bill their input
-    verbatim) and reports it through `Memory.usage_counters()`; this
-    callback reads those counters at the same lifecycle boundaries and
-    writes the same report fields as OpenAIUsageTracker, so a computed
-    system's numbers are identical in shape to a measured one's.
-
-    Opt-in, not default: a Benchmark whose adapter fills `usage_counters()`
-    lists it in `callback_classes` (letta today; any future server-backed
-    integration can too). Marks are thread-local and each sample carries
-    its own system instance, so per-sample and per-question deltas stay
-    correctly attributed under `--workers`.
+    For systems that spend inside their own server, invisible to the SDK
+    wrappers: the adapter reports its computed spend through
+    `Memory.usage_counters()` (letta: tiktoken over every stored passage
+    and query — exact for embeddings, which bill their input verbatim),
+    and this callback writes the same report fields as OpenAIUsageTracker.
+    Opt-in via `callback_classes` (letta today). Marks are thread-local
+    and each sample has its own system instance, so attribution holds
+    under `--workers`.
     """
 
     KEYS = TOKEN_TRACKING_KEYS

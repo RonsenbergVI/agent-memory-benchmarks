@@ -39,14 +39,9 @@ class Memory(ABC):
     description: ClassVar[str]
     # PyPI distribution whose version identifies the system under test
     sdk_dist: ClassVar[str | None] = None
-    # How much of this system's token spend the run actually accounts
-    # for. "full" is the default and the only value that makes the cost
-    # column comparable; "partial" marks a number that is real but
-    # short of the truth, and "none" a system whose spend nothing here
-    # can see — whose zero would otherwise read as "free". Reporting
-    # renders the three differently, because conflating them is how a
-    # cost column publishes a wrong number without ever being wrong
-    # about a value it holds.
+    # Token-spend accounting: "full" (the only comparable cost column),
+    # "partial" (real but short of the truth), "none" (invisible spend whose
+    # zero would read as "free"). Reporting renders the three differently.
     usage_coverage: ClassVar[str] = "full"
 
     def __init__(self, **params: object) -> None:
@@ -56,10 +51,8 @@ class Memory(ABC):
     def models(self) -> dict[str, str | None]:
         """The models this system calls internally; recorded in every run.
 
-        `ingestion_model` is the extraction/ingestion LLM, `embedding_model`
-        the embedder. None means the system uses none, or its SDK's own
-        default. Defaults to reading the conventional `model` /
-        `embedding_model` attributes every integration already sets, so
+        None means the system uses none, or its SDK's own default. Reads
+        the conventional `model` / `embedding_model` attributes, so
         adapters rarely need to override this.
         """
         return {
@@ -103,9 +96,9 @@ class Memory(ABC):
     def usage_counters(self) -> dict:
         """Token spend this system computes about itself (empty by default).
 
-        Adapters whose spend happens inside their own server — invisible to
-        the SDK-patching tracker — count it themselves (letta: tiktoken over
-        every stored passage and query) and report OpenAIUsageTracker.KEYS
-        here; TiktokenUsageTracker books the deltas into the report.
+        For spend inside the system's own server, invisible to the SDK
+        tracker: report OpenAIUsageTracker.KEYS here (letta: tiktoken over
+        every stored passage and query); TiktokenUsageTracker books the
+        deltas into the report.
         """
         return {}

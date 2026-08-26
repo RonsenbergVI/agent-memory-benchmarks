@@ -181,7 +181,6 @@ class NaiveBenchmark(Benchmark):
 
     name: ClassVar[str] = "naive"
     system_class = NaiveMemory
-    # the baseline's own surface is exactly the generic pair: one search
-    # tool, one write tool
+    # the baseline's surface is exactly the generic pair: one search, one write tool
     search_toolset_class = MemoryToolset
     ingest_toolset_class = NaiveIngestToolset

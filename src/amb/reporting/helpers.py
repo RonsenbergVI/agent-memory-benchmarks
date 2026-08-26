@@ -31,9 +31,7 @@ from amb.contracts import Point, Series
 def is_ratio(metric: str) -> bool:
     """Whether a metric name denotes a 0..1 ratio.
 
-    Ratio axes are pinned to the full 0–1 band so a chart never implies
-    scores above 100%; anything else (seconds, tokens) hugs its data —
-    pinning latency to 1.0 would crush every dot into a corner.
+    Ratio axes are pinned to the 0–1 band; anything else hugs its data.
     """
     return any(
         hint in metric
@@ -87,8 +85,8 @@ def available_metrics(summaries: list[dict]) -> list[str]:
 def collect_series(summaries: list[dict], metric: str) -> list[Series]:
     """Build one line per system: `metric` at each k, newest run per (system, k).
 
-    Systems whose runs never report the metric are left out; series come
-    back in sorted-name order, each with its points in k order.
+    Systems never reporting the metric are left out; series come back in
+    sorted-name order, points in k order.
     """
     newest: dict[tuple[str, float], dict] = {}
     for summary in summaries:
@@ -110,11 +108,7 @@ def collect_series(summaries: list[dict], metric: str) -> list[Series]:
 
 
 def collect_points(summaries: list[dict], x: str, y: str) -> list[Point]:
-    """Build one labelled point per system, newest run wins.
-
-    A report directory usually holds several runs per system; the chart is
-    "one dot per framework", so only the newest run of each is plotted.
-    """
+    """Build one labelled point per system, newest run wins."""
     newest: dict[str, dict] = {}
     for summary in summaries:
         flat = flatten(summary)
@@ -135,8 +129,8 @@ def collect_points(summaries: list[dict], x: str, y: str) -> list[Point]:
 def hues(labels: list[str], c: dict) -> dict[str, str]:
     """Each label's hue, assigned in sorted-name order.
 
-    The same rule the lines form uses, so a system keeps its colour from
-    chart to chart.
+    The same rule the lines form uses, so a system keeps its colour across
+    charts.
     """
     palette = c["categories"]
     return {
@@ -180,7 +174,7 @@ def styled_axes(dark: bool) -> tuple[Any, Any, dict]:
     import matplotlib
 
     matplotlib.use("Agg")  # headless: never needs a display
-    # crisper text where the system has it; CI falls back to DejaVu
+    # crisper fonts where the system has them; CI falls back to DejaVu
     matplotlib.rcParams["font.family"] = "sans-serif"
     matplotlib.rcParams["font.sans-serif"] = [
         "Helvetica Neue",
@@ -194,8 +188,7 @@ def styled_axes(dark: bool) -> tuple[Any, Any, dict]:
     fig.patch.set_facecolor(c["surface"])
     ax.set_facecolor(c["surface"])
 
-    # gridlines only — hairline, solid, behind the marks; no spines at all,
-    # so the data floats on the surface instead of sitting in a box
+    # hairline grid behind the marks, no spines: data floats, not boxed
     ax.set_axisbelow(True)
     ax.grid(True, color=c["grid"], linewidth=1.0, linestyle="-")
     for side in ax.spines.values():
@@ -216,8 +209,7 @@ def place_labels(ax: Any, points: list[Point], color: str) -> None:
     """Direct-label every dot, nudging labels that would collide.
 
     Tries a few offsets per label and keeps the first that clears the ones
-    already placed, so overlapping systems stay readable instead of printing
-    on top of each other.
+    already placed.
     """
     candidates = ((10, 4), (10, -12), (-10, 4), (-10, -12), (0, 12), (0, -16))
     placed: list[Any] = []
@@ -255,10 +247,8 @@ def place_labels(ax: Any, points: list[Point], color: str) -> None:
 def pad_limits(ax: Any, points: list[Point], x_label: str, y_label: str) -> None:
     """Center the view on the dots, with room for their labels.
 
-    A trade-off scatter's job is separating systems, so the spread between
-    them gets the pixels — the axes hug the data instead of pinning score
-    axes to the whole 0–1 band (which flattens a 0.42–0.48 field into one
-    thin stripe). `_hug_axis` still clamps ratio axes to the honest range.
+    The axes hug the data rather than pinning score axes to 0–1, which would
+    flatten a 0.42–0.48 field into a stripe; ratio axes stay clamped honest.
     """
     if not points:
         return
@@ -269,8 +259,7 @@ def pad_limits(ax: Any, points: list[Point], x_label: str, y_label: str) -> None
 def _hug_axis(values: list[float], set_lim: Callable, ratio: bool = False) -> None:
     """Fit one axis tightly around its values, padded for marks and labels.
 
-    Ratio axes are clamped so zooming never implies scores below 0 or
-    above 1; inside those bounds the data decides the view.
+    Ratio axes are clamped so zooming never implies scores outside 0–1.
     """
     lo, hi = min(values), max(values)
     span = (hi - lo) or (abs(hi) or 1.0)
@@ -284,9 +273,8 @@ def _hug_axis(values: list[float], set_lim: Callable, ratio: bool = False) -> No
 def pad_axis(values: list[float], set_lim: Callable, ratio: bool = False) -> None:
     """Pad one axis's limits around its values.
 
-    A ratio axis is pinned to the whole 0–1 band, so scores read against
-    100%; any other axis hugs its data, with a little underhang so a
-    zero-valued mark sits clear of the spine instead of clipped on it.
+    A ratio axis is pinned to the 0–1 band so scores read against 100%; any
+    other axis hugs its data, with underhang so a zero mark is not clipped.
     """
     if ratio:
         set_lim(-0.05, 1.05)

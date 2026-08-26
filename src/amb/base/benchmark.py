@@ -41,22 +41,19 @@ class Benchmark:
     name: ClassVar[str] = "unnamed"
     system_class: ClassVar[type[Memory]]
     default_params: ClassVar[dict] = {}
-    # the system's own tool surface, used in agentic mode; a system supports
-    # agentic mode only when its Benchmark sets both
+    # agentic mode requires both toolset classes to be set
     search_toolset_class: ClassVar[type | None] = None
     ingest_toolset_class: ClassVar[type | None] = None
-    # Callback classes instantiated per run. Every benchmark gets the token
-    # tracker: it measures in-process openai traffic always, and a counting
-    # proxy's (AMB_USAGE_PROXY_URL) on top for server-backed systems —
-    # a system that spends nothing records a truthful zero
+    # Instantiated per run. Every benchmark gets the token tracker (plus the
+    # AMB_USAGE_PROXY_URL counting proxy for server-backed systems); a system
+    # that spends nothing records a truthful zero.
     callback_classes: ClassVar[tuple[type[Callback], ...]] = (OpenAIUsageTracker,)
 
     def __init__(self, params: dict | None = None) -> None:
-        """Hold the caller's system parameters (the CLI's `--param`).
+        """Hold only the explicit `--param` overrides.
 
-        Only the explicit overrides are kept here — `default_params` is
-        merged in at `create_system` — so the run records exactly what was
-        asked for as part of its identity.
+        `default_params` merges in at `create_system`, so the run's identity
+        records exactly what was asked for.
         """
         self.params = dict(params or {})
 
@@ -72,8 +69,7 @@ class Benchmark:
     def create_callbacks(self) -> Callbacks:
         """Build one fresh instance of each declared callback, in order.
 
-        The harness's own core callbacks are not this factory's to attach —
-        the Runner prepends those, so an override here cannot drop them.
+        The Runner prepends its core callbacks; an override here cannot drop them.
         """
         return Callbacks([cls() for cls in self.callback_classes])
 
@@ -99,10 +95,7 @@ class Benchmark:
 
     @classmethod
     def for_system(cls, system_cls: type[Memory]) -> type["Benchmark"]:
-        """Build a default Benchmark for a bare Memory.
-
-        Used when an integration registered only a Memory subclass.
-        """
+        """Default Benchmark for an integration that registered only a Memory."""
         return type(
             f"{system_cls.__name__}Benchmark",
             (cls,),

@@ -117,20 +117,16 @@ def report(  # noqa: PLR0913 - one option per output/filter, all independent
 ) -> None:
     """Generate the comparison reports from the saved runs.
 
-    Named nothing to write, it prints the full table to stdout. Otherwise
-    each requested report is generated from `amb.reporting`: the `results`
-    report (RESULTS.md) is written whole, since every part of it is derived
-    from the runs; the `summary` report (README.md) is spliced into its
-    marked section, since hand-written prose surrounds it. Both cover every
-    (dataset, variant) present — one section each — unless
-    --dataset/--variant narrow them, and both declare the charts `amb plot all`
-    draws, so documents and images cannot drift apart.
+    With nothing to write, prints the full table to stdout. `results`
+    (RESULTS.md) is written whole; `summary` (README.md) is spliced into its
+    marked section, preserving the hand-written prose around it. Both cover
+    every (dataset, variant) present unless --dataset/--variant narrow them,
+    and both declare the charts `amb plot all` draws.
 
     Raises:
-        click.ClickException: if no summaries were found under the
-            directory, an unknown report was named, --dataset/--variant name
-            a combination with no runs, or a section's runs span several
-            modes.
+        click.ClickException: no summaries under the directory, an unknown
+            report name, --dataset/--variant naming a combination with no
+            runs, or a section's runs spanning several modes.
     """
     requested: dict[str, Path | None] = {}
     if output:

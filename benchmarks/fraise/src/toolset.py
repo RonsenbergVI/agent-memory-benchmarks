@@ -22,10 +22,9 @@
 
 """Fraise's native tool surface for `--mode agentic`.
 
-The agent drives fraise's own verbs: `remember` (with topics and entities of
-its choosing) at ingestion, `recall` (a natural-phrase query with topic and
-entity filters) at search. Conversation isolation stays forced — the
-`conv-<id>` anchor is added by the adapter, never left to the agent.
+The agent drives fraise's own verbs, `remember` and `recall`; the adapter
+always adds the `conv-<id>` anchor, so conversation isolation is never
+left to the agent.
 """
 
 import re
