@@ -71,9 +71,9 @@ services:
     environment:
       - AGENTMEMORY_BASE_URL=http://agentmemory:3111
       - ${AGENTMEMORY_SECRET:+AGENTMEMORY_SECRET=}${AGENTMEMORY_SECRET:-_AMB_UNSET_AM_SECRET=1}
-      # the answering and judging models only; the memory system itself
-      # makes no API call while the server is keyless
-      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      # the answering and judging models only; any OpenAI calls the memory
+      # system makes (embeddings / compression) happen inside the Node server
+      # and are not visible to the default in-process usage tracker
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
     # --workers 1: agentmemory filters by agent id *after* retrieval, so
     # a second conversation resident at the same time can crowd this
