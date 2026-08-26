@@ -447,7 +447,7 @@ def test_sync_wrapper_returns_the_response_and_records(fake_memory_class):
         calls.append((client_self, args, kwargs))
         return response
 
-    wrapped = tracker._wrap(original, "llm")
+    wrapped = tracker._wrap(original, "llm", False)
     client = object()
     result = wrapped(client, "model", stream=False)
     assert result is response
@@ -463,7 +463,7 @@ def test_async_wrapper_awaits_and_records(fake_memory_class):
     async def original(client_self, *args, **kwargs):
         return response
 
-    wrapped = tracker._wrap(original, "llm")
+    wrapped = tracker._wrap(original, "llm", True)
     result = asyncio.run(wrapped(object()))
     assert result is response
     assert tracker.counters["llm_output_tokens"] == 2
@@ -485,3 +485,56 @@ def test_run_begin_patches_the_sdk_and_run_end_restores_it():
     finally:
         tracker.on_run_end(_run())
     assert completions.Completions.create is original
+
+
+def test_counters_survive_the_hop_to_a_background_loop_thread(fake_memory_class):
+    """An integration that marshals its SDK calls onto a shared loop.
+
+    cognee and everos both keep module-level asyncio locks, which bind to
+    the first loop that contends on them, so every call has to run on ONE
+    process-wide loop in its own thread. Under thread-local counters the
+    spend was intercepted on that thread and silently dropped; the
+    ContextVar is what carries the sample's counters across the hop.
+    """
+    tracker = OpenAIUsageTracker()
+    tracker.on_sample_begin(_sample(), fake_memory_class())
+
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=loop.run_forever, daemon=True)
+    thread.start()
+    try:
+
+        async def original(client_self, *args, **kwargs):
+            return SimpleNamespace(
+                usage=SimpleNamespace(prompt_tokens=11, completion_tokens=3)
+            )
+
+        wrapped = tracker._wrap(original, "llm", True)
+        # exactly what `_await` does in the cognee/everos adapters
+        asyncio.run_coroutine_threadsafe(wrapped(object()), loop).result(10)
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+
+    assert tracker.counters["llm_calls"] == 1
+    assert tracker.counters["llm_input_tokens"] == 11
+    assert tracker.counters["llm_output_tokens"] == 3
+
+
+def test_async_sdk_targets_are_declared_not_detected():
+    """`iscoroutinefunction` is not a reliable signal on the openai SDK.
+
+    It answers False for `AsyncCompletions.create` on openai 3.2/3.3, so
+    detection sent async chat completions to the sync wrapper, which
+    "recorded" an un-awaited coroutine: the call counted, every token
+    lost. The target table declares async-ness instead.
+    """
+    pytest.importorskip("openai")
+    tracker = OpenAIUsageTracker()
+    targets = {
+        (owner.__name__, name): is_async
+        for owner, name, _, is_async in tracker._targets()
+    }
+    assert targets[("AsyncCompletions", "create")] is True
+    assert targets[("Completions", "create")] is False
+    assert targets[("AsyncEmbeddings", "create")] is True
+    assert targets[("Embeddings", "create")] is False
