@@ -1,8 +1,8 @@
 services:
-  # cognee can run entirely embedded (LanceDB + ladybug + sqlite). It is
-  # benchmarked against Postgres instead, which backs both the relational
-  # store and — through pgvector — the vector store, so its setup is
-  # comparable with the other integrations. See the graph note below.
+  # cognee can run entirely embedded (LanceDB + ladybug + sqlite). This
+  # benchmark stack instead includes a Postgres service (pgvector) for the
+  # relational + vector stores so setup is comparable across integrations.
+  # The graph stays on cognee’s embedded ladybug backend; see note below.
   postgres:
     image: pgvector/pgvector:pg17
     environment:
