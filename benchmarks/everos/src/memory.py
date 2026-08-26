@@ -392,7 +392,7 @@ class EverOSMemory(Memory):
                         "session_id": session_key,
                         "app_id": APP_ID,
                         "project_id": project_id,
-                        "messages": messages,
+                        "messages": [],
                     },
                     is_final=True,
                 )
