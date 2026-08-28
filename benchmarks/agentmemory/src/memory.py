@@ -85,6 +85,7 @@ class AgentMemoryMemory(Memory):
     sdk_dist: ClassVar[str | None] = None
     # Token spend happens inside the Node server; the harness cannot observe it.
     usage_coverage: ClassVar[str] = "none"
+
     def __init__(
         self,
         base_url: str | None = None,
