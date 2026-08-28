@@ -1,0 +1,78 @@
+services:
+  # cognee can run entirely embedded (LanceDB + ladybug + sqlite). This
+  # benchmark stack instead includes a Postgres service (pgvector) for the
+  # relational + vector stores so setup is comparable across integrations.
+  # The graph stays on cognee’s embedded ladybug backend; see note below.
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      - POSTGRES_USER=cognee
+      - POSTGRES_PASSWORD=cognee
+      - POSTGRES_DB=cognee
+    volumes:
+      - cognee-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cognee -d cognee"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/cognee/Dockerfile
+    image: amb-cognee
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # a native crash (SIGSEGV/SIGABRT) prints the failing stack instead
+      # of a bare exit code
+      - PYTHONFAULTHANDLER=1
+      # httpx2 (openai's HTTP stack) defaults to a truststore SSL context,
+      # which mutates the OpenSSL cert store on every handshake and is not
+      # thread-safe — parallel workers' concurrent handshakes corrupt the
+      # heap (double free -> abort). SSL_CERT_FILE makes httpx2 build a
+      # plain stdlib context over certifi instead, which is thread-safe.
+      - SSL_CERT_FILE=/amb/.venv/lib/python3.13/site-packages/certifi/cacert.pem
+      # cognee still writes files (staged documents, logs) even with every
+      # store on a server; its defaults land inside site-packages, and the
+      # names are unprefixed and must be absolute
+      - DATA_ROOT_DIRECTORY=/amb/.cognee/data
+      - SYSTEM_ROOT_DIRECTORY=/amb/.cognee/system
+      - CACHE_ROOT_DIRECTORY=/amb/.cognee/cache
+      # The graph stays on cognee's embedded ladybug. Neo4j Community
+      # allows a single database, but cognee gives each dataset its own
+      # graph database, which needs CREATE DATABASE — Enterprise/AuraDB
+      # only. Its documented escapes are worse: a Docker container per
+      # dataset, or ENABLE_BACKEND_ACCESS_CONTROL=false, which drops the
+      # per-dataset isolation that keeps one conversation's memories out
+      # of another's recall.
+      # relational -> Postgres
+      - DB_PROVIDER=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=cognee
+      - DB_PASSWORD=cognee
+      - DB_NAME=cognee
+      # vector -> pgvector, in that same Postgres. With backend access
+      # control on (cognee's default) every one of these is required, and
+      # a missing one is an EnvironmentError at engine construction.
+      - VECTOR_DB_PROVIDER=pgvector
+      - VECTOR_DB_HOST=postgres
+      - VECTOR_DB_PORT=5432
+      - VECTOR_DB_USERNAME=cognee
+      - VECTOR_DB_PASSWORD=cognee
+      - VECTOR_DB_NAME=cognee
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system cognee --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../runs:/amb/runs
+
+volumes:
+  cognee-pgdata:
