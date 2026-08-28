@@ -77,13 +77,14 @@ DEFAULT_TIMEOUT_S = 120.0
 
 
 class AgentMemoryMemory(Memory):
-    """agentmemory: verbatim observations, BM25 + on-device embeddings."""
+    """agentmemory: observation memory over a REST API."""
 
     name: ClassVar[str] = "agentmemory"
     description: ClassVar[str] = "agentmemory — observation memory over REST"
     # no Python distribution: the server reports its own version
     sdk_dist: ClassVar[str | None] = None
-
+    # Token spend happens inside the Node server; the harness cannot observe it.
+    usage_coverage: ClassVar[str] = "none"
     def __init__(
         self,
         base_url: str | None = None,
