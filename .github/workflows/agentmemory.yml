@@ -29,8 +29,8 @@ env:
 #
 # --workers 1 on purpose: the agent-id filter runs after retrieval, so
 # exact isolation needs one resident conversation at a time (see
-# benchmarks/agentmemory/README.md). Affordable because a keyless server
-# runs no LLM — ingestion is ~20ms/turn, not ~50s/session.
+# benchmarks/agentmemory/README.md). Affordable even serial: keyed
+# ingestion measured ~0.4s/turn locally, not ~50s/session.
 jobs:
   locomo:
     name: agentmemory / locomo / direct / k${{ matrix.k }}
