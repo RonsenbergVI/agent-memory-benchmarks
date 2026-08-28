@@ -133,6 +133,19 @@
         }
       ]
     },
+    "benchmarks/everos": {
+      "release-type": "python",
+      "component": "everos",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='everos-benchmark')].version"
+        }
+      ]
+    },
     "benchmarks/hindsight": {
       "release-type": "python",
       "component": "hindsight",

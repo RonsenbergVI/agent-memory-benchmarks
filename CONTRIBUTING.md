@@ -46,7 +46,7 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
 
 5. **`benchmarks/<name>/Dockerfile` + `docker-compose.yaml`** — copy an existing pair. The Dockerfile is `uv sync --package <name>` from the repo root; compose adds whatever server/database the system needs, volume-mounts `../../.data:/amb/.data` and `../../runs:/amb/runs`, and passes keys via `env_file: ../../.env` — never bake keys into the image.
 
-6. **`.github/workflows/<name>.yml`** — copy `fraise.yml` and swap the framework name and compose path (drop the ghcr login if the image isn't on ghcr). One job per dataset; matrices hold plain values only. Trigger on `tags: ["v*", "<name>/v*"]`: a harness release reruns every system, the package's own tag only this one.
+6. **`.github/workflows/<name>.yml`** — copy `fraise.yml` and swap the framework name and compose path (drop the ghcr login if the image isn't on ghcr). One job per dataset; matrices hold plain values only. Trigger on `tags: ["v[0-9]+.[0-9]+.0", "<name>/v[0-9]+.[0-9]+.0"]`: a harness release reruns every system, the package's own tag only this one. Add the workflow's status badge to the `Benchmark <name>` block at the top of README.md — copy a sibling line, keep the list alphabetical.
 
 7. **Repo plumbing** — two configs track packages by name and must learn the new one. Dependabot needs nothing: its root `uv` entry is workspace-aware — it bumps member dependencies and regenerates `uv.lock` in the same PR — so per-member entries are never added (they would change the manifest without the lock and fail `uv sync --locked`).
 
