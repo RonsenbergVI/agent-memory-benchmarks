@@ -1,0 +1,82 @@
+services:
+  # ParadeDB bundles pgvector and pg_search, the pair Hindsight's own compose
+  # recommends; pg_search is real BM25 where the "native" backend is ts_rank —
+  # a materially different text half, so the recommended one is measured
+  db:
+    image: paradedb/paradedb:0.25.4-pg17
+    environment:
+      POSTGRES_USER: hindsight
+      POSTGRES_PASSWORD: hindsight
+      POSTGRES_DB: hindsight
+    volumes:
+      - hindsight-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hindsight -d hindsight"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  hindsight:
+    build:
+      context: ../..
+      dockerfile: benchmarks/hindsight/server.Dockerfile
+      args:
+        HINDSIGHT_API_VERSION: "0.9.2"
+    image: amb-hindsight-server
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # extraction runs inside this server, so the model is its configuration,
+      # not the adapter's; gpt-5-mini matches every other system's ingestion
+      HINDSIGHT_API_LLM_PROVIDER: openai
+      HINDSIGHT_API_LLM_MODEL: gpt-5-mini
+      HINDSIGHT_API_DATABASE_URL: postgresql://hindsight:hindsight@db:5432/hindsight
+      HINDSIGHT_API_VECTOR_EXTENSION: pgvector
+      HINDSIGHT_API_TEXT_SEARCH_EXTENSION: pg_search
+      # OpenAI embeddings, matching the rest of the comparison. The key is
+      # deliberately not set here — the provider falls back to
+      # HINDSIGHT_API_LLM_API_KEY, which the entrypoint maps from OPENAI_API_KEY.
+      # The dimension is unset on purpose: looked up from the model (1536) and
+      # pushed into the pgvector column at startup, and changing it against a
+      # store that already holds embeddings is a hard error — switch embedders
+      # only after `down -v`. 1536 fits pgvector's 2000-dim HNSW ceiling;
+      # text-embedding-3-large (3072) would not.
+      HINDSIGHT_API_EMBEDDINGS_PROVIDER: openai
+      HINDSIGHT_API_EMBEDDINGS_OPENAI_MODEL: text-embedding-3-small
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8888/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 40
+
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/hindsight/Dockerfile
+    image: amb-hindsight
+    depends_on:
+      hindsight:
+        condition: service_healthy
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      - HINDSIGHT_BASE_URL=http://hindsight:8888
+      # recorded in the run's identity: the models are the server's, and
+      # two differently-configured servers are different experiments
+      - HINDSIGHT_API_LLM_MODEL=gpt-5-mini
+      - HINDSIGHT_API_EMBEDDING_MODEL=text-embedding-3-small
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system hindsight --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../runs:/amb/runs
+
+volumes:
+  hindsight-pgdata:
