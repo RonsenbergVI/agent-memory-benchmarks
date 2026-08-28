@@ -1,0 +1,23 @@
+services:
+  # EverOS is local-first: memories are Markdown files with a SQLite
+  # index beside them, all under EVEROS_ROOT inside the container. There
+  # is no server and no database for this stack to stand up — only the
+  # runner, which reaches OpenAI for EverOS's extraction and embedding.
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/everos/Dockerfile
+    image: amb-everos
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # EverOS speaks the OpenAI protocol natively, so the adapter points
+      # it at the same models every other system ingests with. Set any of
+      # these yourself to measure a different configuration.
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system everos --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../runs:/amb/runs
