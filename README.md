@@ -7,8 +7,12 @@
 [![License](https://img.shields.io/github/license/RonsenbergVI/agent-memory-benchmarks)](LICENSE)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue)](pyproject.toml)
 
+[![Benchmark agentmemory](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/agentmemory.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/agentmemory.yml)
+[![Benchmark cognee](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee.yml)
+[![Benchmark everos](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos.yml)
 [![Benchmark fraise](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise.yml)
 [![Benchmark graphiti](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti.yml)
+[![Benchmark hindsight](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml)
 [![Benchmark letta](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/letta.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/letta.yml)
 [![Benchmark mem0](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml)
 
