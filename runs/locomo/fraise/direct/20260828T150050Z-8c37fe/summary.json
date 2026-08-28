@@ -1,0 +1,74 @@
+{
+  "run_id": "20260828T150050Z-8c37fe",
+  "system": "fraise",
+  "system_version": "0.1.0-rc.1",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 5,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 14172.154388840998,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 635.5887500220012
+  },
+  "retrieval_precision": 0.42062731247898005,
+  "retrieval_recall": 0.7580077843448174,
+  "retrieval_f1": 0.4973525071950339,
+  "turn_precision": 0.16358406121417615,
+  "turn_recall": 0.5936458142769147,
+  "turn_f1": 0.24590156752790568,
+  "search_latency": {
+    "p50_s": 0.2546155169998201,
+    "p95_s": 0.40249159100039833,
+    "p99_s": 1.711564355000064
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5991,
+      "embedding_tokens": 98609,
+      "llm_calls": 272,
+      "llm_input_tokens": 279329,
+      "llm_output_tokens": 1073125
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 1475132.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.4202167414050825,
+      "retrieval_recall": 0.8071748878923767,
+      "retrieval_f1": 0.5103139013452916
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.37866430260047285,
+      "retrieval_recall": 0.42190982776089153,
+      "retrieval_f1": 0.36503228740070887
+    },
+    "open-domain": {
+      "retrieval_precision": 0.20181159420289851,
+      "retrieval_recall": 0.41006728778467905,
+      "retrieval_f1": 0.24781824455737497
+    },
+    "single-hop": {
+      "retrieval_precision": 0.4521204914783974,
+      "retrieval_recall": 0.8525564803804994,
+      "retrieval_f1": 0.5483947681331747
+    },
+    "temporal": {
+      "retrieval_precision": 0.43826583592938734,
+      "retrieval_recall": 0.8369678089304257,
+      "retrieval_f1": 0.5333778371161555
+    }
+  }
+}

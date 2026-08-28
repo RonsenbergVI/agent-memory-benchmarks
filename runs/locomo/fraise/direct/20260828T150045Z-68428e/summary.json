@@ -1,0 +1,74 @@
+{
+  "run_id": "20260828T150045Z-68428e",
+  "system": "fraise",
+  "system_version": "0.1.0-rc.1",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 3,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 14064.567837392999,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 617.4904741479993
+  },
+  "retrieval_precision": 0.49310460813992796,
+  "retrieval_recall": 0.6944054025915783,
+  "retrieval_f1": 0.5456507193893652,
+  "turn_precision": 0.23138732754215444,
+  "turn_recall": 0.5183864687966026,
+  "turn_f1": 0.3044723686011368,
+  "search_latency": {
+    "p50_s": 0.2275769020000098,
+    "p95_s": 0.4062388060001467,
+    "p99_s": 2.195605032000003
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 6103,
+      "embedding_tokens": 99549,
+      "llm_calls": 272,
+      "llm_input_tokens": 279329,
+      "llm_output_tokens": 1105256
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 1508203.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.48542600896861027,
+      "retrieval_recall": 0.7309417040358744,
+      "retrieval_f1": 0.5575485799701039
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.40011820330969244,
+      "retrieval_recall": 0.33414246313182494,
+      "retrieval_f1": 0.34434108051129353
+    },
+    "open-domain": {
+      "retrieval_precision": 0.2644927536231884,
+      "retrieval_recall": 0.35778985507246375,
+      "retrieval_f1": 0.28125588179936006
+    },
+    "single-hop": {
+      "retrieval_precision": 0.5378517637732847,
+      "retrieval_recall": 0.8085612366230678,
+      "retrieval_f1": 0.6167261196987733
+    },
+    "temporal": {
+      "retrieval_precision": 0.5337487019730011,
+      "retrieval_recall": 0.7575285565939771,
+      "retrieval_f1": 0.5955347871235718
+    }
+  }
+}
