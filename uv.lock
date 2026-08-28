@@ -29,7 +29,7 @@ members = [
 
 [[package]]
 name = "agentmemory-benchmark"
-version = "0.0.0"
+version = "0.1.0"
 source = { editable = "benchmarks/agentmemory" }
 dependencies = [
     { name = "amb" },
@@ -1282,7 +1282,7 @@ wheels = [
 
 [[package]]
 name = "everos-benchmark"
-version = "0.0.0"
+version = "0.1.0"
 source = { editable = "benchmarks/everos" }
 dependencies = [
     { name = "amb" },
@@ -1866,7 +1866,7 @@ wheels = [
 
 [[package]]
 name = "hindsight-benchmark"
-version = "0.0.0"
+version = "0.1.0"
 source = { editable = "benchmarks/hindsight" }
 dependencies = [
     { name = "amb" },

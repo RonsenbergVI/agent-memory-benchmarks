@@ -2,7 +2,7 @@
 # not `hindsight`: that PyPI name belongs to an unrelated project, and
 # the client this measures with is published as `hindsight-client`
 name = "hindsight-benchmark"
-version = "0.0.0"
+version = "0.1.0"
 description = "Hindsight benchmark."
 readme = "README.md"
 authors = [
