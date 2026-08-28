@@ -14,26 +14,12 @@ services:
         III_VERSION: "0.11.2"
         III_SDK_VERSION: "0.11.2"
     image: amb-agentmemory-server
-    env_file:
-      - path: ../../.env
-        required: false
+    # no env_file on purpose: the ledger measures OSS-runnable operation only,
+    # so no platform key ever reaches the system under test — keyless,
+    # agentmemory runs zero-LLM (BM25 + on-device embeddings), and a local
+    # .env key would silently switch its paid legs on
     environment:
       - AGENTMEMORY_DATA_DIR=/data
-      # Keyless, agentmemory is BM25-only with no LLM — its weakest mode;
-      # both legs are switched on to match the rest of the comparison.
-      # The embedding model is the default, set for the record; its
-      # dimension stays looked-up (a wrong explicit value makes every
-      # embed throw) and the 0.4/0.6 BM25/vector fusion weights stay put.
-      - EMBEDDING_PROVIDER=openai
-      - OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-      # compression on gpt-5-mini, matching the comparison; the server
-      # image renames the `max_tokens` agentmemory sends (reasoning
-      # models reject it) to `max_completion_tokens` — see server.Dockerfile
-      - OPENAI_MODEL=gpt-5-mini
-      - AGENTMEMORY_AUTO_COMPRESS=true
-      # consolidation (a periodic pipeline the LLM key defaults ON) is
-      # not extraction, so it stays off
-      - CONSOLIDATION_ENABLED=false
       # an index whose width differs from the active provider refuses to
       # boot; the flag keeps a reused volume from wedging
       - AGENTMEMORY_DROP_STALE_INDEX=true
@@ -61,7 +47,7 @@ services:
     environment:
       - AGENTMEMORY_BASE_URL=http://agentmemory:3111
       - ${AGENTMEMORY_SECRET:+AGENTMEMORY_SECRET=}${AGENTMEMORY_SECRET:-_AMB_UNSET_AM_SECRET=1}
-      # answering and judging models only — a keyless server makes no API call
+      # answering and judging models only — the keyless server makes no API call
       - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
     # --workers 1: the agent-id filter runs *after* retrieval, so a second

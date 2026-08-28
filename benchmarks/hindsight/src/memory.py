@@ -84,8 +84,6 @@ class HindsightMemory(Memory):
         self.base_url = os.environ.get("HINDSIGHT_BASE_URL", DEFAULT_BASE_URL)
         if base_url:
             self.base_url = base_url
-        # a secret; environment only, never --param
-        self._api_key = os.environ.get("HINDSIGHT_API_KEY")
         # --param values arrive as strings
         self.max_tokens = int(max_tokens)
         self.budget = budget
@@ -140,9 +138,7 @@ class HindsightMemory(Memory):
             if client is None:
                 from hindsight_client import Hindsight
 
-                with Hindsight(
-                    base_url=self.base_url, api_key=self._api_key, timeout=self.timeout
-                ) as probe:
+                with Hindsight(base_url=self.base_url, timeout=self.timeout) as probe:
                     version = probe.get_version()
             else:
                 version = client.get_version()
@@ -162,9 +158,7 @@ class HindsightMemory(Memory):
         """Connect to the Hindsight server."""
         from hindsight_client import Hindsight
 
-        self.client = Hindsight(
-            base_url=self.base_url, api_key=self._api_key, timeout=self.timeout
-        )
+        self.client = Hindsight(base_url=self.base_url, timeout=self.timeout)
 
     def _ensure_bank(self, conversation_id: str) -> str:
         """Create this conversation's bank if the server does not have it yet."""
