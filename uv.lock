@@ -16,6 +16,7 @@ supported-markers = [
 
 [manifest]
 members = [
+    "agentmemory-benchmark",
     "amb",
     "cognee-benchmark",
     "fraise",
@@ -23,6 +24,21 @@ members = [
     "hindsight-benchmark",
     "letta",
     "mem0",
+]
+
+[[package]]
+name = "agentmemory-benchmark"
+version = "0.0.0"
+source = { editable = "benchmarks/agentmemory" }
+dependencies = [
+    { name = "amb" },
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amb", editable = "." },
+    { name = "httpx", specifier = ">=0.27,<1" },
 ]
 
 [[package]]
