@@ -6,6 +6,10 @@ area:benchmarks:
       - any-glob-to-any-file:
           - benchmarks/**
 
+memory:agentmemory:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/agentmemory/**
 memory:cognee:
   - changed-files:
       - any-glob-to-any-file:
