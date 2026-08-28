@@ -22,49 +22,36 @@
 
 """agentmemory (rohitg00/agentmemory) — observation memory over a REST API.
 
-Workspace package ``agentmemory-benchmark`` (this directory). The name is
-not ``agentmemory`` for a second reason beyond the usual one: the PyPI
-distribution of that name is a *different* project
-(AutonomousResearchGroup/agentmemory), and depending on it would measure
-the wrong system entirely.
+A Node service on port 3111 with no Python SDK, so the adapter is a small
+httpx client against the endpoints its own README documents (the PyPI
+``agentmemory`` is a different project — see pyproject.toml).
+AGENTMEMORY_BASE_URL names the server (compose stands one up);
+AGENTMEMORY_SECRET is sent as a bearer when the server requires one.
 
-agentmemory ships no Python SDK — it is a Node service with a REST API on
-port 3111 — so this adapter is a small httpx client against the endpoints
-its own README documents. AGENTMEMORY_BASE_URL names the server (compose
-stands one up); AGENTMEMORY_SECRET is sent as a bearer when the server
-requires one.
+Ingestion is agentmemory's own hook path: each dataset session opens an
+agentmemory *session* and every turn is posted as one ``prompt_submit``
+observation — the only hook whose content is the utterance itself.
+Keyless (the server's default) it stores the turn verbatim and retrieves
+with BM25 plus on-device embeddings; a provider key turns on LLM
+compression instead — a different system and a different row.
 
-Ingestion is agentmemory's own hook path. Each dataset session opens an
-agentmemory *session* and each turn is posted as one ``prompt_submit``
-observation — the shape the project's own Claude Code hooks produce, and
-Ingestion is agentmemory's own hook path. Each dataset session opens an
-agentmemory *session* and each turn is posted as one ``prompt_submit``
-observation — the shape the project's own Claude Code hooks produce.
-This integration is typically run with OpenAI embeddings (and, when enabled on
- the server, LLM compression) performed inside the Node service.
+Two non-obvious properties of the service shape this adapter:
 
-Two properties of the service shape this adapter and are not obvious:
+* **Isolation is the agent id, not the project.** ``mem::smart-search``
+  never passes ``project`` to the searcher; it filters on ``agentId``,
+  which observations inherit from the session row set at
+  ``session/start``. So the conversation id travels as the agent id, at
+  session start and on every search.
+* **That filter runs after retrieval, not inside the index.** The server
+  over-fetches 3x the requested limit and trims, so with several
+  conversations resident a conversation's true top-k can be crowded out
+  of the window before the filter runs. Over-asking widens the window
+  but cannot close it: ``--workers 1`` is the only exact-isolation
+  setting. See benchmarks/agentmemory/README.md.
 
-* **Isolation is the agent id, not the project.** ``project`` is accepted
-  everywhere but ``mem::smart-search`` never passes it to the searcher —
-  it scopes lesson recall only. The dimension search *does* filter on is
-  ``agentId``, which an observation inherits from its session row, which
-  in turn takes it from ``session/start``. So the conversation id is sent
-  as the agent id at session start and as the filter on every search.
-* **That filter is applied after retrieval, not inside the index.** The
-  server over-fetches 3x the requested limit and trims, because the BM25
-  and vector indexes do not carry the agent id. With several
-  conversations resident at once, a conversation's true top-k can be
-  crowded out of the over-fetch window by another's hits before the
-  filter runs. This adapter asks for far more than k and trims locally to
-  widen that window, but it cannot close it: ``--workers 1`` is the only
-  setting where isolation is exact, because the store then holds one
-  conversation at a time. See benchmarks/agentmemory/README.md.
-
-Search is two round trips by construction: a compact search returns
-``obsId``/``score``/``sessionId`` and no content, and the content comes
-from a second call that expands those ids. Both are counted as one
-search, which is what the system charges to answer one question.
+Search is two round trips by construction — a compact search returns ids
+and scores, a second call expands them into content — counted as one
+search, what the system charges to answer one question.
 """
 
 import os
@@ -75,18 +62,15 @@ from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
 DEFAULT_BASE_URL = "http://localhost:3111"
-# what the observation's `cwd` is set to; the field is required by the
-# hook contract and means nothing for a conversation corpus
+# `cwd` is required by the hook contract; meaningless for a conversation corpus
 DEFAULT_CWD = "/amb"
-# the hook whose payload is an utterance. The others carry tool calls,
-# compaction and lifecycle events, none of which a transcript has.
+# the only hook whose payload is the utterance itself
 HOOK_TYPE = "prompt_submit"
-# `expandIds` is capped at 20 server-side, with the excess reported as
-# `truncated` — every k this harness sweeps is well inside it
+# `expandIds` is capped at 20 server-side; every k the harness sweeps fits
 MAX_EXPAND = 20
-# How far past k to ask, so the server's post-retrieval agent filter has
-# a wider window to trim from. Its own over-fetch is 3x the limit capped
-# at 300, so this asks for the most the API will honour.
+# over-ask so the server's post-retrieval agent filter trims from a wider
+# window; its own over-fetch is 3x the limit capped at 300, so 100 asks
+# for the most the API will honour
 FETCH_MULTIPLIER = 10
 MAX_LIMIT = 100
 DEFAULT_TIMEOUT_S = 120.0
@@ -114,17 +98,15 @@ class AgentMemoryMemory(Memory):
             base_url or os.environ.get("AGENTMEMORY_BASE_URL", DEFAULT_BASE_URL)
         ).rstrip("/")
         self._secret = secret or os.environ.get("AGENTMEMORY_SECRET")
-        # lessons are a separate, LLM-derived object type that a keyless
-        # server never produces; asking for them costs a lookup per search
-        # and returns nothing, so they stay off unless asked for
+        # lessons are LLM-derived and never produced keyless; asking for
+        # them costs a lookup per search for nothing
         self.include_lessons = include_lessons
         # --param values arrive as strings
         self.timeout = float(timeout)
         # the models are the server's business and there are none keyless
         self.model: str | None = None
         self.embedding_model: str | None = None
-        # observation id -> (session id, turn id): the compact result
-        # names both, and this restores the turn behind the observation
+        # observation id -> turn id: restores the turn behind a hit
         self._turns: dict[str, str] = {}
         # the agentmemory sessions this instance opened, for teardown
         self._sessions: list[str] = []
@@ -164,9 +146,8 @@ class AgentMemoryMemory(Memory):
     def _post(self, path: str, body: dict) -> dict:
         """One POST, raising on anything but success.
 
-        The body is logged on failure: these endpoints answer a bad
-        payload with a 400 and a one-line reason, and the benchmark log
-        outlives the container that produced it.
+        The body is logged on failure — the benchmark log outlives the
+        container that answered the 400.
         """
         try:
             response = self.client.post(path, json=body)
@@ -181,11 +162,9 @@ class AgentMemoryMemory(Memory):
     def _ensure_session(self, conversation_id: str, session_id: str) -> str:
         """Open this session on the server once, and return its scoped id.
 
-        The agent id is set here and nowhere else: `observe` has no field
-        for it and inherits whatever the session row already carries, so
-        this call is what makes every one of the session's observations
-        filterable back to this conversation. It is lazy because agentic
-        mode reaches `observe` through the write toolset, which never
+        `observe` has no agent-id field — observations inherit it from the
+        session row — so this call is what makes them filterable back to
+        the conversation. Lazy because the agentic write toolset never
         announces a session first.
         """
         scoped = self._scoped_session_id(conversation_id, session_id)
@@ -206,10 +185,9 @@ class AgentMemoryMemory(Memory):
     def _scoped_session_id(self, conversation_id: str, session_id: str) -> str:
         """A session id unique across conversations.
 
-        agentmemory's session ids are global to the server, and dataset
-        session ids are only unique inside their conversation ("1", "2",
-        ...), so two conversations running side by side would otherwise
-        write into each other's session row.
+        Server session ids are global and dataset ids repeat ("1", "2",
+        ...), so side-by-side conversations would otherwise write into
+        each other's session row.
         """
         return f"{conversation_id}:{session_id}"
 
@@ -236,9 +214,8 @@ class AgentMemoryMemory(Memory):
                 "data": {"prompt": content},
             },
         )
-        # a repeated utterance is answered with {"deduplicated": true} and
-        # no id — the turn is genuinely not separately stored, so claiming
-        # provenance for it would be claiming a hit the store cannot return
+        # a repeated utterance dedups server-side (no id back); claiming
+        # provenance for it would claim a hit the store cannot return
         if observation_id := self._observation_id(response):
             self._observations += 1
             if turn_id:
@@ -273,10 +250,9 @@ class AgentMemoryMemory(Memory):
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return up to k observations, content included.
 
-        Two calls, because the API is built that way: the compact search
-        ranks and returns ids, and a second call expands the ids it chose
-        into their observations. Asking for more than k widens the window
-        the server's post-retrieval agent filter trims from.
+        Two calls because the API is built that way: the compact search
+        ranks and returns ids, a second call expands the chosen ids into
+        their observations.
         """
         if not query.strip():
             return []
@@ -328,10 +304,9 @@ class AgentMemoryMemory(Memory):
     def _content(observation: dict) -> str:
         """The observation's text.
 
-        Keyless, `narrative` is the utterance as it was posted. With LLM
-        compression on it is the written summary and `facts` carries the
-        extracted statements, so both are joined rather than assuming
-        which one the server was configured to produce.
+        Keyless, `narrative` is the utterance verbatim; with compression
+        on, `facts` carries the extracted statements — joined rather than
+        assuming which one the server was configured to produce.
         """
         parts = [str(observation.get("narrative") or "").strip()]
         parts += [str(f).strip() for f in (observation.get("facts") or [])]
@@ -347,17 +322,15 @@ class AgentMemoryMemory(Memory):
         scoped = str(result.get("sessionId") or "")
         if not scoped:
             return []
-        # `_scoped_session_id` joined them with a colon; conversation ids
-        # in these datasets carry no colon, so one split is unambiguous
+        # conversation ids carry no colon, so one partition is unambiguous
         _, _, session_id = scoped.partition(":")
         return [session_id or scoped]
 
     def teardown(self) -> None:
-        """Forget the sessions this conversation opened, and only those.
+        """Forget the sessions this instance opened, and only those.
 
-        Scoped to the ids this instance created: under `--workers N` the
-        other conversations' sessions are on the same server, and anything
-        wider would take them with it.
+        Under `--workers N` other conversations' sessions are on the same
+        server; anything wider would take them with it.
         """
         for session_id in self._sessions:
             try:

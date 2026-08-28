@@ -1,16 +1,11 @@
-// OpenAI's reasoning models (gpt-5-mini) reject `max_tokens` and accept only
-// `max_completion_tokens`. agentmemory sends the former and exposes no setting
-// for it, so every compression call answers 400 — and the failure is
-// destructive rather than degraded: the observation is dropped WITHOUT being
-// indexed, so the system then retrieves nothing at all.
-//
-// The two names are the same parameter, so this renames it in the OpenAI
-// provider only, located by its Azure-aware `buildChatUrl` call. The Anthropic,
-// OpenRouter and MiniMax providers share the bundle and keep `max_tokens`,
-// which is correct for them.
-//
-// Asserts before and after: a version bump that moves this fails the image
-// build rather than silently restoring the 400s.
+// gpt-5-mini accepts only `max_completion_tokens`; agentmemory sends
+// `max_tokens` with no setting for it, so every compression call 400s —
+// destructively: the observation is dropped WITHOUT being indexed, and the
+// system then retrieves nothing at all. Same parameter, so rename it in the
+// OpenAI provider only (located by its Azure-aware `buildChatUrl` call); the
+// Anthropic/OpenRouter/MiniMax providers keep `max_tokens`, correct for them.
+// The asserts make a version bump that moves this fail the image build
+// instead of silently restoring the 400s.
 const fs = require("fs");
 
 const DIR = "/opt/agentmemory/node_modules/@agentmemory/agentmemory/dist";

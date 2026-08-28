@@ -1,7 +1,6 @@
 [project]
-# not `agentmemory`: that PyPI name belongs to a different project
-# (AutonomousResearchGroup/agentmemory), and the system measured here is
-# rohitg00/agentmemory, which publishes to npm and ships no Python SDK
+# not `agentmemory`: that PyPI name is a different project
+# (AutonomousResearchGroup); the system measured is rohitg00/agentmemory
 name = "agentmemory-benchmark"
 version = "0.0.0"
 description = "agentmemory benchmark."

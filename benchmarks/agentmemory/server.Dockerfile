@@ -1,9 +1,6 @@
-# The agentmemory server itself — the system under test.
-#
-# There is no published agentmemory image, so this is adapted from the
-# project's own deploy template (deploy/fly/Dockerfile in
-# rohitg00/agentmemory): node + the iii engine binary lifted out of the
-# official iii image + the npm package. Built by the compose file here.
+# The agentmemory server — the system under test. No published image, so
+# adapted from the project's own deploy template (deploy/fly/Dockerfile in
+# rohitg00/agentmemory): node + the iii engine binary + the npm package.
 ARG III_VERSION=0.11.2
 
 FROM iiidev/iii:${III_VERSION} AS iii-image
@@ -20,12 +17,11 @@ RUN apt-get update \
 
 COPY --from=iii-image /app/iii /usr/local/bin/iii
 
-# Installed into a dedicated prefix so the local package.json's
-# `overrides` pins iii-sdk to the engine's version: agentmemory's caret
-# range resolves to 0.11.6, which needs the sandboxed-worker model
-# agentmemory has not been refactored for, and the mismatch surfaces as
-# EPIPE reconnect loops and empty search after save. `npm install -g`
-# ignores overrides, hence the local prefix. Upstream's own note.
+# A dedicated prefix so package.json `overrides` can pin iii-sdk to the
+# engine's version (`npm install -g` ignores overrides): the caret range
+# resolves to 0.11.6, whose sandboxed-worker model agentmemory is not
+# refactored for — EPIPE reconnect loops, empty search after save.
+# Upstream's own note.
 WORKDIR /opt/agentmemory
 RUN printf '{"name":"agentmemory-benchmark","version":"1.0.0","private":true,"overrides":{"iii-sdk":"%s"}}\n' "${III_SDK_VERSION}" > package.json \
  && npm install "@agentmemory/agentmemory@${AGENTMEMORY_VERSION}" --omit=optional --no-fund --no-audit \

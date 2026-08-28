@@ -22,15 +22,10 @@
 
 """agentmemory's tool surface for `--mode agentic`.
 
-The agent drives agentmemory's own verbs: `observe` records something
-that happened, `recall` runs the two-step smart search over what was
-recorded. Those are the verbs the project's own hooks and MCP tools are
-built on, so an agent using them is using agentmemory the way it is meant
-to be used.
-
-Which session and which agent id an observation is filed under stay the
-adapter's, never the agent's to choose, so conversation isolation cannot
-be argued away by a tool call.
+The agent drives agentmemory's own verbs — `observe` records, `recall`
+runs the two-step smart search. The session and agent id an observation
+is filed under stay the adapter's, never the agent's to choose, so
+conversation isolation cannot be argued away by a tool call.
 """
 
 import time
@@ -114,8 +109,7 @@ class AgentMemoryIngestToolset(IngestToolset):
             content,
             session_id=self.session.session_id,
             timestamp=self.session.timestamp,
-            # one observation cites one turn in the store's own map; the
-            # first is the anchor, and the rest stay in the tool's answer
+            # the store's map holds one turn per observation; the first is the anchor
             turn_id=cited[0],
         )
         self.record_write(time.perf_counter() - t0)

@@ -1,19 +1,12 @@
 #!/bin/sh
-# agentmemory server entrypoint, adapted from the project's own deploy
-# template (deploy/fly/entrypoint.sh in rohitg00/agentmemory).
-#
-# Two deliberate differences from upstream's:
-#
-#   1. The bundled iii config binds 127.0.0.1 and uses relative ./data
-#      paths, which is unreachable from another compose service. This
-#      writes a config that binds 0.0.0.0 and uses absolute /data paths
-#      — the same substitution upstream makes for every managed host.
-#   2. Upstream generates a random HMAC secret on first boot and prints
-#      it once. A benchmark needs the adapter to know the secret before
-#      the server starts, so AGENTMEMORY_SECRET is taken from the
-#      environment instead (compose sets the same value on both
-#      services). Unset means an open API, which is what the container's
-#      private network already is.
+# agentmemory server entrypoint, adapted from upstream's
+# deploy/fly/entrypoint.sh with two deliberate differences: the bundled
+# iii config binds 127.0.0.1 with relative ./data paths (unreachable from
+# another compose service), so this writes one binding 0.0.0.0 with
+# absolute /data paths; and the HMAC secret comes from AGENTMEMORY_SECRET
+# instead of upstream's random first-boot print, because the adapter must
+# know it before the server starts. Unset means an open API — which the
+# container's private network already is.
 set -eu
 
 DATA_DIR="${AGENTMEMORY_DATA_DIR:-/data}"
@@ -67,11 +60,9 @@ workers:
       logs_console_output: true
 EOF
 
-# The bare OPENAI_API_KEY drives the LLM (detectProvider), and the
-# embedding client resolves OPENAI_EMBEDDING_API_KEY || OPENAI_API_KEY.
-# Both are wanted, so the key is mirrored to the embedding-scoped name
-# and the bare one is left in place. Consolidation, which the bare key
-# would otherwise default ON, is pinned off in the compose file.
+# The bare OPENAI_API_KEY drives the LLM (detectProvider); the embedding
+# client resolves OPENAI_EMBEDDING_API_KEY || OPENAI_API_KEY. Both are
+# wanted, so the key is mirrored and the bare one left in place.
 if [ -n "${OPENAI_API_KEY:-}" ] && [ -z "${OPENAI_EMBEDDING_API_KEY:-}" ]; then
   OPENAI_EMBEDDING_API_KEY="$OPENAI_API_KEY"
   export OPENAI_EMBEDDING_API_KEY

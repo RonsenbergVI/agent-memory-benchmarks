@@ -32,12 +32,10 @@ from src.toolset import AgentMemoryIngestToolset, AgentMemorySearchToolset
 class AgentMemoryBenchmark(Benchmark):
     """The benchmark object the `agentmemory` entry point resolves to.
 
-    The default `OpenAIUsageTracker` cannot observe OpenAI calls made inside the
-    Node server (embeddings and optional compression), so token counters may be
-    reported as zero even when the system spent tokens.
-
-    If accurate spend is required, add a server-side usage implementation (like
-    Letta’s `usage_counters()` + `TiktokenUsageTracker`).
+    The default `OpenAIUsageTracker` records a truthful zero: a keyless
+    server runs no LLM and embeds on-device. Give it a provider key and
+    the compression spend moves inside the server, invisibly — that
+    would need the same treatment letta gets.
     """
 
     name: ClassVar[str] = "agentmemory"

@@ -1,18 +1,16 @@
 services:
-  # agentmemory publishes to npm, not to a container registry, so the
-  # server is built here from the project's own deploy template: node +
-  # the iii engine binary + the pinned npm package. Both versions are
-  # build args so a bump is one line and its own commit.
+  # agentmemory publishes to npm, not a container registry, so the server
+  # is built here from the project's own deploy template; versions are
+  # build args so a bump is one line.
   agentmemory:
     build:
       context: ../..
       dockerfile: benchmarks/agentmemory/server.Dockerfile
       args:
         AGENTMEMORY_VERSION: "0.9.29"
-        # pinned by upstream: the engine's own caret range resolves to
-        # 0.11.6, which needs a worker model agentmemory has not been
-        # refactored for — the mismatch shows up as empty search after
-        # save, not as a startup error
+        # pinned by upstream: the caret range resolves to 0.11.6, whose
+        # worker model agentmemory is not refactored for — shows up as
+        # empty search after save, not as a startup error
         III_VERSION: "0.11.2"
         III_SDK_VERSION: "0.11.2"
     image: amb-agentmemory-server
@@ -21,31 +19,23 @@ services:
         required: false
     environment:
       - AGENTMEMORY_DATA_DIR=/data
-      # Keyless, agentmemory retrieves with BM25 only and runs no LLM —
-      # its weakest mode. Both are switched on here so its configuration
-      # matches the rest of the comparison.
-      #
-      # OPENAI_EMBEDDING_MODEL is already this value by default; it is
-      # set so the run's configuration is on the record. The dimension
-      # (1536) is looked up from the model — a wrong explicit value makes
-      # every embed throw. BM25/VECTOR weights are left alone: already
-      # 0.4/0.6, and a fusion ratio rather than a gate on the vector leg.
+      # Keyless, agentmemory is BM25-only with no LLM — its weakest mode;
+      # both legs are switched on to match the rest of the comparison.
+      # The embedding model is the default, set for the record; its
+      # dimension stays looked-up (a wrong explicit value makes every
+      # embed throw) and the 0.4/0.6 BM25/vector fusion weights stay put.
       - EMBEDDING_PROVIDER=openai
       - OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-      # LLM compression on gpt-5-mini, matching the rest of the
-      # comparison. agentmemory sends `max_tokens`, which reasoning
-      # models reject; the server image renames it to
-      # `max_completion_tokens` in the OpenAI provider — see
-      # server.Dockerfile.
+      # compression on gpt-5-mini, matching the comparison; the server
+      # image renames the `max_tokens` agentmemory sends (reasoning
+      # models reject it) to `max_completion_tokens` — see server.Dockerfile
       - OPENAI_MODEL=gpt-5-mini
       - AGENTMEMORY_AUTO_COMPRESS=true
-      # consolidation is a separate feature — a periodic pipeline plus
-      # consolidate-on-session-end — that the LLM key would otherwise
-      # default ON. It is not extraction, so it stays off.
+      # consolidation (a periodic pipeline the LLM key defaults ON) is
+      # not extraction, so it stays off
       - CONSOLIDATION_ENABLED=false
-      # a persisted index whose width differs from the active provider
-      # makes the worker refuse to boot; this stack starts from an empty
-      # volume, and the flag keeps a reused one from wedging
+      # an index whose width differs from the active provider refuses to
+      # boot; the flag keeps a reused volume from wedging
       - AGENTMEMORY_DROP_STALE_INDEX=true
       - ${AGENTMEMORY_SECRET:+AGENTMEMORY_SECRET=}${AGENTMEMORY_SECRET:-_AMB_UNSET_AM_SECRET=1}
     volumes:
@@ -71,14 +61,12 @@ services:
     environment:
       - AGENTMEMORY_BASE_URL=http://agentmemory:3111
       - ${AGENTMEMORY_SECRET:+AGENTMEMORY_SECRET=}${AGENTMEMORY_SECRET:-_AMB_UNSET_AM_SECRET=1}
-      # the answering and judging models only; any OpenAI calls the memory
-      # system makes (embeddings / compression) happen inside the Node server
-      # and are not visible to the default in-process usage tracker
+      # answering and judging models only — a keyless server makes no API call
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
-    # --workers 1: agentmemory filters by agent id *after* retrieval, so
-    # a second conversation resident at the same time can crowd this
-    # one's hits out of the over-fetch window. One at a time is the only
-    # setting where the isolation is exact. See the README.
+    # --workers 1: the agent-id filter runs *after* retrieval, so a second
+    # resident conversation can crowd this one's hits out of the over-fetch
+    # window; one at a time is the only exact-isolation setting. See the README.
     command: run --system agentmemory --dataset locomo --workers 1
     volumes:
       - ../../.data:/amb/.data

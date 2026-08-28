@@ -23,17 +23,14 @@ env:
   SUMMARY_K: 10
 
 # locomo only: a new integration earns its longmemeval jobs once it has a
-# green locomo run to stand on. The oracle cells are the long, expensive
-# half of the matrix, and there is no sense spending on them while the
-# cheap half is still unproven. Agentic mode gets its own jobs here later
-# (with the driving-model env).
+# green locomo run to stand on — the oracle cells are the long, expensive
+# half of the matrix. Agentic mode gets its own jobs here later (with the
+# driving-model env).
 #
-# --workers 1 everywhere, on purpose: agentmemory filters by agent id
-# after retrieval, not inside the index, so a second conversation
-# resident at the same time can crowd this one's hits out of the
-# over-fetch window. One at a time is the only setting where the
-# isolation is exact. Keep this even though it increases wall clock; cost and
-# ingestion latency depend on whether the server is configured to use an LLM.
+# --workers 1 on purpose: the agent-id filter runs after retrieval, so
+# exact isolation needs one resident conversation at a time (see
+# benchmarks/agentmemory/README.md). Affordable because a keyless server
+# runs no LLM — ingestion is ~20ms/turn, not ~50s/session.
 jobs:
   locomo:
     name: agentmemory / locomo / direct / k${{ matrix.k }}
