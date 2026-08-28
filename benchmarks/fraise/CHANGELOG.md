@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.1.0...fraise/v0.2.0) (2026-08-28)
+
+
+### Maintenance
+
+* **fraise:** move to v0.1.0-rc.1 and SDK 0.1.0b4 ([#127](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/127)) ([77ad453](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/77ad453e6209dc06d7b669a4c9705ca639ed7601))
+
 ## 0.1.0 (2026-08-23)
 
 
