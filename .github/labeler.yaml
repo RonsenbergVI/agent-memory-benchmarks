@@ -6,10 +6,10 @@ area:benchmarks:
       - any-glob-to-any-file:
           - benchmarks/**
 
-memory:everos:
+memory:cognee:
   - changed-files:
       - any-glob-to-any-file:
-          - benchmarks/everos/**
+          - benchmarks/cognee/**
 
 memory:fraise:
   - changed-files:

@@ -107,6 +107,19 @@
         }
       ]
     },
+    "benchmarks/cognee": {
+      "release-type": "python",
+      "component": "cognee",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='cognee-benchmark')].version"
+        }
+      ]
+    },
     "benchmarks/everos": {
       "release-type": "python",
       "component": "everos",
