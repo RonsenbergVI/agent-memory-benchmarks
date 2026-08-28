@@ -1,16 +1,11 @@
 services:
-  # agentmemory publishes to npm, not a container registry, so the server
-  # is built here from the project's own deploy template; versions are
-  # build args so a bump is one line.
   agentmemory:
     build:
       context: ../..
       dockerfile: benchmarks/agentmemory/server.Dockerfile
       args:
         AGENTMEMORY_VERSION: "0.9.29"
-        # pinned by upstream: the caret range resolves to 0.11.6, whose
-        # worker model agentmemory is not refactored for — shows up as
-        # empty search after save, not as a startup error
+        # 0.11.6 breaks agentmemory — empty search after save (see README)
         III_VERSION: "0.11.2"
         III_SDK_VERSION: "0.11.2"
     image: amb-agentmemory-server
@@ -19,24 +14,17 @@ services:
         required: false
     environment:
       - AGENTMEMORY_DATA_DIR=/data
-      # Keyless, agentmemory is BM25-only with no LLM — its weakest mode;
-      # both legs are switched on to match the rest of the comparison.
-      # The embedding model is the default, set for the record; its
-      # dimension stays looked-up (a wrong explicit value makes every
-      # embed throw) and the 0.4/0.6 BM25/vector fusion weights stay put.
+      # both legs on to match the comparison (README "What it measures"); the
+      # embedding dimension stays looked-up — an explicit value makes every embed throw
       - EMBEDDING_PROVIDER=openai
       - OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-      # compression on gpt-5-mini, matching the comparison; the server
-      # image renames the `max_tokens` agentmemory sends (reasoning
-      # models reject it) to `max_completion_tokens` — see server.Dockerfile
       - OPENAI_MODEL=gpt-5-mini
       - AGENTMEMORY_AUTO_COMPRESS=true
-      # consolidation (a periodic pipeline the LLM key defaults ON) is
-      # not extraction, so it stays off
       - CONSOLIDATION_ENABLED=false
-      # an index whose width differs from the active provider refuses to
-      # boot; the flag keeps a reused volume from wedging
+      # a reused volume whose index width changed refuses to boot without this
       - AGENTMEMORY_DROP_STALE_INDEX=true
+      # CI has no .env; keyless boot is fatal with the provider forced to openai
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
       - ${AGENTMEMORY_SECRET:+AGENTMEMORY_SECRET=}${AGENTMEMORY_SECRET:-_AMB_UNSET_AM_SECRET=1}
     volumes:
       - agentmemory-data:/data
@@ -61,12 +49,10 @@ services:
     environment:
       - AGENTMEMORY_BASE_URL=http://agentmemory:3111
       - ${AGENTMEMORY_SECRET:+AGENTMEMORY_SECRET=}${AGENTMEMORY_SECRET:-_AMB_UNSET_AM_SECRET=1}
-      # answering and judging models only — a keyless server makes no API call
+      # answering and judging models
       - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
-    # --workers 1: the agent-id filter runs *after* retrieval, so a second
-    # resident conversation can crowd this one's hits out of the over-fetch
-    # window; one at a time is the only exact-isolation setting. See the README.
+    # --workers 1 is the only exact-isolation setting (see README)
     command: run --system agentmemory --dataset locomo --workers 1
     volumes:
       - ../../.data:/amb/.data
