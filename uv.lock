@@ -16,13 +16,30 @@ supported-markers = [
 
 [manifest]
 members = [
+    "agentmemory-benchmark",
     "amb",
     "cognee-benchmark",
     "everos-benchmark",
     "fraise",
     "graphiti",
+    "hindsight-benchmark",
     "letta",
     "mem0",
+]
+
+[[package]]
+name = "agentmemory-benchmark"
+version = "0.0.0"
+source = { editable = "benchmarks/agentmemory" }
+dependencies = [
+    { name = "amb" },
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amb", editable = "." },
+    { name = "httpx", specifier = ">=0.27,<1" },
 ]
 
 [[package]]
@@ -121,6 +138,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/19/fe/26f9c5e6458385aa86497836b0dea6fb2f027827d63f37c7856cce9286ee/aiohttp-3.14.3-cp314-cp314t-musllinux_1_2_riscv64.whl", hash = "sha256:bd52f811e65f6fb634b1047159657c98f52b407f8efec907bcfc09da9a4c0a25", size = 1668895, upload-time = "2026-07-23T01:57:10.837Z" },
     { url = "https://files.pythonhosted.org/packages/ec/4c/618b1db9b9ba079b8875d2cdf78e7c4a3bf72903bd5850fee7dd9544600a/aiohttp-3.14.3-cp314-cp314t-musllinux_1_2_s390x.whl", hash = "sha256:f0f177d1b195b9e06376cfd7d308d8a1b920909a609d03ac82a8c73bbb16d3b9", size = 1883833, upload-time = "2026-07-23T01:57:13.672Z" },
     { url = "https://files.pythonhosted.org/packages/94/c6/bd959bd1e4771f9fd944e9e436224c48c77b018b73b519b5aad346335bcc/aiohttp-3.14.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:498c6c623134f8e09a3c4e60bcd607a0b4590dd7dbf08dd40851b27cbb520ccb", size = 1844251, upload-time = "2026-07-23T01:57:16.593Z" },
+]
+
+[[package]]
+name = "aiohttp-retry"
+version = "2.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9d/61/ebda4d8e3d8cfa1fd3db0fb428db2dd7461d5742cea35178277ad180b033/aiohttp_retry-2.9.1.tar.gz", hash = "sha256:8eb75e904ed4ee5c2ec242fefe85bf04240f685391c4879d8f541d6028ff01f1", size = 13608, upload-time = "2024-11-06T10:44:54.574Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/99/84ba7273339d0f3dfa57901b846489d2e5c2cd731470167757f1935fffbd/aiohttp_retry-2.9.1-py3-none-any.whl", hash = "sha256:66d2759d1921838256a05a3f80ad7e724936f083e35be5abb5e16eed6be6dc54", size = 9981, upload-time = "2024-11-06T10:44:52.917Z" },
 ]
 
 [[package]]
@@ -1833,6 +1862,38 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9a/69/1f0cbc2fb22ae6082d094f743d1b8945a3f36f6089cb95f42b7ee348cda7/hf_xet-1.6.0-cp38-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:0e6e21fa3cdfcdcd76748564bf593870a5e013f47d97cf10aed63aa222cff5b7", size = 4262538, upload-time = "2026-08-03T22:33:05.287Z" },
     { url = "https://files.pythonhosted.org/packages/d1/3a/4f4f2301ade26e404462d3336fa11f7958d914cabbabdd6e03c3c5d5658c/hf_xet-1.6.0-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:4fc74352a17015bd0ee90038bc9efe38db894cde45f268b6712b04fce8cd0acb", size = 4460520, upload-time = "2026-08-03T22:33:06.81Z" },
     { url = "https://files.pythonhosted.org/packages/ab/5f/311725e2a905534dfee2dcb5b08414f249147f1f12252bfc2bd24caa075c/hf_xet-1.6.0-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:8fb4f71cba6129110c3374a33f919001ff130488fc23553698e34cc1c2a1198c", size = 4675937, upload-time = "2026-08-03T22:33:08.616Z" },
+]
+
+[[package]]
+name = "hindsight-benchmark"
+version = "0.0.0"
+source = { editable = "benchmarks/hindsight" }
+dependencies = [
+    { name = "amb" },
+    { name = "hindsight-client" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amb", editable = "." },
+    { name = "hindsight-client", specifier = ">=0.9,<1" },
+]
+
+[[package]]
+name = "hindsight-client"
+version = "0.9.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "aiohttp-retry" },
+    { name = "pydantic" },
+    { name = "python-dateutil" },
+    { name = "typing-extensions" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/21/18dd524c25d440466fa9377e4754b336cde0cc94bb566619913880198aa3/hindsight_client-0.9.2.tar.gz", hash = "sha256:bf6877da5d423395a4b0ac8ac8fc1836f5f5da271613a76e38903437af136ea1", size = 152096, upload-time = "2026-08-25T10:20:30.731Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ad/5a/88ef406d96902a8ae6b6ba09afe8ac06bb4d3460eac1a7b741735ba41475/hindsight_client-0.9.2-py3-none-any.whl", hash = "sha256:31d26d116a07da5203bc913c5ed017de95d875edd5e295afad3c05373665ff6b", size = 358546, upload-time = "2026-08-25T10:20:29.257Z" },
 ]
 
 [[package]]

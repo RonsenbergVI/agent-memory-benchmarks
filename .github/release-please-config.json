@@ -107,6 +107,19 @@
         }
       ]
     },
+    "benchmarks/agentmemory": {
+      "release-type": "python",
+      "component": "agentmemory",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='agentmemory-benchmark')].version"
+        }
+      ]
+    },
     "benchmarks/cognee": {
       "release-type": "python",
       "component": "cognee",
@@ -130,6 +143,19 @@
           "type": "toml",
           "path": "/uv.lock",
           "jsonpath": "$.package[?(@.name.value=='everos-benchmark')].version"
+        }
+      ]
+    },
+    "benchmarks/hindsight": {
+      "release-type": "python",
+      "component": "hindsight",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='hindsight-benchmark')].version"
         }
       ]
     }

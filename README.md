@@ -117,6 +117,8 @@ Pre-alpha. Methodology is being defined and the test harness is in development. 
 | Graphiti | [getzep/graphiti](https://github.com/getzep/graphiti) | Apache-2.0 | Temporal knowledge graph | [RESULTS.md](RESULTS.md) |
 | Fraise | [RonsenbergVI/fraise](https://github.com/RonsenbergVI/fraise) | MIT | Temporal knowledge graph + vector / text hybrid search | [RESULTS.md](RESULTS.md) |
 | EverOS (EverMind) | [EverMind-AI/EverOS](https://github.com/EverMind-AI/EverOS) | Apache-2.0 | Local-first, Markdown-native | [RESULTS.md](RESULTS.md) |
+| Hindsight | [vectorize-io/hindsight](https://github.com/vectorize-io/hindsight) | MIT | Memory units + hybrid search | [RESULTS.md](RESULTS.md) |
+| agentmemory | [rohitg00/agentmemory](https://github.com/rohitg00/agentmemory) | Apache-2.0 | Observation memory | [RESULTS.md](RESULTS.md) |
 | Cognee | [topoteretes/cognee](https://github.com/topoteretes/cognee) | Apache-2.0 | Embedded knowledge graph | [RESULTS.md](RESULTS.md) |
 
 ### Candidates
@@ -127,14 +129,12 @@ Each candidate is vetted against the [inclusion criteria](#inclusion-criteria) i
 | --- | --- | --- |
 | ReMe | [modelscope/ReMe](https://github.com/modelscope/ReMe) | [#72](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/72) |
 | Redis Agent Memory Server | [redis/agent-memory-server](https://github.com/redis/agent-memory-server) | [#73](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/73) |
-| Hindsight | [hindsight-ai/hindsight](https://github.com/hindsight-ai/hindsight) | [#74](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/74) |
 | LangMem | [langchain-ai/langmem](https://github.com/langchain-ai/langmem) | [#76](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/76) |
 | MemOS | [MemTensor/MemOS](https://github.com/MemTensor/MemOS) | [#77](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/77) |
 | Memobase | [memodb-io/memobase](https://github.com/memodb-io/memobase) | [#78](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/78) |
 | memary | [kingjulio8238/Memary](https://github.com/kingjulio8238/Memary) | [#80](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/80) |
 | supermemory | [supermemoryai/supermemory](https://github.com/supermemoryai/supermemory) | [#81](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/81) |
 | MemPalace | [MemPalace/mempalace](https://github.com/MemPalace/mempalace) | [#82](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/82) |
-| agentmemory | [rohitg00/agentmemory](https://github.com/rohitg00/agentmemory) | [#83](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/83) |
 
 ## Methodology
 
