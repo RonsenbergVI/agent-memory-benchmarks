@@ -1,0 +1,72 @@
+{
+  "run_id": "20260825T114304Z-3a9e76",
+  "system": "everos",
+  "system_version": "1.2.3",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 1,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 94,
+  "ingestion_model": "gpt-4.1-mini",
+  "embedding_model": "text-embedding-3-small",
+  "max_turns": 50,
+  "ingest": {
+    "total_s": 386.07299850500385,
+    "total_turns": 500,
+    "total_sessions": 26,
+    "questions_dropped": 1810
+  },
+  "conversation": {
+    "total_s": 34.73089593300392
+  },
+  "retrieval_precision": 0.8478260869565217,
+  "retrieval_recall": 0.8043478260869565,
+  "retrieval_f1": 0.818840579710145,
+  "search_latency": {
+    "p50_s": 0.2903688750011497,
+    "p95_s": 0.5046349160002137,
+    "p99_s": 0.59729787499964
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 0,
+      "embedding_tokens": 0,
+      "llm_calls": 0,
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0
+    },
+    "search_total": 0
+  },
+  "errors": 0,
+  "memory_tokens_total": 0.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 1.0
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.7857142857142857,
+      "retrieval_recall": 0.5357142857142857,
+      "retrieval_f1": 0.619047619047619
+    },
+    "open-domain": {
+      "retrieval_precision": 0.7777777777777778,
+      "retrieval_recall": 0.7777777777777778,
+      "retrieval_f1": 0.7777777777777778
+    },
+    "single-hop": {
+      "retrieval_precision": 0.9642857142857143,
+      "retrieval_recall": 0.9642857142857143,
+      "retrieval_f1": 0.9642857142857143
+    },
+    "temporal": {
+      "retrieval_precision": 0.8,
+      "retrieval_recall": 0.7875,
+      "retrieval_f1": 0.7916666666666667
+    }
+  }
+}

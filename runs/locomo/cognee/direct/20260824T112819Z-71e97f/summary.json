@@ -1,0 +1,51 @@
+{
+  "run_id": "20260824T112819Z-71e97f",
+  "system": "cognee",
+  "system_version": "1.5.3",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 1,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 2,
+  "num_questions": 2,
+  "max_turns": 10,
+  "workers": 2,
+  "ingest": {
+    "total_s": 117.649967135,
+    "total_turns": 20,
+    "total_sessions": 2,
+    "questions_dropped": 293
+  },
+  "conversation": {
+    "total_s": 24.955260719000023
+  },
+  "retrieval_precision": 1.0,
+  "retrieval_recall": 1.0,
+  "retrieval_f1": 1.0,
+  "search_latency": {
+    "p50_s": 12.467951504999974,
+    "p95_s": 12.487073088999978,
+    "p99_s": 12.487073088999978
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 0,
+      "embedding_tokens": 0,
+      "llm_calls": 18,
+      "llm_input_tokens": 5897,
+      "llm_output_tokens": 9798
+    },
+    "search_total": 5283
+  },
+  "errors": 0,
+  "memory_tokens_total": 20978.0,
+  "by_category": {
+    "temporal": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 1.0
+    }
+  }
+}

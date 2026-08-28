@@ -1,0 +1,232 @@
+[
+  {
+    "sample_id": "conv-26",
+    "ingest_s": 5.641083085996797,
+    "num_turns": 50,
+    "num_sessions": 3,
+    "system_stats": {
+      "sessions": 3,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 15,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 4.329274169002019,
+    "questions_dropped": 173,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-30",
+    "ingest_s": 6.782792836998851,
+    "num_turns": 50,
+    "num_sessions": 3,
+    "system_stats": {
+      "sessions": 3,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 12,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 5.229643253001996,
+    "questions_dropped": 76,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-41",
+    "ingest_s": 3.042344460001914,
+    "num_turns": 50,
+    "num_sessions": 3,
+    "system_stats": {
+      "sessions": 3,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 12,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 3.769624960001238,
+    "questions_dropped": 179,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-42",
+    "ingest_s": 2.4782705849975173,
+    "num_turns": 50,
+    "num_sessions": 2,
+    "system_stats": {
+      "sessions": 2,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 9,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 5.373925961001078,
+    "questions_dropped": 242,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-43",
+    "ingest_s": 6.106957962001616,
+    "num_turns": 50,
+    "num_sessions": 3,
+    "system_stats": {
+      "sessions": 3,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 14,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 4.065638960000797,
+    "questions_dropped": 225,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-44",
+    "ingest_s": 2.1801025429995207,
+    "num_turns": 50,
+    "num_sessions": 2,
+    "system_stats": {
+      "sessions": 2,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 9,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 3.05071241800033,
+    "questions_dropped": 150,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-47",
+    "ingest_s": 1.8405618340002547,
+    "num_turns": 50,
+    "num_sessions": 2,
+    "system_stats": {
+      "sessions": 2,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 11,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 2.0704512080010318,
+    "questions_dropped": 184,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-48",
+    "ingest_s": 1.6049590000002354,
+    "num_turns": 50,
+    "num_sessions": 2,
+    "system_stats": {
+      "sessions": 2,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 10,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 5.496359961001872,
+    "questions_dropped": 217,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-49",
+    "ingest_s": 3.1301486259981175,
+    "num_turns": 50,
+    "num_sessions": 3,
+    "system_stats": {
+      "sessions": 3,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 12,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 7.8027233370012254,
+    "questions_dropped": 172,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-50",
+    "ingest_s": 3.351251501997467,
+    "num_turns": 50,
+    "num_sessions": 3,
+    "system_stats": {
+      "sessions": 3,
+      "agent_drawers": 0,
+      "candidate_strategy": "vector",
+      "drawers": 12,
+      "embedding_model": "text-embedding-3-small",
+      "embedder_is_local": false
+    },
+    "conversation_s": 3.5922388350008987,
+    "questions_dropped": 192,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  }
+]

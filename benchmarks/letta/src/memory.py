@@ -37,12 +37,14 @@ recheck on version bumps. Under ``--param ingest=agent`` the agent's own LLM
 turns are billed from the usage letta reports on each response.
 """
 
-import os
 from typing import ClassVar
 
 from amb.base import Memory
 from amb.callbacks import OpenAIUsageTracker
+from amb.constants import DEFAULT_EMBEDDING_MODEL, DEFAULT_INGESTION_MODEL
 from amb.contracts import MemoryHit, Session
+from amb.logs import quiet_frameworks
+from src.settings import Settings
 
 INGEST_PASSAGES = "passages"  # SDK writes, no LLM invoked
 INGEST_AGENT = "agent"  # the only mode where a letta run exercises its own model
@@ -60,8 +62,8 @@ class LettaMemory(Memory):
     def __init__(
         self,
         base_url: str | None = None,
-        model: str = "openai/gpt-5-mini",
-        embedding_model: str = "openai/text-embedding-3-small",
+        model: str = f"openai/{DEFAULT_INGESTION_MODEL}",
+        embedding_model: str = f"openai/{DEFAULT_EMBEDDING_MODEL}",
         ingest: str = DEFAULT_INGEST,
         **params: object,
     ) -> None:
@@ -78,9 +80,7 @@ class LettaMemory(Memory):
         # (see `_ingest_via_agent`) measure different things: different rows
         self.ingest = ingest
         # server location is infrastructure: from the environment (compose sets it)
-        self.base_url = base_url or os.environ.get(
-            "LETTA_BASE_URL", "http://localhost:8283"
-        )
+        self.base_url = base_url or Settings().base_url
         self._agents: dict[str, str] = {}
         # passage id -> (turn_ids, session_id): local scoring provenance
         self._provenance: dict[str, tuple[list[str], str]] = {}
@@ -116,6 +116,7 @@ class LettaMemory(Memory):
             self._encoding = tiktoken.encoding_for_model(name)
         except KeyError:
             self._encoding = tiktoken.get_encoding("cl100k_base")
+        quiet_frameworks("letta_client", "httpx")
 
     def _count_reported_usage(self, response: object) -> None:
         """Book the LLM spend letta reports for one agent turn.

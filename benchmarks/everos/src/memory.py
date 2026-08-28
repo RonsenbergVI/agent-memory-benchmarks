@@ -73,18 +73,19 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from amb.base import Memory
+from amb.constants import (
+    DEFAULT_EMBEDDING_DIMENSIONS,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_INGESTION_MODEL,
+)
 from amb.contracts import MemoryHit, Session
-from amb.logs import logger
+from amb.logs import logger, quiet_frameworks
+from src.settings import Settings
 
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
-DEFAULT_EMBEDDING_DIMENSIONS = 1536
 # EverOS's own default retrieval: "hybrid" is vector + keyword. "agentic"
 # adds an LLM planning pass, which is query understanding rather than
 # retrieval and would not be comparable with the other systems.
 DEFAULT_SEARCH_METHOD = "hybrid"
-# relative, so it lands under the container's WORKDIR; EVEROS_ROOT moves it
-DEFAULT_ROOT = ".everos"
 # The one temperature OpenAI's reasoning models accept. everalgo asks for
 # 0.0 and EverOS builds its LLMConfig from only model/api_key/base_url,
 # so there is no configuration path to change it and gpt-5-mini answers
@@ -151,7 +152,7 @@ class EverOSMemory(Memory):
     ) -> None:
         """Pin the models and the retrieval method EverOS will use."""
         super().__init__(**params)
-        self.root = Path(os.environ.get("EVEROS_ROOT", DEFAULT_ROOT))
+        self.root = Settings().root
         self.model = model
         self.embedding_model = embedding_model
         # --param values arrive as strings
@@ -235,8 +236,9 @@ class EverOSMemory(Memory):
         so an operator's own configuration still wins.
         """
         os.environ.setdefault("EVEROS_ROOT", str(self.root.absolute()))
-        key = os.environ.get("OPENAI_API_KEY", "")
-        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        settings = Settings()
+        key = settings.openai_api_key.get_secret_value() if settings.openai_api_key else ""
+        base_url = settings.openai_base_url
         if self.model:
             os.environ.setdefault("EVEROS_LLM__MODEL", self.model)
             os.environ.setdefault("EVEROS_LLM__API_KEY", key)
@@ -256,6 +258,7 @@ class EverOSMemory(Memory):
         self._scaffold_config()
         self._pin_temperature()
         self._start_runtime()
+        quiet_frameworks("everos", "everalgo", "openai", "httpx")
 
     def _scaffold_config(self) -> None:
         """Put EverOS's own default config files in the memory root.

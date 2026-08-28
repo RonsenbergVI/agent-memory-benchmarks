@@ -74,6 +74,12 @@ jobs:
             --k ${{ matrix.k }}
           docker compose -f benchmarks/fraise/docker-compose.yaml down -v
 
+      # the run attaches only the benchmark service; the rest surfaces here
+      # on failure (one-off containers sit outside `compose logs`)
+      - name: Log the dependencies
+        if: failure()
+        run: docker compose -f benchmarks/fraise/docker-compose.yaml logs
+
       # the run id + attempt make the name unique, so a later identical run
       # (or a job re-run) gets its own artifact instead of colliding with or
       # replacing an earlier one; kept a few days for inspection

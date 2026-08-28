@@ -1,0 +1,68 @@
+{
+  "run_id": "20260825T091757Z-21cf5e",
+  "system": "agentmemory",
+  "system_version": null,
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 10,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 2,
+  "num_questions": 10,
+  "max_turns": 60,
+  "ingest": {
+    "total_s": 2.532650002000082,
+    "total_turns": 120,
+    "total_sessions": 8,
+    "questions_dropped": 242
+  },
+  "conversation": {
+    "total_s": 2.3937962509999124
+  },
+  "retrieval_precision": 0.275,
+  "retrieval_recall": 1.0,
+  "retrieval_f1": 0.42666666666666664,
+  "turn_precision": 0.06999999999999999,
+  "turn_recall": 0.525,
+  "turn_f1": 0.12034632034632035,
+  "search_latency": {
+    "p50_s": 0.23216316599973652,
+    "p95_s": 0.2758103339997433,
+    "p99_s": 0.2758103339997433
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 0,
+      "embedding_tokens": 0,
+      "llm_calls": 0,
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0
+    },
+    "search_total": 0
+  },
+  "errors": 0,
+  "memory_tokens_total": 0.0,
+  "by_category": {
+    "multi-hop": {
+      "retrieval_precision": 0.3333333333333333,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 0.48888888888888893
+    },
+    "open-domain": {
+      "retrieval_precision": 0.25,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 0.4
+    },
+    "single-hop": {
+      "retrieval_precision": 0.25,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 0.4
+    },
+    "temporal": {
+      "retrieval_precision": 0.25,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 0.4
+    }
+  }
+}

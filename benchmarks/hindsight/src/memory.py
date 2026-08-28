@@ -41,15 +41,18 @@ question the API is shaped around; ``--param max_tokens=N`` drives the
 budget directly.
 """
 
-import os
 from typing import Any, ClassVar
 
 from amb.base import Memory
-from amb.constants import TOKEN_TRACKING_KEYS
+from amb.constants import (
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_INGESTION_MODEL,
+    TOKEN_TRACKING_KEYS,
+)
 from amb.contracts import MemoryHit, Session
-from amb.logs import logger
+from amb.logs import logger, quiet_frameworks
+from src.settings import Settings
 
-DEFAULT_BASE_URL = "http://localhost:8888"
 # the budget must never limit the result count, or "k" would silently mean
 # "as many as fit"; ~4k tokens covers a LoCoMo session's worth of facts
 DEFAULT_MAX_TOKENS = 32000
@@ -81,22 +84,17 @@ class HindsightMemory(Memory):
     ) -> None:
         """Point the adapter at a Hindsight server and pin how it recalls."""
         super().__init__(**params)
-        self.base_url = os.environ.get("HINDSIGHT_BASE_URL", DEFAULT_BASE_URL)
-        if base_url:
-            self.base_url = base_url
-        # a secret; environment only, never --param
-        self._api_key = os.environ.get("HINDSIGHT_API_KEY")
+        settings = Settings()
+        self.base_url = base_url or settings.base_url
         # --param values arrive as strings
         self.max_tokens = int(max_tokens)
         self.budget = budget
         self.max_source_facts_tokens = int(max_source_facts_tokens)
         self.timeout = float(timeout)
-        # Read here, not in setup(): the Runner's probe instance asks for
-        # models()/version() without calling setup() — populating there once
-        # recorded no ingestion model at all in a run's identity. Compose
-        # sets these alongside the ones it gives the server.
-        self.model = os.environ.get("HINDSIGHT_API_LLM_MODEL")
-        self.embedding_model = os.environ.get("HINDSIGHT_API_EMBEDDING_MODEL")
+        # the comparison's uniform pair; compose configures the server with
+        # the same names (see docker-compose.yaml)
+        self.model = DEFAULT_INGESTION_MODEL
+        self.embedding_model = DEFAULT_EMBEDDING_MODEL
         # document id -> session id. `retain` takes the document id, so
         # this is chosen rather than discovered, and a hit names it back.
         self._documents: dict[str, str] = {}
@@ -162,9 +160,8 @@ class HindsightMemory(Memory):
         """Connect to the Hindsight server."""
         from hindsight_client import Hindsight
 
-        self.client = Hindsight(
-            base_url=self.base_url, api_key=self._api_key, timeout=self.timeout
-        )
+        self.client = Hindsight(base_url=self.base_url, timeout=self.timeout)
+        quiet_frameworks("hindsight_client", "urllib3")
 
     def _ensure_bank(self, conversation_id: str) -> str:
         """Create this conversation's bank if the server does not have it yet."""

@@ -31,16 +31,15 @@ fall back to graphiti-core's own default.
 """
 
 import asyncio
-import os
 from collections.abc import Coroutine
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 from amb.base import Memory
+from amb.constants import DEFAULT_EMBEDDING_MODEL, DEFAULT_INGESTION_MODEL
 from amb.contracts import MemoryHit, Session
-
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+from amb.logs import quiet_frameworks
+from src.settings import Settings
 
 # gpt-5-mini's hidden reasoning tokens share max_output_tokens with the
 # visible JSON: graphiti-core's 16384 default was exhausted on an
@@ -69,13 +68,10 @@ class GraphitiMemory(Memory):
         """Pin the Neo4j connection and the models graphiti ingests with."""
         super().__init__(**params)
         # infrastructure comes from the environment (compose sets it)
-        self.neo4j_uri = neo4j_uri or os.environ.get(
-            "NEO4J_URI", "bolt://localhost:7687"
-        )
-        self.neo4j_user = neo4j_user or os.environ.get("NEO4J_USER", "neo4j")
-        self.neo4j_password = neo4j_password or os.environ.get(
-            "NEO4J_PASSWORD", "password"
-        )
+        settings = Settings()
+        self.neo4j_uri = neo4j_uri or settings.uri
+        self.neo4j_user = neo4j_user or settings.user
+        self.neo4j_password = neo4j_password or settings.password
         self.model = model
         self.embedding_model = embedding_model
         # episode uuid -> session_id: edges cite episodes = our provenance channel
@@ -94,6 +90,7 @@ class GraphitiMemory(Memory):
             **self._model_clients(),
         )
         self._await(self.client.build_indices_and_constraints())
+        quiet_frameworks("graphiti_core", "neo4j", "openai", "httpx")
 
     def _model_clients(self) -> dict:
         """Return llm_client/embedder overrides for Graphiti().

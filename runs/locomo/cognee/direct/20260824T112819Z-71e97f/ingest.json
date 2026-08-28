@@ -1,0 +1,40 @@
+[
+  {
+    "sample_id": "conv-26",
+    "ingest_s": 66.602541696,
+    "num_turns": 10,
+    "num_sessions": 1,
+    "system_stats": {
+      "documents": 1,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 12.487201172000027,
+    "questions_dropped": 195,
+    "token_usage": {
+      "llm_input_tokens": 3034,
+      "llm_output_tokens": 5549,
+      "llm_calls": 9,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-30",
+    "ingest_s": 51.047425438999994,
+    "num_turns": 10,
+    "num_sessions": 1,
+    "system_stats": {
+      "documents": 1,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 12.468059546999996,
+    "questions_dropped": 98,
+    "token_usage": {
+      "llm_input_tokens": 2863,
+      "llm_output_tokens": 4249,
+      "llm_calls": 9,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  }
+]

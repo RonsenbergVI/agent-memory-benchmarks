@@ -1,0 +1,73 @@
+{
+  "run_id": "20260825T124741Z-2bb40f",
+  "system": "agentmemory",
+  "system_version": null,
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 1,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 94,
+  "max_turns": 50,
+  "ingest": {
+    "total_s": 6.996694506000495,
+    "total_turns": 500,
+    "total_sessions": 26,
+    "questions_dropped": 1810
+  },
+  "conversation": {
+    "total_s": 15.946059758998672
+  },
+  "retrieval_precision": 0.7717391304347826,
+  "retrieval_recall": 0.7282608695652174,
+  "retrieval_f1": 0.7427536231884055,
+  "turn_precision": 0.31521739130434784,
+  "turn_recall": 0.2871376811594203,
+  "turn_f1": 0.2942028985507246,
+  "search_latency": {
+    "p50_s": 0.1731130829994072,
+    "p95_s": 0.17810404200099583,
+    "p99_s": 0.18474020900066535
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 0,
+      "embedding_tokens": 0,
+      "llm_calls": 0,
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0
+    },
+    "search_total": 0
+  },
+  "errors": 0,
+  "memory_tokens_total": 0.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 1.0,
+      "retrieval_recall": 1.0,
+      "retrieval_f1": 1.0
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.5714285714285714,
+      "retrieval_recall": 0.32142857142857145,
+      "retrieval_f1": 0.4047619047619047
+    },
+    "open-domain": {
+      "retrieval_precision": 0.5555555555555556,
+      "retrieval_recall": 0.5555555555555556,
+      "retrieval_f1": 0.5555555555555556
+    },
+    "single-hop": {
+      "retrieval_precision": 0.9642857142857143,
+      "retrieval_recall": 0.9642857142857143,
+      "retrieval_f1": 0.9642857142857143
+    },
+    "temporal": {
+      "retrieval_precision": 0.75,
+      "retrieval_recall": 0.7375,
+      "retrieval_f1": 0.7416666666666667
+    }
+  }
+}

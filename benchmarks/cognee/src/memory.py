@@ -61,15 +61,16 @@ from contextvars import ContextVar
 from typing import Any, ClassVar
 
 from amb.base import Memory
-from amb.constants import TOKEN_TRACKING_KEYS
+from amb.constants import (
+    DEFAULT_EMBEDDING_DIMENSIONS,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_INGESTION_MODEL,
+    TOKEN_TRACKING_KEYS,
+)
 from amb.contracts import MemoryHit, Session
-from amb.logs import logger
+from amb.logs import logger, quiet_frameworks
+from src.settings import Settings
 
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
-# text-embedding-3-small's native width, and the same width every other
-# system in the comparison embeds at
-DEFAULT_EMBEDDING_DIMENSIONS = 1536
 # what a recall returns: CHUNKS is the raw retrieved text, the analogue of
 # every other system's search. The *_COMPLETION types run another LLM pass
 # and return a written answer, which is answer generation, not retrieval.
@@ -239,13 +240,15 @@ class CogneeMemory(Memory):
         names are unprefixed and the paths must be absolute. cognee does
         not read OPENAI_API_KEY — it wants LLM_API_KEY.
         """
-        root = os.environ.get("COGNEE_ROOT", "/amb/.cognee")
+        settings = Settings()
+        root = settings.root
         os.environ.setdefault("DATA_ROOT_DIRECTORY", f"{root}/data")
         os.environ.setdefault("SYSTEM_ROOT_DIRECTORY", f"{root}/system")
         os.environ.setdefault("CACHE_ROOT_DIRECTORY", f"{root}/cache")
         os.environ.setdefault("COGNEE_LOGS_DIR", f"{root}/logs")
-        if key := os.environ.get("OPENAI_API_KEY"):
-            os.environ.setdefault("LLM_API_KEY", key)
+        # cognee's gateway wants the inherited key under its own name
+        if key := settings.openai_api_key:
+            os.environ.setdefault("LLM_API_KEY", key.get_secret_value())
         # otherwise cognee spends one live probe call per process
         os.environ.setdefault("COGNEE_SKIP_CONNECTION_TEST", "true")
 
@@ -293,6 +296,7 @@ class CogneeMemory(Memory):
                 _await(get_default_user())
                 _WARMED = True
         self._user = _await(get_default_user())
+        quiet_frameworks("cognee", "LiteLLM", "posthog", "httpx")
 
     def store(
         self,

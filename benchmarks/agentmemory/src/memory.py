@@ -54,14 +54,13 @@ and scores, a second call expands them into content — counted as one
 search, what the system charges to answer one question.
 """
 
-import os
 from typing import ClassVar
 
 from amb.base import Memory
 from amb.contracts import MemoryHit, Session
-from amb.logs import logger
+from amb.logs import logger, quiet_frameworks
+from src.settings import Settings
 
-DEFAULT_BASE_URL = "http://localhost:3111"
 # `cwd` is required by the hook contract; meaningless for a conversation corpus
 DEFAULT_CWD = "/amb"
 # the only hook whose payload is the utterance itself
@@ -96,10 +95,9 @@ class AgentMemoryMemory(Memory):
     ) -> None:
         """Point the adapter at an agentmemory server."""
         super().__init__(**params)
-        self.base_url = (
-            base_url or os.environ.get("AGENTMEMORY_BASE_URL", DEFAULT_BASE_URL)
-        ).rstrip("/")
-        self._secret = secret or os.environ.get("AGENTMEMORY_SECRET")
+        settings = Settings()
+        self.base_url = (base_url or settings.base_url).rstrip("/")
+        self._secret = secret or settings.secret
         # lessons are LLM-derived and never produced keyless; asking for
         # them costs a lookup per search for nothing
         self.include_lessons = include_lessons
@@ -138,6 +136,7 @@ class AgentMemoryMemory(Memory):
             base_url=self.base_url, headers=headers, timeout=self.timeout
         )
         self._get("/agentmemory/health")
+        quiet_frameworks("httpx")
 
     def _get(self, path: str) -> dict:
         """One GET, raising on anything but success."""

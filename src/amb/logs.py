@@ -20,9 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import logging
 import sys
 
 from loguru import logger
+
+from amb.settings import Settings
 
 LEVELS = ("debug", "info", "warning", "error")
 
@@ -40,6 +43,17 @@ def configure(level: str = "warning") -> None:
         colorize=True,
     )
     logger.configure(extra={"scope": "amb"})
+
+
+def quiet_frameworks(*names: str, level: str = "WARNING") -> None:
+    """Cap the given stdlib loggers, keeping a run's output amb's own progress.
+
+    Adapters call this at the end of setup(), after the SDK imports that
+    (re)configure logging; AMB_FRAMEWORK_LOG_LEVEL overrides `level` globally.
+    """
+    override = Settings().framework_log_level
+    for name in names:
+        logging.getLogger(name).setLevel(override or level)
 
 
 # library default: warnings only; the CLI reconfigures with --log-level

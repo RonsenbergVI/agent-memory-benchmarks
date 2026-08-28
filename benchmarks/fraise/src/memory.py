@@ -40,13 +40,14 @@ each `up` starts empty.
 """
 
 import json
-import os
 import re
 from typing import TYPE_CHECKING, ClassVar, cast
 
 from amb.base import Memory
+from amb.constants import DEFAULT_EMBEDDING_MODEL, DEFAULT_INGESTION_MODEL
 from amb.contracts import MemoryHit, Session
-from amb.logs import logger
+from amb.logs import logger, quiet_frameworks
+from src.settings import Settings
 
 if TYPE_CHECKING:
     from openai.types.chat import ChatCompletionMessageParam
@@ -58,8 +59,6 @@ if TYPE_CHECKING:
 # (~2k reasoning), so 16k is generous headroom.
 EXTRACTION_MAX_COMPLETION_TOKENS = 16000
 
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 # graph-walk hops from a match on recall
 DEFAULT_RECALL_DEPTH = 2
 
@@ -113,9 +112,7 @@ class FraiseMemory(Memory):
     ) -> None:
         """Point the adapter at a fraise server and pin its ingestion models."""
         super().__init__(**params)
-        self.base_url = base_url or os.environ.get(
-            "FRAISE_BASE_URL", "http://localhost:9876"
-        )
+        self.base_url = base_url or Settings().base_url
         # explicit none (--param model=none) restores raw per-turn ingestion
         self.model = model
         self.embedding_model = embedding_model
@@ -158,6 +155,7 @@ class FraiseMemory(Memory):
             from openai import OpenAI
 
             self._openai = OpenAI()
+        quiet_frameworks("openai", "httpx")
 
     @staticmethod
     def _tokens(values: list[str] | None) -> list[str]:

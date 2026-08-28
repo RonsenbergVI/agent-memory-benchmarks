@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Shared constants: paths, chart palettes, report grouping, results-page copy."""
+"""Shared constants: paths, model defaults, chart palettes, report grouping, results-page copy."""
 
 from enum import StrEnum
 from pathlib import Path
@@ -30,6 +30,14 @@ ENTRY_POINT_GROUP: str = "amb.systems"
 # runs/ (CI artifact uploads) and plots/ (rendered charts) must never share a dir
 DEFAULT_RUNS_DIR: Path = Path("runs")
 DEFAULT_PLOT_DIR: Path = Path("plots")
+
+# The comparison's uniform ingestion pair — every system extracts with the
+# same model and embeds at the same width, so scores differ by memory design
+# rather than model choice; compose-configured servers repeat these by name.
+DEFAULT_INGESTION_MODEL: str = "gpt-5-mini"
+DEFAULT_EMBEDDING_MODEL: str = "text-embedding-3-small"
+# text-embedding-3-small's native width
+DEFAULT_EMBEDDING_DIMENSIONS: int = 1536
 
 
 class Dataset(StrEnum):

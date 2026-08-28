@@ -1,0 +1,21 @@
+[
+  {
+    "sample_id": "conv-26",
+    "ingest_s": 89.49863316600002,
+    "num_turns": 10,
+    "num_sessions": 1,
+    "system_stats": {
+      "documents": 1,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 29.250980513999963,
+    "questions_dropped": 195,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  }
+]

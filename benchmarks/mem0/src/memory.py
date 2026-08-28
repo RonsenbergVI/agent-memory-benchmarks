@@ -29,16 +29,14 @@ embeddings use OpenAI (needs OPENAI_API_KEY); models come from
 ``--param config=...`` (a full Memory.from_config dict) bypasses it all.
 """
 
-import os
 import threading
 from typing import Any, ClassVar
 
 from amb.base import Memory
+from amb.constants import DEFAULT_EMBEDDING_MODEL, DEFAULT_INGESTION_MODEL
 from amb.contracts import MemoryHit, Session
-from amb.logs import logger
-
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+from amb.logs import logger, quiet_frameworks
+from src.settings import Settings
 
 # mem0's Qdrant store does check-then-create on a shared collection;
 # concurrent worker setups race that gap and the losers die on 409 Conflict.
@@ -91,13 +89,11 @@ class Mem0Memory(Memory):
                 },
             }
             # vector-store location is infrastructure: the environment sets it
-            if host := os.environ.get("QDRANT_HOST"):
+            settings = Settings()
+            if settings.host:
                 config["vector_store"] = {
                     "provider": "qdrant",
-                    "config": {
-                        "host": host,
-                        "port": int(os.environ.get("QDRANT_PORT", "6333")),
-                    },
+                    "config": {"host": settings.host, "port": settings.port},
                 }
         logger.bind(scope="mem0").debug(
             "config: llm={} embedder={} vector_store={}",
@@ -110,6 +106,7 @@ class Mem0Memory(Memory):
         )
         with _SETUP_LOCK:
             self.memory = Memory.from_config(config) if config else Memory()
+        quiet_frameworks("mem0", "posthog", "qdrant_client", "openai", "httpx")
 
     def ingest_session(self, conversation_id: str, session: Session) -> None:
         """Hand the session to mem0, which extracts facts from it."""

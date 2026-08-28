@@ -1,0 +1,42 @@
+[
+  {
+    "sample_id": "conv-26",
+    "ingest_s": 1.4075118339997061,
+    "num_turns": 60,
+    "num_sessions": 4,
+    "system_stats": {
+      "observations": 60,
+      "sessions": 4,
+      "include_lessons": false
+    },
+    "conversation_s": 1.1969393340000352,
+    "questions_dropped": 172,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  },
+  {
+    "sample_id": "conv-30",
+    "ingest_s": 1.125138168000376,
+    "num_turns": 60,
+    "num_sessions": 4,
+    "system_stats": {
+      "observations": 60,
+      "sessions": 4,
+      "include_lessons": false
+    },
+    "conversation_s": 1.1968569169998773,
+    "questions_dropped": 70,
+    "token_usage": {
+      "llm_input_tokens": 0,
+      "llm_output_tokens": 0,
+      "llm_calls": 0,
+      "embedding_tokens": 0,
+      "embedding_calls": 0
+    }
+  }
+]
