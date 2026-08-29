@@ -257,13 +257,18 @@ def results_report(
     path: Path = Path("RESULTS.md"),
     metric_filter: tuple[str, ...] = (),
 ) -> BenchmarkReport:
-    """Build RESULTS.md: the full table, then every group's chart detail.
+    """Build RESULTS.md: the full table, category recall at `k`, then charts.
 
-    Written whole — nothing in it is hand-authored. `k` is unused (the file
-    covers every k) but keeps all report builders callable the same way.
+    Written whole — nothing in it is hand-authored. The charts cover every k;
+    `k` pins only the per-category tables.
     """
     # local import: a top-level one would be circular (sections uses this module)
-    from amb.reporting.sections import ComparisonTable, GroupCharts, Prose
+    from amb.reporting.sections import (
+        CategoryRecall,
+        ComparisonTable,
+        GroupCharts,
+        Prose,
+    )
 
     header: list[Block] = [
         Heading(level=1, text="Agent Memory Benchmark — Results"),
@@ -274,6 +279,7 @@ def results_report(
     sections: list[Section] = [
         Prose(header),
         ComparisonTable(comparison, heading="Every run", intro=RESULTS_TABLE_INTRO),
+        *(CategoryRecall(group, comparison, k=k) for group in groups),
         Prose([Heading(level=2, text="Plots"), Paragraph(text=RESULTS_PLOTS_INTRO)]),
     ]
     sections += [

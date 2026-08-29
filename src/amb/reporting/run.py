@@ -50,6 +50,31 @@ def run_date(run_id: str | None) -> str:
     return ""
 
 
+def category_counts(summary: dict, root: Path | None = None) -> dict[str, int]:
+    """Question counts per category, read from the run's saved rows.
+
+    From results.jsonl rather than the summary, so runs recorded before the
+    category table existed still fill their n column; {} when the rows are
+    not on disk (the summary travelled without its run directory).
+    """
+    parts = [summary.get("dataset", "")]
+    if summary.get("variant"):
+        parts.append(str(summary["variant"]))
+    parts += [
+        str(summary.get("system", "")),
+        str(summary.get("mode", "direct")),
+        str(summary.get("run_id", "")),
+    ]
+    path = (root or DEFAULT_RUNS_DIR).joinpath(*parts, "results.jsonl")
+    if not path.exists():
+        return {}
+    counts: dict[str, int] = {}
+    for line in path.read_text().splitlines():
+        category = json.loads(line).get("category") or "uncategorized"
+        counts[category] = counts.get(category, 0) + 1
+    return counts
+
+
 def markdown_table(header: list[str], rows: list[list[str]]) -> str:
     """Render a header and formatted rows as a GitHub markdown table."""
     lines = [
@@ -360,17 +385,14 @@ class ComparisonReport(Report):
             table[s["dataset"]][s["system"]] = s
         return dict(table)
 
-    def summary_table(
+    def latest_at_k(
         self, k: int = 10, dataset: str | None = None, variant: str | None = None
-    ) -> tuple[list[str], list[list[str]]]:
-        """Build the compact table: newest run per system at one k, best F1 first.
+    ) -> list[dict]:
+        """Newest run per system at one k, ranked best F1 first.
 
         `dataset` must scope to one dataset — ranking "newest per system"
         across several would mix unrelated exams. `variant` scopes further and
         is required whenever the dataset has more than one variant present.
-
-        Returns:
-            The header labels and the formatted rows, ranked best F1 first.
         """
         newest: dict[str, dict] = {}
         for s in self.summaries:
@@ -385,13 +407,68 @@ class ComparisonReport(Report):
                 newest[system].get("run_id") or ""
             ):
                 newest[system] = s
-        header = ["system", "version", "last run"]
-        header += [label for _, label, _ in SUMMARY_COLUMNS]
-        header += ["p50 search (s)"]
-        ranked = sorted(
+        return sorted(
             newest.values(),
             key=lambda s: (-s.get("retrieval_f1", float("-inf")), s.get("system", "")),
         )
+
+    def category_table(
+        self,
+        k: int = 10,
+        dataset: str | None = None,
+        variant: str | None = None,
+        metric: str = "retrieval_recall",
+    ) -> tuple[list[str], list[list[str]]]:
+        """One retrieval metric by question category: newest run per system at k.
+
+        Columns rank like the summary table (best overall F1 first); `n` is
+        the category's question count, read from the runs' saved rows and
+        taken as the largest across systems so a run that dropped questions
+        cannot shrink the battery it is compared on.
+
+        Returns:
+            The header labels and rows; no rows when no run reports categories.
+        """
+        ranked = [
+            s for s in self.latest_at_k(k, dataset, variant) if s.get("by_category")
+        ]
+        if not ranked:
+            return ["category", "n"], []
+        categories = sorted({c for s in ranked for c in s["by_category"]})
+        counts: dict[str, int] = {}
+        for s in ranked:
+            for category, n in category_counts(s).items():
+                counts[category] = max(counts.get(category, 0), n)
+        header = ["category", "n", *(str(s.get("system", "?")) for s in ranked)]
+        rows = [
+            [
+                category,
+                str(counts.get(category, "")),
+                *(
+                    f"{cell[metric]:.3f}"
+                    if metric in (cell := s["by_category"].get(category, {}))
+                    else ""
+                    for s in ranked
+                ),
+            ]
+            for category in categories
+        ]
+        return header, rows
+
+    def summary_table(
+        self, k: int = 10, dataset: str | None = None, variant: str | None = None
+    ) -> tuple[list[str], list[list[str]]]:
+        """Build the compact table: newest run per system at one k, best F1 first.
+
+        Scoping rules are `latest_at_k`'s.
+
+        Returns:
+            The header labels and the formatted rows, ranked best F1 first.
+        """
+        ranked = self.latest_at_k(k, dataset, variant)
+        header = ["system", "version", "last run"]
+        header += [label for _, label, _ in SUMMARY_COLUMNS]
+        header += ["p50 search (s)"]
         rows = []
         for s in ranked:
             cells = [

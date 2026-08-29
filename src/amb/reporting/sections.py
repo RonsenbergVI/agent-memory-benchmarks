@@ -81,6 +81,53 @@ class ComparisonTable(Section):
 
 
 @dataclass
+class CategoryRecall(Section):
+    """The category-recall table as markdown — RESULTS.md's rendering.
+
+    The README shows the same table as a figure (see GroupSummary); both
+    read `ComparisonReport.category_table`.
+    """
+
+    group: RunGroup
+    comparison: ComparisonReport
+    k: int
+    level: int = 2
+
+    def charts(self) -> list[Chart]:
+        """No charts: the table is the whole section."""
+        return []
+
+    def blocks(self) -> list[Block]:
+        """Per metric: heading, a one-line key, its category table — or nothing."""
+        blocks: list[Block] = []
+        for stem, metric in sorted(
+            self.group.metrics(), key=lambda pair: SUMMARY_ORDER.index(pair[0])
+        ):
+            header, rows = self.comparison.category_table(
+                self.k,
+                dataset=self.group.dataset,
+                variant=self.group.variant or None,
+                metric=metric,
+            )
+            if not rows:
+                continue
+            blocks += [
+                Heading(
+                    level=self.level,
+                    text=f"{self.group.label}: {pretty(stem)} by question "
+                    f"category (k={self.k})",
+                ),
+                Paragraph(
+                    text=f"Retrieval {pretty(stem)} per question category — newest "
+                    f"run per system at k={self.k}; `n` is the category's "
+                    "question count."
+                ),
+                Table(header=header, rows=rows),
+            ]
+        return blocks
+
+
+@dataclass
 class GroupCharts(Section):
     """One group's chart sets — the single-k detail, one set per k it ran.
 
@@ -261,6 +308,8 @@ class GroupSummary(Section):
     # the compact table at `k` rendered as a figure: the README embeds an image
     # from plots/, where CI blocks hand edits, not editable markdown numbers
     summary: Chart | None = field(default=None, init=False, repr=False)
+    # per-category tables at `k` (one per metric), figures for the same reason
+    categories: list[Chart] = field(default_factory=list, init=False, repr=False)
     skipped: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
@@ -278,6 +327,25 @@ class GroupSummary(Section):
             f"newest run per system{freshness(self.group.summaries)}",
         )
         self.summary = table if table.has_data() else None
+        planned_categories = [
+            Chart(
+                kind="category_table",
+                stem=f"category_{stem}_k{self.k}",
+                y=metric,
+                k=self.k,
+                out_dir=self.group.plot_dir,
+                summaries=self.group.summaries,
+                alt=f"{headline(pretty(stem))} by question category at k={self.k}",
+                title=headline(f"{pretty(stem)} by question category at k={self.k}"),
+                subtitle=f"{self.group.label} · {self.group.mode} · "
+                f"newest run per system{freshness(self.group.summaries)}",
+            )
+            for stem, metric in sorted(
+                self.group.metrics(self.metric_filter),
+                key=lambda pair: SUMMARY_ORDER.index(pair[0]),
+            )
+        ]
+        self.categories = [c for c in planned_categories if c.has_data()]
         planned = [
             Chart(
                 kind="lines",
@@ -296,14 +364,21 @@ class GroupSummary(Section):
             )
         ]
         self.lines = [c for c in planned if c.has_data()]
-        self.skipped = len(planned) - len(self.lines) + (0 if self.summary else 1)
+        self.skipped = (
+            len(planned)
+            - len(self.lines)
+            + (0 if self.summary else 1)
+            + len(planned_categories)
+            - len(self.categories)
+        )
 
     def charts(self) -> list[Chart]:
-        """The group's summary table figure and its k-sweep charts."""
-        return ([self.summary] if self.summary else []) + list(self.lines)
+        """The group's table figures at `k` and its k-sweep charts."""
+        tables = ([self.summary] if self.summary else []) + self.categories
+        return tables + list(self.lines)
 
     def blocks(self) -> list[Block]:
-        """Heading, the table figure at `k`, then the sweep charts."""
+        """Heading, the table figures at `k`, then the sweep charts."""
         blocks: list[Block] = [Heading(level=self.level, text=self.group.label)]
         if self.summary:
             blocks.append(Figure(alt=self.summary.alt, path=self.summary.path))
@@ -313,5 +388,6 @@ class GroupSummary(Section):
                 self.k, dataset=self.group.dataset, variant=self.group.variant or None
             )
             blocks.append(Table(header=header, rows=rows))
+        blocks += [Figure(alt=c.alt, path=c.path) for c in self.categories]
         blocks += [Figure(alt=c.alt, path=c.path) for c in self.lines]
         return blocks
