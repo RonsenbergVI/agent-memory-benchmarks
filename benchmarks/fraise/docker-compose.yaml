@@ -1,8 +1,10 @@
 services:
   fraise:
-    # v0.1.0-rc.1 (commit 0a3364fe), pinned by digest: ghcr publishes only
-    # `edge` and per-commit tags, so the version is recorded here.
-    image: ghcr.io/fraisehq/fraise@sha256:33f3a452a573af82f877a2ed624446b5bcce5a483683029c5e024c41c2e4dd79
+    # v0.1.0-rc.2 (commit 78d4ee4f), pinned by digest
+    image: ghcr.io/fraisehq/fraise@sha256:b5a11f7db17a5d7ff026ade7b9b8844bcbbe9dbe6c7660877c681fa3b3295a80
+    # one graph per conversation (the SDK selector's uint8 ceiling); the
+    # adapter's num_graphs param must match
+    command: ["-num-graphs", "256"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9876/ || exit 1"]
       interval: 5s
