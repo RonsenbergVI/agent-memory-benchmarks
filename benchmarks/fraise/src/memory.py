@@ -40,7 +40,8 @@ during a walk. The compose file allocates 256 graphs (the SDK selector's
 uint8 ceiling); ``--param num_graphs=N`` matches the adapter to a server
 sized differently (stock is 8). A `conv-<id>` topic anchor backs that up
 (FQL anchors are hard filters): two ids hashing to the same graph just
-share it, isolated as before. A local value -> (turns, session) map restores provenance,
+share it, isolated as before. A local value -> (turns, session) map
+restores provenance,
 since hits return only value/score/timestamp. The alpha SDK has no
 delete, so teardown is a no-op — the server runs without a volume and
 each `up` starts empty.
