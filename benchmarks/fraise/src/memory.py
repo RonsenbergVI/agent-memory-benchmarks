@@ -220,7 +220,15 @@ class FraiseMemory(Memory):
                 remember_entities,
             )
             raise
-        self._provenance[(conversation_id, value)] = (list(turn_ids), session_id)
+        key = (conversation_id, value)
+        existing = self._provenance.get(key)
+        if existing is None:
+            self._provenance[key] = (list(turn_ids), session_id)
+            return
+        existing_turn_ids, existing_session_id = existing
+        merged_turn_ids = sorted({*existing_turn_ids, *turn_ids})
+        merged_session_id = existing_session_id if existing_session_id == session_id else ""
+        self._provenance[key] = (merged_turn_ids, merged_session_id)
 
     def ingest_session(self, conversation_id: str, session: Session) -> None:
         """Store every message, tagged with topics and entities when a model is set.
