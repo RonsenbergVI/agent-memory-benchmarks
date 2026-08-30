@@ -24,16 +24,24 @@
 
 Needs a running fraise server (docker-compose.yaml here), named by
 FRAISE_BASE_URL. The SDK has no extractor, so direct-mode ingestion runs
-one in the adapter: gpt-5-mini (the same ingestion model as every other
-system) distills each session into facts, and the SDK's OpenAIEmbedder
-(text-embedding-3-small) encodes facts and queries in-process, so token
-spend is visible to the OpenAIUsageTracker. In agentic mode the driving
-agent is the extractor. ``--param model=none`` restores raw per-turn
-ingestion; ``--param embedding_model=none`` drops the embedder; both give
-fraise's stock hybrid retrieval with no LLM or embedding calls.
+one in the adapter: every message is stored verbatim, and gpt-5-mini
+(the same ingestion model as every other system) tags each one with the
+topics and entities that drive fraise's filtering and graph walk. The
+SDK's OpenAIEmbedder (text-embedding-3-small) encodes messages and
+queries in-process, so token spend is visible to the OpenAIUsageTracker.
+In agentic mode the driving agent is the extractor. ``--param
+model=none`` drops the tagger; ``--param embedding_model=none`` drops
+the embedder; both give fraise's stock hybrid retrieval with no LLM or
+embedding calls.
 
-A `conv-<id>` topic anchor isolates each conversation (FQL anchors are
-hard filters); a local value -> (turns, session) map restores provenance,
+Each conversation lives in its own graph — a stable hash of its id over
+the server's graph pool — so hub entities never bridge conversations
+during a walk. The compose file allocates 256 graphs (the SDK selector's
+uint8 ceiling); ``--param num_graphs=N`` matches the adapter to a server
+sized differently (stock is 8). A `conv-<id>` topic anchor backs that up
+(FQL anchors are hard filters): two ids hashing to the same graph just
+share it, isolated as before. A local value -> (turns, session) map
+restores provenance,
 since hits return only value/score/timestamp. The alpha SDK has no
 delete, so teardown is a no-op — the server runs without a volume and
 each `up` starts empty.
@@ -42,10 +50,11 @@ each `up` starts empty.
 import json
 import os
 import re
+import zlib
 from typing import TYPE_CHECKING, ClassVar, cast
 
 from amb.base import Memory
-from amb.contracts import MemoryHit, Session
+from amb.contracts import MemoryHit, Session, Turn
 from amb.logs import logger
 
 if TYPE_CHECKING:
@@ -54,49 +63,37 @@ if TYPE_CHECKING:
 
 # gpt-5-mini's hidden reasoning tokens share the completion budget and vary
 # call to call; uncapped, a long reasoning pass truncated the JSON mid-string
-# (observed json.JSONDecodeError). Sessions measured ran ~2.7k total tokens
-# (~2k reasoning), so 16k is generous headroom.
+# (observed json.JSONDecodeError). 16k is generous headroom for one
+# message's tags.
 EXTRACTION_MAX_COMPLETION_TOKENS = 16000
 
 DEFAULT_INGESTION_MODEL = "gpt-5-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 # graph-walk hops from a match on recall
 DEFAULT_RECALL_DEPTH = 2
+# must match the server's -num-graphs (the compose file sets 256)
+DEFAULT_NUM_GRAPHS = 256
 
 EXTRACTION_SYSTEM_PROMPT = """\
-You are an assistant with a long-term memory. You have just had the
-conversation below and now store what is worth remembering. Extract every
-concrete fact, event, preference, date, and plan a future question could
-ask about, each as a standalone statement that a search could find on its
-own; skip filler and pleasantries. Cite the turn markers each fact came
-from exactly as shown in the transcript, but never write those markers into
-the fact itself. Name the people, places, and things each fact mentions in
-its entities."""
+You are tagging one conversation message for a memory database. Return
+the topics the message is about — short tags a later search could filter
+on (e.g. "travel", "health") — and the entities it names: the people,
+places, organizations, and things. Return empty lists when the message
+is pure filler."""
 
-_MEMORIES_SCHEMA = {
+_TAGS_SCHEMA = {
     "type": "object",
     "properties": {
-        "memories": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "fact": {"type": "string"},
-                    "turn_ids": {"type": "array", "items": {"type": "string"}},
-                    "entities": {"type": "array", "items": {"type": "string"}},
-                },
-                "required": ["fact", "turn_ids", "entities"],
-                "additionalProperties": False,
-            },
-        }
+        "topics": {"type": "array", "items": {"type": "string"}},
+        "entities": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["memories"],
+    "required": ["topics", "entities"],
     "additionalProperties": False,
 }
 
 
 class FraiseMemory(Memory):
-    """Fraise: hybrid full-text + graph retrieval over per-turn facts."""
+    """Fraise: hybrid full-text + graph retrieval over tagged per-turn messages."""
 
     name: ClassVar[str] = "fraise"
     description: ClassVar[str] = "Fraise — hybrid full-text + graph memory database"
@@ -109,6 +106,7 @@ class FraiseMemory(Memory):
         embedding_model: str | None = DEFAULT_EMBEDDING_MODEL,
         embedding_dimensions: int | str | None = None,
         depth: int | str | None = DEFAULT_RECALL_DEPTH,
+        num_graphs: int | str = DEFAULT_NUM_GRAPHS,
         **params: object,
     ) -> None:
         """Point the adapter at a fraise server and pin its ingestion models."""
@@ -116,7 +114,7 @@ class FraiseMemory(Memory):
         self.base_url = base_url or os.environ.get(
             "FRAISE_BASE_URL", "http://localhost:9876"
         )
-        # explicit none (--param model=none) restores raw per-turn ingestion
+        # explicit none (--param model=none) drops the tagger
         self.model = model
         self.embedding_model = embedding_model
         # --param values arrive as strings; the SDK wants an int or None
@@ -125,6 +123,7 @@ class FraiseMemory(Memory):
         )
         # --param depth=none restores the server's own default
         self.depth = int(depth) if depth else None
+        self.num_graphs = int(num_graphs)
         # hits return only the value; this map restores turn/session provenance
         self._provenance: dict[tuple[str, str], tuple[list[str], str]] = {}
 
@@ -159,6 +158,16 @@ class FraiseMemory(Memory):
 
             self._openai = OpenAI()
 
+    def _graph(self, conversation_id: str) -> int:
+        """The conversation's own graph — a stable hash over the server's pool.
+
+        Deterministic across runs and workers (the runner builds one memory
+        instance per conversation, so no shared counter exists to consult).
+        Conversations beyond the pool size share graphs; the conv-<id>
+        anchor keeps them isolated regardless.
+        """
+        return zlib.crc32(conversation_id.encode()) % self.num_graphs
+
     @staticmethod
     def _tokens(values: list[str] | None) -> list[str]:
         """Free-form topics/entities as FQL tokens.
@@ -179,7 +188,7 @@ class FraiseMemory(Memory):
         topics: list[str] | None = None,
         entities: list[str] | None = None,
     ) -> None:
-        """Remember one value with the forced conversation/session anchors.
+        """Remember one value in the conversation's graph, under its forced anchors.
 
         `turn_ids` feed the local provenance map that search reads back.
         """
@@ -192,67 +201,73 @@ class FraiseMemory(Memory):
             *self._tokens(topics),
         ]
         remember_entities = self._tokens(entities)
+        graph = self._graph(conversation_id)
         try:
             self.client.remember(
-                value, topics=remember_topics, entities=remember_entities
+                value,
+                graph=graph,
+                topics=remember_topics,
+                entities=remember_entities,
             )
         except Exception:
             # a 400 here has been a live FQL-grammar edge case (e.g. "found
             # top"); log the exact payload so the offending input is diagnosable
             logger.bind(scope="fraise").error(
-                "remember failed: value={!r} topics={!r} entities={!r}",
+                "remember failed: graph={} value={!r} topics={!r} entities={!r}",
+                graph,
                 value,
                 remember_topics,
                 remember_entities,
             )
             raise
-        self._provenance[(conversation_id, value)] = (list(turn_ids), session_id)
+        key = (conversation_id, value)
+        existing = self._provenance.get(key)
+        if existing is None:
+            self._provenance[key] = (list(turn_ids), session_id)
+            return
+        existing_turn_ids, existing_session_id = existing
+        merged_turn_ids = sorted({*existing_turn_ids, *turn_ids})
+        merged_session_id = (
+            existing_session_id if existing_session_id == session_id else ""
+        )
+        self._provenance[key] = (merged_turn_ids, merged_session_id)
 
     def ingest_session(self, conversation_id: str, session: Session) -> None:
-        """Store the session: extracted facts by default, raw turns without a model.
+        """Store every message, tagged with topics and entities when a model is set.
 
-        The extractor's cited turn markers become each fact's provenance;
-        entities feed the server's graph walk.
+        The message text is stored verbatim either way — the extractor only
+        contributes the tags that drive fraise's filtering and graph walk —
+        so a failed extraction costs the tags, never the message.
         """
-        if not session.turns:
-            return
-        if not self.model:
-            for turn in session.turns:
-                self.store(
-                    conversation_id,
-                    f"{turn.speaker}: {turn.text}",
-                    session_id=session.session_id,
-                    turn_ids=[turn.turn_id],
-                    entities=[turn.speaker],
-                )
-            return
-        known = {turn.turn_id for turn in session.turns}
-        for memory in self._extract_memories(conversation_id, session):
-            fact = memory["fact"].strip()
-            if not fact:
-                continue
+        for turn in session.turns:
+            topics: list[str] = []
+            entities = [turn.speaker]
+            if self.model:
+                tags = self._extract_tags(conversation_id, session, turn)
+                topics = [t for t in tags["topics"] if t.strip()]
+                entities += [
+                    e for e in tags["entities"] if e.strip() and e != turn.speaker
+                ]
             self.store(
                 conversation_id,
-                fact,
+                f"{turn.speaker}: {turn.text}",
                 session_id=session.session_id,
-                turn_ids=[t for t in memory["turn_ids"] if t in known],
-                entities=[e for e in memory["entities"] if e.strip()],
+                turn_ids=[turn.turn_id],
+                topics=topics,
+                entities=entities,
             )
 
-    def _extract_memories(self, conversation_id: str, session: Session) -> list[dict]:
-        """One extraction call: the session's transcript in, its facts out.
+    def _extract_tags(
+        self, conversation_id: str, session: Session, turn: Turn
+    ) -> dict[str, list[str]]:
+        """One extraction call: the message in, its topics and entities out.
 
-        A truncated/malformed response is logged and treated as no facts —
-        matching mem0's extractor, which skips the same failure rather than
-        failing the run.
+        A truncated/malformed response is logged and treated as no tags —
+        the message is stored untagged rather than failing the run.
         """
-        timestamp = f" of {session.timestamp}" if session.timestamp else ""
-        transcript = f"Conversation{timestamp}\n" + "\n".join(
-            f"{turn.turn_id} | {turn.speaker}: {turn.text}" for turn in session.turns
-        )
         messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
-            {"role": "user", "content": transcript},
+            {"role": "user", "content": f"{turn.speaker}: {turn.text}"},
         ]
         # the cast bridges the nested-schema dict the checker cannot narrow
         response_format = cast(
@@ -260,9 +275,9 @@ class FraiseMemory(Memory):
             {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": "memories",
+                    "name": "tags",
                     "strict": True,
-                    "schema": _MEMORIES_SCHEMA,
+                    "schema": _TAGS_SCHEMA,
                 },
             },
         )
@@ -278,17 +293,19 @@ class FraiseMemory(Memory):
         # refusal/empty completion has content=None — same exit as bad JSON
         if choice.message.content is not None:
             try:
-                return json.loads(choice.message.content)["memories"]
-            except json.JSONDecodeError:
+                tags = json.loads(choice.message.content)
+                return {"topics": tags["topics"], "entities": tags["entities"]}
+            except (json.JSONDecodeError, KeyError):
                 pass
         logger.bind(scope="fraise").warning(
-            "{}/{}: extraction response unparseable (finish_reason={}); "
-            "skipping this session's facts",
+            "{}/{}: tag extraction unparseable for {} (finish_reason={}); "
+            "storing the message untagged",
             conversation_id,
             session.session_id,
+            turn.turn_id,
             choice.finish_reason,
         )
-        return []
+        return {"topics": [], "entities": []}
 
     def recall_hits(
         self,
@@ -307,9 +324,11 @@ class FraiseMemory(Memory):
         the graph hops a match may walk.
         """
         recall_topics = [f"conv-{conversation_id}", *(topics or [])]
+        graph = self._graph(conversation_id)
         try:
             result = self.client.recall(
                 query=query,
+                graph=graph,
                 topics=recall_topics,
                 entities=entities or None,
                 top=k,
@@ -318,7 +337,8 @@ class FraiseMemory(Memory):
         except Exception:
             # log the exact inputs — the benchmark log outlives the server
             logger.bind(scope="fraise").error(
-                "recall failed: query={!r} topics={!r} entities={!r}",
+                "recall failed: graph={} query={!r} topics={!r} entities={!r}",
+                graph,
                 query,
                 recall_topics,
                 entities,

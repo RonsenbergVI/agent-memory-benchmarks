@@ -23,8 +23,8 @@
 """Fraise's native tool surface for `--mode agentic`.
 
 The agent drives fraise's own verbs, `remember` and `recall`; the adapter
-always adds the `conv-<id>` anchor, so conversation isolation is never
-left to the agent.
+always routes to the conversation's own graph and adds the `conv-<id>`
+anchor, so conversation isolation is never left to the agent.
 """
 
 import re
