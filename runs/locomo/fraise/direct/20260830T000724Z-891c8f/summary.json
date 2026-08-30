@@ -1,0 +1,74 @@
+{
+  "run_id": "20260830T000724Z-891c8f",
+  "system": "fraise",
+  "system_version": "0.1.0-rc.2",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 1,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 22998.261872583,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 470.9872758689987
+  },
+  "retrieval_precision": 0.6927346115035318,
+  "retrieval_recall": 0.6425576217705379,
+  "retrieval_f1": 0.6565123812727248,
+  "turn_precision": 0.3773965691220989,
+  "turn_recall": 0.341480285047389,
+  "turn_f1": 0.3513370332996971,
+  "search_latency": {
+    "p50_s": 0.21187010999983613,
+    "p95_s": 0.2602167189997999,
+    "p99_s": 0.4797135710000475
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 901970,
+      "llm_output_tokens": 1773692
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 2902517.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.7511210762331838,
+      "retrieval_recall": 0.7511210762331838,
+      "retrieval_f1": 0.7511210762331838
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.5070921985815603,
+      "retrieval_recall": 0.21878729032984365,
+      "retrieval_f1": 0.2984703928852867
+    },
+    "open-domain": {
+      "retrieval_precision": 0.3695652173913043,
+      "retrieval_recall": 0.2972955486542443,
+      "retrieval_f1": 0.3138285024154589
+    },
+    "single-hop": {
+      "retrieval_precision": 0.7717003567181926,
+      "retrieval_recall": 0.7711058263971462,
+      "retrieval_f1": 0.7713040031708285
+    },
+    "temporal": {
+      "retrieval_precision": 0.660436137071651,
+      "retrieval_recall": 0.6261682242990654,
+      "retrieval_f1": 0.6370716510903426
+    }
+  }
+}

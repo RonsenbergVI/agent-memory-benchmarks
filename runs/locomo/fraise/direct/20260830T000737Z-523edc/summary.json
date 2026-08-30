@@ -1,0 +1,74 @@
+{
+  "run_id": "20260830T000737Z-523edc",
+  "system": "fraise",
+  "system_version": "0.1.0-rc.2",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 3,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 23404.67615816,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 457.45350059399925
+  },
+  "retrieval_precision": 0.45080726538849986,
+  "retrieval_recall": 0.7885811590024504,
+  "retrieval_f1": 0.5448758159656204,
+  "turn_precision": 0.1972754793138226,
+  "turn_recall": 0.5111036840105033,
+  "turn_f1": 0.2759580200044373,
+  "search_latency": {
+    "p50_s": 0.21111397999993642,
+    "p95_s": 0.2655588620000344,
+    "p99_s": 0.6514034900001207
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 901970,
+      "llm_output_tokens": 1778735
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 2907560.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.48692077727952243,
+      "retrieval_recall": 0.8923766816143498,
+      "retrieval_f1": 0.6046337817638255
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.44621749408983424,
+      "retrieval_recall": 0.45475768321512994,
+      "retrieval_f1": 0.43174961366450776
+    },
+    "open-domain": {
+      "retrieval_precision": 0.2862318840579709,
+      "retrieval_recall": 0.45173395445134584,
+      "retrieval_f1": 0.322360248447205
+    },
+    "single-hop": {
+      "retrieval_precision": 0.47859690844232866,
+      "retrieval_recall": 0.89179548156956,
+      "retrieval_f1": 0.5977011494252903
+    },
+    "temporal": {
+      "retrieval_precision": 0.3790238836967803,
+      "retrieval_recall": 0.7637590861889927,
+      "retrieval_f1": 0.48660436137071655
+    }
+  }
+}
