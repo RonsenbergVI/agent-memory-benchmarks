@@ -1,0 +1,182 @@
+[
+  {
+    "sample_id": "conv-26",
+    "ingest_s": 1377.558832697,
+    "num_turns": 419,
+    "num_sessions": 19,
+    "system_stats": {
+      "documents": 19,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 1584.6226088550002,
+    "token_usage": {
+      "llm_input_tokens": 52335,
+      "llm_output_tokens": 156765,
+      "llm_calls": 38,
+      "embedding_tokens": 52136,
+      "embedding_calls": 154
+    }
+  },
+  {
+    "sample_id": "conv-30",
+    "ingest_s": 1365.8750639070001,
+    "num_turns": 369,
+    "num_sessions": 19,
+    "system_stats": {
+      "documents": 19,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 819.4248420530002,
+    "token_usage": {
+      "llm_input_tokens": 44383,
+      "llm_output_tokens": 147355,
+      "llm_calls": 38,
+      "embedding_tokens": 42889,
+      "embedding_calls": 149
+    }
+  },
+  {
+    "sample_id": "conv-41",
+    "ingest_s": 2467.89112983,
+    "num_turns": 663,
+    "num_sessions": 32,
+    "system_stats": {
+      "documents": 32,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 1554.264533293,
+    "token_usage": {
+      "llm_input_tokens": 80436,
+      "llm_output_tokens": 276443,
+      "llm_calls": 64,
+      "embedding_tokens": 83168,
+      "embedding_calls": 267
+    }
+  },
+  {
+    "sample_id": "conv-42",
+    "ingest_s": 1942.11186542,
+    "num_turns": 629,
+    "num_sessions": 29,
+    "system_stats": {
+      "documents": 29,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 1623.185347965,
+    "token_usage": {
+      "llm_input_tokens": 71211,
+      "llm_output_tokens": 231081,
+      "llm_calls": 58,
+      "embedding_tokens": 70739,
+      "embedding_calls": 234
+    }
+  },
+  {
+    "sample_id": "conv-43",
+    "ingest_s": 1955.748078826,
+    "num_turns": 680,
+    "num_sessions": 29,
+    "system_stats": {
+      "documents": 29,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 1378.8142142019997,
+    "token_usage": {
+      "llm_input_tokens": 77317,
+      "llm_output_tokens": 246183,
+      "llm_calls": 58,
+      "embedding_tokens": 79719,
+      "embedding_calls": 245
+    }
+  },
+  {
+    "sample_id": "conv-44",
+    "ingest_s": 1598.2349275889992,
+    "num_turns": 675,
+    "num_sessions": 28,
+    "system_stats": {
+      "documents": 28,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 918.573029051,
+    "token_usage": {
+      "llm_input_tokens": 75302,
+      "llm_output_tokens": 233753,
+      "llm_calls": 56,
+      "embedding_tokens": 75940,
+      "embedding_calls": 233
+    }
+  },
+  {
+    "sample_id": "conv-47",
+    "ingest_s": 1718.4461288399998,
+    "num_turns": 689,
+    "num_sessions": 31,
+    "system_stats": {
+      "documents": 31,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 1290.629690445,
+    "token_usage": {
+      "llm_input_tokens": 75769,
+      "llm_output_tokens": 252781,
+      "llm_calls": 62,
+      "embedding_tokens": 78287,
+      "embedding_calls": 265
+    }
+  },
+  {
+    "sample_id": "conv-48",
+    "ingest_s": 2135.7477607400006,
+    "num_turns": 681,
+    "num_sessions": 30,
+    "system_stats": {
+      "documents": 30,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 1340.3583968859984,
+    "token_usage": {
+      "llm_input_tokens": 74460,
+      "llm_output_tokens": 262794,
+      "llm_calls": 60,
+      "embedding_tokens": 87827,
+      "embedding_calls": 261
+    }
+  },
+  {
+    "sample_id": "conv-49",
+    "ingest_s": 1816.332257105999,
+    "num_turns": 509,
+    "num_sessions": 25,
+    "system_stats": {
+      "documents": 25,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 1067.3427644799995,
+    "token_usage": {
+      "llm_input_tokens": 60817,
+      "llm_output_tokens": 204386,
+      "llm_calls": 50,
+      "embedding_tokens": 64204,
+      "embedding_calls": 210
+    }
+  },
+  {
+    "sample_id": "conv-50",
+    "ingest_s": 1413.6189551370007,
+    "num_turns": 568,
+    "num_sessions": 30,
+    "system_stats": {
+      "documents": 30,
+      "search_type": "CHUNKS"
+    },
+    "conversation_s": 1604.1988311730001,
+    "token_usage": {
+      "llm_input_tokens": 75360,
+      "llm_output_tokens": 237467,
+      "llm_calls": 60,
+      "embedding_tokens": 75345,
+      "embedding_calls": 243
+    }
+  }
+]
