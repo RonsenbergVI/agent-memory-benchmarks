@@ -227,7 +227,9 @@ class FraiseMemory(Memory):
             return
         existing_turn_ids, existing_session_id = existing
         merged_turn_ids = sorted({*existing_turn_ids, *turn_ids})
-        merged_session_id = existing_session_id if existing_session_id == session_id else ""
+        merged_session_id = (
+            existing_session_id if existing_session_id == session_id else ""
+        )
         self._provenance[key] = (merged_turn_ids, merged_session_id)
 
     def ingest_session(self, conversation_id: str, session: Session) -> None:
