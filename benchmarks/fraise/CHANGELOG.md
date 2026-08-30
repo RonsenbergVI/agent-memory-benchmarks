@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.2.0...fraise/v0.3.0) (2026-08-30)
+
+
+### Maintenance
+
+* upgrade fraise version and use one fraise graph per conversation ([#142](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/142)) ([8865abb](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/8865abb2d8289f7b67b652604df98bb97b3af877))
+
 ## [0.2.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.1.0...fraise/v0.2.0) (2026-08-28)
 
 
