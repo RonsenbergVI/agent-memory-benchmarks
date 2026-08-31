@@ -17,7 +17,7 @@ dependencies = [
     # 0.3.0, where DetectionResult gained a required `should_wait` and
     # agent-memory 0.4.0's call site stops constructing it. It fails at
     # the first memorize(), not at install, so pin the working pair.
-    "everalgo-boundary>=0.2,<0.3",
+    "everalgo-boundary>=0.2,<0.4",
 ]
 
 # every integration ships its module as `src` — SDKs own the pretty names
