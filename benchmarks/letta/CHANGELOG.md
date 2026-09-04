@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/letta/v0.2.0...letta/v0.3.0) (2026-09-04)
+
+
+### Features
+
+* **letta:** add agent-driven ingestion that exercises the LLM ([#122](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/122)) ([6ad2d55](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/6ad2d559142ad3f4ce092a082fc0e386f0eb7a6c))
+
 ## [0.2.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/letta/v0.1.0...letta/v0.2.0) (2026-08-23)
 
 
