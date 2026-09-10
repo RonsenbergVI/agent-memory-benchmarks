@@ -1540,14 +1540,14 @@ requires-dist = [
 
 [[package]]
 name = "fraise-sdk"
-version = "0.1.0b4"
+version = "0.1.0b5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/91/8e/8354a7860e82c0f0a0b780427a4e472a4e3f2567fa9810762e87b0b93c67/fraise_sdk-0.1.0b4.tar.gz", hash = "sha256:248a6bdbdc5d3ee06fd2de2989a4c6053a14ee0fb53ba1438fc650a02e2072f4", size = 17676, upload-time = "2026-08-26T08:23:16.073Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/17/9c/190c2439da6fa6a4984e9810e6818f92625a2c1de553f37fb205f2149572/fraise_sdk-0.1.0b5.tar.gz", hash = "sha256:4aed1aabb7c077af132b348ab5fde91f3b5b3ac89edba792f86bed045607c438", size = 18487, upload-time = "2026-09-06T22:00:46.516Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b2/01/723ce0c8c448528c53f43df195615c2351366b43097f04c7dff870d4e4d6/fraise_sdk-0.1.0b4-py3-none-any.whl", hash = "sha256:07fc54efc589ad06a5f2002adaf8bfc972e30d0d63698b6b1b0eb02a66397602", size = 31299, upload-time = "2026-08-26T08:23:14.958Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/b2/ac704d63dd121a991f8ecca78edd3016dbf0dcb9f2624799dc52ebdfe9e1/fraise_sdk-0.1.0b5-py3-none-any.whl", hash = "sha256:f481bc7b7d6bdb67e2b1f5c20a25d8988837e6379b6cb1cc0d7b38786204baf4", size = 32777, upload-time = "2026-09-06T22:00:45.62Z" },
 ]
 
 [[package]]
