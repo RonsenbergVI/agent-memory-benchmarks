@@ -2,7 +2,7 @@
 # not `everos`: that is the SDK's own distribution name, and a workspace
 # member of the same name would shadow the dependency below
 name = "everos-benchmark"
-version = "0.1.0"
+version = "0.2.0"
 description = "EverOS benchmark."
 readme = "README.md"
 authors = [
