@@ -37,10 +37,12 @@ from amb.metrics import (
     Mean,
     RetrievalF1,
     RetrievalMetric,
+    RetrievalMRR,
     RetrievalPrecision,
     RetrievalRecall,
     Sum,
     TurnF1,
+    TurnMRR,
     TurnPrecision,
     TurnRecall,
     ValueCounts,
@@ -408,6 +410,63 @@ def test_retrieval_f1_single_record() -> None:
     assert metric.result() == pytest.approx(4 / 7)
 
 
+def test_reciprocal_rank_macro_averages_across_records() -> None:
+    metric = RetrievalMRR()
+    metric.update_state(
+        _q(
+            retrieved_session_ids=["s1", "s2", "s3"],
+            evidence_session_ids=["s3", "s9"],
+        )
+    )  # first evidence hit at rank 3
+    metric.update_state(
+        _q(retrieved_session_ids=["s4"], evidence_session_ids=["s4"])
+    )  # 1.0
+    assert metric.count == 2
+    assert metric.result() == pytest.approx((1 / 3 + 1) / 2)
+
+
+def test_reciprocal_rank_no_evidence_retrieved_scores_zero() -> None:
+    metric = RetrievalMRR()
+    metric.update_state(_q(retrieved_session_ids=["s1"], evidence_session_ids=["s2"]))
+    assert metric.count == 1
+    assert metric.result() == 0.0
+
+
+def test_reciprocal_rank_counts_empty_retrieval_as_zero() -> None:
+    # [] is a (failed) retrieval, unlike a missing field: it scores 0.0
+    metric = RetrievalMRR()
+    metric.update_state(_q(retrieved_session_ids=[], evidence_session_ids=["s1"]))
+    assert metric.count == 1
+    assert metric.result() == 0.0
+
+
+def test_reciprocal_rank_duplicate_ids_spend_rank() -> None:
+    # ids come flattened in hit order; a repeated miss still occupies its rank
+    metric = RetrievalMRR()
+    metric.update_state(
+        _q(retrieved_session_ids=["s1", "s1", "s2"], evidence_session_ids=["s2"])
+    )
+    assert metric.result() == pytest.approx(1 / 3)
+
+
+@pytest.mark.parametrize(
+    "cls, name, predicted_key, gold_key",
+    [
+        (
+            RetrievalMRR,
+            "retrieval_mrr",
+            "retrieved_session_ids",
+            "evidence_session_ids",
+        ),
+        (TurnMRR, "turn_mrr", "retrieved_turn_ids", "evidence_turn_ids"),
+    ],
+)
+def test_reciprocal_rank_wiring(cls, name, predicted_key, gold_key) -> None:
+    assert cls().name == name
+    assert cls.predicted_key == predicted_key
+    assert cls.gold_key == gold_key
+
+
 def test_turn_precision_reads_turn_ids_not_session_ids() -> None:
     metric = TurnPrecision()
     metric.update_state(
@@ -528,8 +587,13 @@ def test_default_metrics_load_bearing_entries() -> None:
 
 def test_default_metrics_cover_both_retrieval_levels() -> None:
     names = {m.name for m in default_metrics()}
-    assert {"retrieval_precision", "retrieval_recall", "retrieval_f1"} <= names
-    assert {"turn_precision", "turn_recall", "turn_f1"} <= names
+    assert {
+        "retrieval_precision",
+        "retrieval_recall",
+        "retrieval_f1",
+        "retrieval_mrr",
+    } <= names
+    assert {"turn_precision", "turn_recall", "turn_f1", "turn_mrr"} <= names
     assert {"answer_f1", "exact_match"} <= names
 
 
@@ -539,6 +603,7 @@ def test_category_metrics_names() -> None:
         "retrieval_precision",
         "retrieval_recall",
         "retrieval_f1",
+        "retrieval_mrr",
         "answer_f1",
         "exact_match",
         "judge_accuracy",

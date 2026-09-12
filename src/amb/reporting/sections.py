@@ -91,7 +91,7 @@ class GroupCharts(Section):
     group: RunGroup
     level: int = 3
     metric_filter: tuple[str, ...] = ()
-    # k-sweep lines; same figures (and paths) GroupSummary links, so the
+    # k-sweep charts; same figures (and paths) GroupSummary links, so the
     # reports' chart sets deduplicate to one drawing
     sweeps: list[Chart] = field(default_factory=list, init=False, repr=False)
     # per k: its bar charts and its trade-off scatters
@@ -106,7 +106,9 @@ class GroupCharts(Section):
         metrics = self.group.metrics(self.metric_filter)
         planned = [
             Chart(
-                kind="lines",
+                # recall draws as grouped bars: systems' sweep lines sat on
+                # top of each other at high k
+                kind="grouped_bars" if stem == "recall" else "lines",
                 stem=f"k_{stem}",
                 y=metric,
                 out_dir=self.group.plot_dir,
@@ -211,8 +213,9 @@ class GroupCharts(Section):
             )
             blocks.append(
                 Paragraph(
-                    text="One line per system across the k sweep, newest run "
-                    "per system and k."
+                    text="One mark per system across the k sweep, newest run "
+                    "per system and k; recall draws as grouped bars so "
+                    "near-tied systems stay readable."
                 )
             )
             blocks += [Figure(alt=c.alt, path=c.path) for c in self.sweeps]
@@ -280,7 +283,8 @@ class GroupSummary(Section):
         self.summary = table if table.has_data() else None
         planned = [
             Chart(
-                kind="lines",
+                # must match GroupCharts' kind: the two plans share paths
+                kind="grouped_bars" if stem == "recall" else "lines",
                 stem=f"k_{stem}",
                 y=metric,
                 out_dir=self.group.plot_dir,

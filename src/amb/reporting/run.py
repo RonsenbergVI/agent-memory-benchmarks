@@ -39,6 +39,7 @@ SUMMARY_COLUMNS = (
     ("retrieval_precision", "precision", "{:.3f}"),
     ("retrieval_recall", "recall", "{:.3f}"),
     ("retrieval_f1", "F1", "{:.3f}"),
+    ("retrieval_mrr", "MRR", "{:.3f}"),
     ("memory_tokens_total", "memory tokens", "{:,.0f}"),
 )
 

@@ -39,7 +39,7 @@ class Chart:
     `Section.charts()` declares, and `amb plot all` draws exactly those.
     """
 
-    kind: str  # bars | lines | scatter | table
+    kind: str  # bars | grouped_bars | lines | scatter | table
     stem: str
     y: str
     out_dir: Path
@@ -78,7 +78,7 @@ class Chart:
                     (line.label, line.ys[0])
                     for line in helpers.collect_series(scoped, self.y)
                 ]
-            case "lines":
+            case "lines" | "grouped_bars":
                 return helpers.collect_series(scoped, self.y)
             case "scatter":
                 return helpers.collect_points(scoped, self.x or "", self.y)
@@ -136,6 +136,16 @@ class Chart:
                 )
             case "lines":
                 return plots.lines(
+                    data,
+                    x_label="k (hits requested per query)",
+                    y_label=self.y,
+                    output=output,
+                    title=self.title,
+                    subtitle=self.subtitle,
+                    dark=dark,
+                )
+            case "grouped_bars":
+                return plots.grouped_bars(
                     data,
                     x_label="k (hits requested per query)",
                     y_label=self.y,

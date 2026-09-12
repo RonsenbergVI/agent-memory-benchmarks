@@ -305,6 +305,44 @@ class TurnF1(RetrievalMetric):
     name_ = "turn_f1"
 
 
+class ReciprocalRank(Scorer, Mean):
+    """Macro-averaged reciprocal rank of the first evidence id retrieved.
+
+    Ids arrive flattened in hit order, so a hit attesting several ids
+    spends one rank per id.
+    """
+
+    name_: ClassVar[str]
+
+    def __init__(self) -> None:
+        """Report under the subclass's metric name."""
+        super().__init__(self.name_)
+
+    def score(self, predicted: list[str], gold: list[str]) -> float:
+        """1/rank of the first retrieved id that is evidence; 0.0 when none is."""
+        evidence = set(gold)
+        for rank, retrieved_id in enumerate(predicted, start=1):
+            if retrieved_id in evidence:
+                return 1 / rank
+        return 0.0
+
+
+class RetrievalMRR(ReciprocalRank):
+    """Reciprocal rank of the first evidence session (all systems)."""
+
+    predicted_key = "retrieved_session_ids"
+    gold_key = "evidence_session_ids"
+    name_ = "retrieval_mrr"
+
+
+class TurnMRR(ReciprocalRank):
+    """Reciprocal rank of the first evidence turn (turn-storing systems)."""
+
+    predicted_key = "retrieved_turn_ids"
+    gold_key = "evidence_turn_ids"
+    name_ = "turn_mrr"
+
+
 def default_metrics() -> list[Metric]:
     """The standard metric set a run is scored with when none is given.
 
@@ -320,9 +358,11 @@ def default_metrics() -> list[Metric]:
         RetrievalPrecision(),
         RetrievalRecall(),
         RetrievalF1(),
+        RetrievalMRR(),
         TurnPrecision(),
         TurnRecall(),
         TurnF1(),
+        TurnMRR(),
         AnswerF1(),
         ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),

@@ -173,6 +173,75 @@ def lines(
     return _finish(fig, ax, c, x_label, y_label, title, output, subtitle)
 
 
+def grouped_bars(
+    series: list[Series],
+    x_label: str,
+    y_label: str,
+    output: Path,
+    title: str | None = None,
+    subtitle: str | None = None,
+    dark: bool = False,
+) -> Path:
+    """Render one bar per system, grouped by k, and write it to `output`.
+
+    Adjacent labelled bars keep near-tied systems readable where sweep lines
+    sit on top of each other; hues follow sorted-name order so a system keeps
+    its colour from chart to chart. Empty input is the caller's job to check.
+    Returns the path written.
+
+    Raises:
+        ValueError: past 8 series the palette is exhausted; filter or facet.
+    """
+    if len(series) > len(LIGHT["categories"]):
+        raise ValueError(
+            f"{len(series)} systems exceed the {len(LIGHT['categories'])}-hue "
+            "categorical palette; filter or facet instead"
+        )
+    fig, ax, c = styled_axes(dark)
+    ax.grid(False, axis="x")  # gridlines only along the value axis
+
+    # ks are categories here, not a scale: groups sit at even slots
+    ks = sorted({x for line in series for x in line.xs})
+    slots = {k: i for i, k in enumerate(ks)}
+    width = 0.8 / len(series)
+    for offset, (line, color) in enumerate(zip(series, c["categories"], strict=False)):
+        xs = [slots[k] - 0.4 + (offset + 0.5) * width for k in line.xs]
+        ax.bar(
+            xs,
+            line.ys,
+            width=width,
+            color=color,
+            edgecolor=c["surface"],
+            linewidth=1.0,
+            zorder=3,
+            label=line.label,
+        )
+        for x, y in zip(xs, line.ys, strict=True):
+            ax.annotate(
+                f"{y:.3f}",
+                (x, y),
+                textcoords="offset points",
+                xytext=(0, 4),
+                rotation=90,
+                ha="center",
+                va="bottom",
+                color=c["text"],
+                fontsize=8,
+                zorder=4,
+            )
+
+    ax.set_xticks(range(len(ks)), [f"{k:g}" for k in ks])
+    ys = [y for line in series for y in line.ys]
+    pad_axis(ys, ax.set_ylim, ratio=is_ratio(y_label))
+    # bars are anchored at zero, so the axis is too; headroom for the
+    # rotated value labels
+    ax.set_ylim(0.0, ax.get_ylim()[1] + (0.1 if is_ratio(y_label) else 0.0))
+    legend = ax.legend(loc="best", frameon=False, fontsize=9)
+    for text in legend.get_texts():
+        text.set_color(c["muted"])
+    return _finish(fig, ax, c, x_label, y_label, title, output, subtitle)
+
+
 def bars(
     items: list[tuple[str, float]],
     x_label: str,
