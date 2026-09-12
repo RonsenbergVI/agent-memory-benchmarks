@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/graphiti/v0.3.0...graphiti/v0.4.0) (2026-09-12)
+
+
+### Dependencies
+
+* bump graphiti-core from 0.29.3 to 0.30.1 ([#148](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/148)) ([aef6f0b](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/aef6f0b3180ccdd3c349108bdc1fce8c7cfce1a5))
+
 ## [0.3.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/graphiti/v0.2.0...graphiti/v0.3.0) (2026-08-23)
 
 
