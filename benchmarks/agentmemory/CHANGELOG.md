@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/agentmemory/v0.2.0...agentmemory/v0.3.0) (2026-09-14)
+
+
+### Maintenance
+
+* update agentmemory run ([#159](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/159)) ([8562edb](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/8562edb46413082a9fcb2b71183c64de2bc6a9ae))
+
 ## [0.2.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/agentmemory/v0.1.0...agentmemory/v0.2.0) (2026-08-28)
 
 
