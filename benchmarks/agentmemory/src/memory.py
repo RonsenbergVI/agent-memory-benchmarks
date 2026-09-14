@@ -52,9 +52,19 @@ Two non-obvious properties of the service shape this adapter:
 Search is two round trips by construction — a compact search returns ids
 and scores, a second call expands them into content — counted as one
 search, what the system charges to answer one question.
+
+**Writes are indexed asynchronously.** ``observe`` files the observation
+and returns an id immediately; the compression that makes it searchable
+runs in the server's own workers (~12s each, many at once) and nothing
+is retrievable until it lands. A benchmark ingests and queries back to
+back, so ingestion is not finished when the last POST returns — it is
+finished when that queue drains, which is what `_await_indexing` waits
+for. Without the wait every search runs against an empty index and the
+system scores a flat zero.
 """
 
 import os
+import time
 from typing import ClassVar
 
 from amb.base import Memory
@@ -74,6 +84,11 @@ MAX_EXPAND = 20
 FETCH_MULTIPLIER = 10
 MAX_LIMIT = 100
 DEFAULT_TIMEOUT_S = 120.0
+# how the indexing wait is paced (see `_await_indexing`)
+INDEX_POLL_S = 2.0
+# the queue takes ~10s to start moving, so quiet has to outlast that gap
+INDEX_QUIET_S = 30.0
+INDEX_TIMEOUT_S = 900.0
 
 
 class AgentMemoryMemory(Memory):
@@ -114,6 +129,10 @@ class AgentMemoryMemory(Memory):
         self._sessions: list[str] = []
         self._conversation_id: str | None = None
         self._observations = 0
+        # observations posted but not yet known to be indexed, and the
+        # server's compression count when the first of them was filed
+        self._pending = 0
+        self._pending_from: int | None = None
 
     def version(self) -> str | None:
         """The server's version — the server is the system under test."""
@@ -205,6 +224,9 @@ class AgentMemoryMemory(Memory):
         """Post one observation into the conversation's session."""
         self._conversation_id = conversation_id
         scoped = self._ensure_session(conversation_id, session_id)
+        if not self._pending:
+            # read before this one can have finished compressing (~12s)
+            self._pending_from = self._compress_calls()
         response = self._post(
             "/agentmemory/observe",
             {
@@ -219,6 +241,7 @@ class AgentMemoryMemory(Memory):
         # a repeated utterance dedups server-side (no id back); claiming
         # provenance for it would claim a hit the store cannot return
         if observation_id := self._observation_id(response):
+            self._pending += 1
             self._observations += 1
             if turn_id:
                 self._turns[observation_id] = turn_id
@@ -234,8 +257,62 @@ class AgentMemoryMemory(Memory):
             return str(value)
         return None
 
+    def _compress_calls(self) -> int | None:
+        """How many compressions the server has finished, or None if unknown.
+
+        The server's own counter, so no queue endpoint is needed; it is
+        global, which `_await_indexing` accounts for.
+        """
+        try:
+            health = self._get("/agentmemory/health")
+        except Exception:  # noqa: BLE001 - an unreadable counter is not fatal
+            return None
+        for metric in health.get("functionMetrics") or []:
+            if metric.get("functionId") == "mem::compress":
+                return int(metric.get("totalCalls") or 0)
+        return 0
+
+    def _await_indexing(self) -> None:
+        """Block until what was posted has been compressed, so it is findable.
+
+        Progress is the server's `mem::compress` counter. That counter is
+        global: under `--workers N` another conversation's compressions
+        count toward this one's target and can end the wait early — the
+        same reason `--workers 1` is the only exact setting here. Going
+        quiet ends it too, since a deduplicated or skipped observation is
+        never compressed and would otherwise be waited on forever.
+        """
+        expected, self._pending = self._pending, 0
+        baseline, self._pending_from = self._pending_from, None
+        if baseline is None or expected <= 0:
+            return
+        deadline = time.monotonic() + INDEX_TIMEOUT_S
+        last, quiet_since = baseline, time.monotonic()
+        while time.monotonic() < deadline:
+            time.sleep(INDEX_POLL_S)
+            current = self._compress_calls()
+            if current is None:
+                return
+            if current - baseline >= expected:
+                return
+            if current != last:
+                last, quiet_since = current, time.monotonic()
+            elif time.monotonic() - quiet_since >= INDEX_QUIET_S:
+                return
+        logger.bind(scope="agentmemory").warning(
+            "indexing still behind after {:.0f}s ({} of {} compressions); "
+            "searches may miss the tail",
+            INDEX_TIMEOUT_S,
+            last - baseline,
+            expected,
+        )
+
     def ingest_session(self, conversation_id: str, session: Session) -> None:
-        """Open an agentmemory session and post every turn into it."""
+        """Open an agentmemory session, post every turn, and wait for indexing.
+
+        The wait belongs here: it is what this system costs to make a
+        session retrievable, and the harness is timing ingestion.
+        """
         if not session.turns:
             return
         self._conversation_id = conversation_id
@@ -248,6 +325,7 @@ class AgentMemoryMemory(Memory):
                 timestamp=session.timestamp,
                 turn_id=turn.turn_id,
             )
+        self._await_indexing()
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return up to k observations, content included.
@@ -258,6 +336,11 @@ class AgentMemoryMemory(Memory):
         """
         if not query.strip():
             return []
+        if self._pending:
+            # only the agentic path reaches here with writes outstanding:
+            # its toolset writes per turn and has no end-of-session hook,
+            # so the drain lands on the first read and is charged to it
+            self._await_indexing()
         agent_id = self._agent_id(conversation_id)
         compact = self._post(
             "/agentmemory/smart-search",

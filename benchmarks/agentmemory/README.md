@@ -10,6 +10,14 @@ That filter is applied **after retrieval, not inside the index** — upstream's 
 
 The adapter asks for `k × 10` (capped at the API's 100) and trims to k locally to widen the window, but it cannot close it. **`--workers 1` is the only setting where isolation is exact**, because the store then holds one conversation at a time — teardown forgets each conversation's sessions before the next begins. The compose command sets it, and the workflow inherits it. Raising it trades a measurement guarantee for wall clock; if you do, say so on the results row.
 
+## Ingestion waits for the index
+
+`observe` files an observation and returns its id straight away; the `mem::compress` call that makes it searchable runs in the server's own workers afterwards — around 12s each, ten or so at a time. Nothing is retrievable until that lands, and a benchmark ingests and queries back to back, so a run that treats the POST as the end of ingestion searches an empty index and scores a flat zero on every question.
+
+So `ingest_session` posts the session's turns and then waits, polling the `mem::compress` counter on `/agentmemory/health` until it has caught up with what was posted (or gone quiet for 30s — a deduplicated observation is never compressed, and would otherwise be waited on forever). That wait is charged to ingestion, where it belongs: it is what this system costs to make a session retrievable. It is also why a full LoCoMo pass takes on the order of two to three hours — the server's compression concurrency, not the adapter, sets that floor.
+
+Note this is *not* the same failure as the iii pin below, which produces empty search for an unrelated reason.
+
 ## What it measures
 
 The server runs with LLM compression on (`AGENTMEMORY_AUTO_COMPRESS=true`) and OpenAI embeddings, so its configuration matches the rest of the comparison rather than sitting in agentmemory's keyless BM25-only default.
