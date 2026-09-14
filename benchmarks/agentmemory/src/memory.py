@@ -224,6 +224,9 @@ class AgentMemoryMemory(Memory):
         """Post one observation into the conversation's session."""
         self._conversation_id = conversation_id
         scoped = self._ensure_session(conversation_id, session_id)
+        if not self._pending:
+            # read before this one can have finished compressing (~12s)
+            self._pending_from = self._compress_calls()
         response = self._post(
             "/agentmemory/observe",
             {
@@ -238,9 +241,6 @@ class AgentMemoryMemory(Memory):
         # a repeated utterance dedups server-side (no id back); claiming
         # provenance for it would claim a hit the store cannot return
         if observation_id := self._observation_id(response):
-            if not self._pending:
-                # read before this one can have finished compressing (~12s)
-                self._pending_from = self._compress_calls()
             self._pending += 1
             self._observations += 1
             if turn_id:
