@@ -34,7 +34,7 @@ def test_usage_coverage_keeps_three_cost_states_apart():
     cell = ComparisonReport._cell
     full = {"system": "fraise", "memory_tokens_total": 130112.0}
     partial = {
-        "system": "agentmemory",
+        "system": "mem0",
         "memory_tokens_total": 4200.0,
         "usage_coverage": "partial",
     }
