@@ -123,21 +123,6 @@ Pre-alpha. Methodology is being defined and the test harness is in development. 
 | Hindsight | [vectorize-io/hindsight](https://github.com/vectorize-io/hindsight) | MIT | Memory units + hybrid search | [RESULTS.md](RESULTS.md) |
 | Cognee | [topoteretes/cognee](https://github.com/topoteretes/cognee) | Apache-2.0 | Embedded knowledge graph | [RESULTS.md](RESULTS.md) |
 
-### Candidates
-
-Each candidate is vetted against the [inclusion criteria](#inclusion-criteria) in its proposal issue; verdicts and integration progress land there.
-
-| Project | Repository | Proposal |
-| --- | --- | --- |
-| ReMe | [modelscope/ReMe](https://github.com/modelscope/ReMe) | [#72](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/72) |
-| Redis Agent Memory Server | [redis/agent-memory-server](https://github.com/redis/agent-memory-server) | [#73](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/73) |
-| LangMem | [langchain-ai/langmem](https://github.com/langchain-ai/langmem) | [#76](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/76) |
-| MemOS | [MemTensor/MemOS](https://github.com/MemTensor/MemOS) | [#77](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/77) |
-| Memobase | [memodb-io/memobase](https://github.com/memodb-io/memobase) | [#78](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/78) |
-| memary | [kingjulio8238/Memary](https://github.com/kingjulio8238/Memary) | [#80](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/80) |
-| supermemory | [supermemoryai/supermemory](https://github.com/supermemoryai/supermemory) | [#81](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/81) |
-| MemPalace | [MemPalace/mempalace](https://github.com/MemPalace/mempalace) | [#82](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/82) |
-
 ## Methodology
 
 The full methodology — design principles, evaluation axes, harness design, datasets, model selection, run scoping, and cost — lives in [METHODOLOGY.md](METHODOLOGY.md).
