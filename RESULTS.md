@@ -44,6 +44,7 @@ Latest run per system x dataset x models. Each row's full per-question output li
 | locomo |  | hindsight | 0.9.2 | direct | 1 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  | 3 | 1986 | 1687317.000 | 0.534 | 0.527 | 0.642 |  |  |  | 5.1906 | 8.4738 |
 | locomo |  | hindsight | 0.9.2 | direct | 3 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  | 3 | 1986 | 1687429.000 | 0.453 | 0.356 | 0.799 |  |  |  | 7.0302 | 14.0682 |
 | locomo |  | hindsight | 0.9.2 | direct | 5 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  | 3 | 1986 | 1690239.000 | 0.347 | 0.240 | 0.851 |  |  |  | 7.4466 | 14.6469 |
+| locomo |  | hindsight | 0.9.2 | direct | 10 | gpt-5-mini | text-embedding-3-small |  |  |  |  |  | 3 | 1986 | 1688873.000 | 0.235 | 0.142 | 0.913 |  |  |  | 5.8358 | 9.5334 |
 | locomo |  | letta | 0.16.8 | direct | 10 | openai/gpt-5-mini | openai/text-embedding-3-small |  |  |  | 100 |  |  | 189 | 53735.000 | 0.483 | 0.331 | 0.996 | 0.189 | 0.108 | 0.896 | 0.3367 | 0.3963 |
 | locomo |  | letta | 0.16.8 | direct | 5 | openai/gpt-5-mini | openai/text-embedding-3-small |  |  |  | 100 |  |  | 189 | 53735.000 | 0.623 | 0.490 | 0.974 | 0.313 | 0.197 | 0.840 | 0.3370 | 0.4260 |
 | locomo |  | letta | 0.16.8 | direct | 3 | openai/gpt-5-mini | openai/text-embedding-3-small |  |  |  | 100 |  |  | 189 | 53735.000 | 0.731 | 0.642 | 0.935 | 0.394 | 0.278 | 0.727 | 0.4163 | 0.5323 |
