@@ -365,6 +365,31 @@ def test_embedding_usage_books_prompt_tokens_or_total_tokens(fake_memory_class):
     assert tracker.counters["llm_calls"] == 0
 
 
+def test_raw_response_wrapper_books_the_tokens_behind_parse(fake_memory_class):
+    # langchain-openai calls `client.with_raw_response.create(...)`, which
+    # hands back the HTTP response, not the parsed model: no `.usage` on it,
+    # and the call used to be booked with zero tokens against it
+    tracker = OpenAIUsageTracker()
+    tracker.on_sample_begin(_sample(), fake_memory_class())
+    parsed = _chat_response(31, 9)
+    tracker._record("llm", SimpleNamespace(parse=lambda: parsed))
+    assert tracker.counters["llm_input_tokens"] == 31
+    assert tracker.counters["llm_output_tokens"] == 9
+    assert tracker.counters["llm_calls"] == 1
+
+
+def test_raw_response_that_cannot_be_parsed_still_counts_the_call(fake_memory_class):
+    tracker = OpenAIUsageTracker()
+    tracker.on_sample_begin(_sample(), fake_memory_class())
+
+    def explode():
+        raise RuntimeError("a stream cannot be re-read")
+
+    tracker._record("llm", SimpleNamespace(parse=explode))
+    assert tracker.counters["llm_calls"] == 1
+    assert tracker.counters["llm_input_tokens"] == 0
+
+
 def test_response_without_usage_still_counts_the_call(fake_memory_class):
     tracker = OpenAIUsageTracker()
     tracker.on_sample_begin(_sample(), fake_memory_class())

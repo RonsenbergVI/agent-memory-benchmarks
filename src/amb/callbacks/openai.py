@@ -118,7 +118,7 @@ class OpenAIUsageTracker(Callback):
         counters = self._counters.get()
         if counters is None:
             return  # a call outside any sample's lifecycle
-        usage = getattr(response, "usage", None)
+        usage = self._usage(response)
         if kind == "embedding":
             counters["embedding_calls"] += 1
             if usage is not None:
@@ -141,6 +141,29 @@ class OpenAIUsageTracker(Callback):
                     or getattr(usage, "output_tokens", 0)
                     or 0
                 )
+
+    @staticmethod
+    def _usage(response: object) -> object | None:
+        """The billed usage, through the SDK's raw-response wrapper if needed.
+
+        A caller that asks for the raw response — `client.with_raw_response
+        .create(...)`, which is how langchain-openai calls every endpoint —
+        gets a `LegacyAPIResponse` carrying the HTTP response, not the
+        parsed model: no `.usage` on it, so the call was counted with zero
+        tokens against it. `parse()` is what the caller itself calls next
+        and caches its result, so reading through it costs nothing and
+        cannot consume the body twice.
+        """
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            return usage
+        parse = getattr(response, "parse", None)
+        if not callable(parse):
+            return None
+        try:
+            return getattr(parse(), "usage", None)
+        except Exception:  # a stream, or a body this SDK version cannot re-read
+            return None
 
     def _targets(self) -> list[tuple[type, str, str, bool]]:
         """List every usage-reporting entry point as (owner, method, kind, is_async).
