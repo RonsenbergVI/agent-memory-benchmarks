@@ -7,7 +7,6 @@
 [![License](https://img.shields.io/github/license/RonsenbergVI/agent-memory-benchmarks)](LICENSE)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue)](pyproject.toml)
 
-[![Benchmark agentmemory](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/agentmemory.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/agentmemory.yml)
 [![Benchmark cognee](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee.yml)
 [![Benchmark everos](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos.yml)
 [![Benchmark fraise](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise.yml)
@@ -122,7 +121,6 @@ Pre-alpha. Methodology is being defined and the test harness is in development. 
 | Fraise | [RonsenbergVI/fraise](https://github.com/RonsenbergVI/fraise) | MIT | Temporal knowledge graph + vector / text hybrid search | [RESULTS.md](RESULTS.md) |
 | EverOS (EverMind) | [EverMind-AI/EverOS](https://github.com/EverMind-AI/EverOS) | Apache-2.0 | Local-first, Markdown-native | [RESULTS.md](RESULTS.md) |
 | Hindsight | [vectorize-io/hindsight](https://github.com/vectorize-io/hindsight) | MIT | Memory units + hybrid search | [RESULTS.md](RESULTS.md) |
-| agentmemory | [rohitg00/agentmemory](https://github.com/rohitg00/agentmemory) | Apache-2.0 | Observation memory | [RESULTS.md](RESULTS.md) |
 | Cognee | [topoteretes/cognee](https://github.com/topoteretes/cognee) | Apache-2.0 | Embedded knowledge graph | [RESULTS.md](RESULTS.md) |
 
 ### Candidates
