@@ -1,0 +1,53 @@
+services:
+  # LangMem holds nothing itself: it reads and writes a LangGraph store,
+  # and that store is what this stack stands up. Postgres with pgvector
+  # is the one LangMem's own docs use outside a notebook — the store's
+  # migrations create the `vector` extension and its own tables, so this
+  # is a stock image with no init scripts.
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      - POSTGRES_USER=langmem
+      - POSTGRES_PASSWORD=langmem
+      - POSTGRES_DB=langmem
+    volumes:
+      - langmem-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langmem -d langmem"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/langmem/Dockerfile
+    image: amb-langmem
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # native crashes (SIGSEGV/SIGABRT) print the failing stack, not a bare exit
+      - PYTHONFAULTHANDLER=1
+      # httpx2's (openai's HTTP stack) default truststore SSL context mutates the
+      # OpenSSL cert store per handshake and is not thread-safe — parallel workers
+      # corrupted the heap (double free -> abort). SSL_CERT_FILE forces a plain
+      # stdlib context over certifi, which is thread-safe.
+      - SSL_CERT_FILE=/amb/.venv/lib/python3.13/site-packages/certifi/cacert.pem
+      - LANGMEM_DATABASE_URL=postgresql://langmem:langmem@postgres:5432/langmem
+      # LangMem reaches OpenAI through langchain for both extraction and
+      # embeddings, so the adapter points it at the same models every
+      # other system ingests with. Set these yourself to measure a
+      # different configuration.
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system langmem --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../runs:/amb/runs
+
+volumes:
+  langmem-pgdata:

@@ -145,6 +145,19 @@
           "jsonpath": "$.package[?(@.name.value=='hindsight-benchmark')].version"
         }
       ]
+    },
+    "benchmarks/langmem": {
+      "release-type": "python",
+      "component": "langmem",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='langmem-benchmark')].version"
+        }
+      ]
     }
   }
 }
