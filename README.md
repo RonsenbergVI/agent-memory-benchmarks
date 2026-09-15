@@ -14,6 +14,7 @@
 [![Benchmark hindsight](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml)
 [![Benchmark letta](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/letta.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/letta.yml)
 [![Benchmark mem0](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml)
+[![Benchmark memos](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos.yml)
 
 **[Results](#results) · [Quickstart](#quickstart) · [Why this exists](#why-this-exists) · [Methodology](#methodology) · [Projects in scope](#projects-in-scope) · [Contributing](#contributing)**
 
@@ -122,6 +123,7 @@ Pre-alpha. Methodology is being defined and the test harness is in development. 
 | EverOS (EverMind) | [EverMind-AI/EverOS](https://github.com/EverMind-AI/EverOS) | Apache-2.0 | Local-first, Markdown-native | [RESULTS.md](RESULTS.md) |
 | Hindsight | [vectorize-io/hindsight](https://github.com/vectorize-io/hindsight) | MIT | Memory units + hybrid search | [RESULTS.md](RESULTS.md) |
 | Cognee | [topoteretes/cognee](https://github.com/topoteretes/cognee) | Apache-2.0 | Embedded knowledge graph | [RESULTS.md](RESULTS.md) |
+| MemOS (MemTensor) | [MemTensor/MemOS](https://github.com/MemTensor/MemOS) | Apache-2.0 | MemCube of extracted memories, held as a graph | [RESULTS.md](RESULTS.md) |
 
 ### Candidates
 
@@ -132,7 +134,6 @@ Each candidate is vetted against the [inclusion criteria](#inclusion-criteria) i
 | ReMe | [modelscope/ReMe](https://github.com/modelscope/ReMe) | [#72](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/72) |
 | Redis Agent Memory Server | [redis/agent-memory-server](https://github.com/redis/agent-memory-server) | [#73](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/73) |
 | LangMem | [langchain-ai/langmem](https://github.com/langchain-ai/langmem) | [#76](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/76) |
-| MemOS | [MemTensor/MemOS](https://github.com/MemTensor/MemOS) | [#77](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/77) |
 | Memobase | [memodb-io/memobase](https://github.com/memodb-io/memobase) | [#78](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/78) |
 | memary | [kingjulio8238/Memary](https://github.com/kingjulio8238/Memary) | [#80](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/80) |
 | supermemory | [supermemoryai/supermemory](https://github.com/supermemoryai/supermemory) | [#81](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/81) |
