@@ -1,0 +1,54 @@
+services:
+  # MemOS's tree_text MemCube keeps its memories as a graph. Neo4j
+  # Community has exactly one database and no CREATE DATABASE, which is
+  # why the adapter runs MemOS in its shared-database tenant mode: every
+  # node carries a user_name and every query filters on it, so one
+  # conversation per tenant isolates recall without a database each.
+  neo4j:
+    image: neo4j:5.26
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    volumes:
+      - memos-neo4j-data:/data
+      - memos-neo4j-logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/memos/Dockerfile
+    image: amb-memos
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # native crashes (SIGSEGV/SIGABRT) print the failing stack, not a bare exit
+      - PYTHONFAULTHANDLER=1
+      # httpx2's (openai's HTTP stack) default truststore SSL context mutates the
+      # OpenSSL cert store per handshake and is not thread-safe — parallel workers
+      # corrupted the heap (double free -> abort). SSL_CERT_FILE forces a plain
+      # stdlib context over certifi, which is thread-safe.
+      - SSL_CERT_FILE=/amb/.venv/lib/python3.13/site-packages/certifi/cacert.pem
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=password
+      # MemOS speaks the OpenAI protocol natively, so the adapter points
+      # it at the same models every other system ingests with. Set any of
+      # these yourself to measure a different configuration.
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system memos --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../runs:/amb/runs
+
+volumes:
+  memos-neo4j-data:
+  memos-neo4j-logs:

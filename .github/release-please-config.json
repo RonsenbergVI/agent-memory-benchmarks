@@ -146,6 +146,19 @@
         }
       ]
     },
+    "benchmarks/memos": {
+      "release-type": "python",
+      "component": "memos",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='memos-benchmark')].version"
+        }
+      ]
+    },
     "benchmarks/langmem": {
       "release-type": "python",
       "component": "langmem",

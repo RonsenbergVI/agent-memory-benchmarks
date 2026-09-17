@@ -51,6 +51,14 @@ environments = [
     "sys_platform == 'linux'",
 ]
 required-version = ">0.10,<0.13"
+# One lockfile covers every member, so one member's cap on a shared
+# dependency is the whole workspace's. MemoryOS (2.0.33) declares
+# `openai<2`, which cannot hold beside fraise's `openai>=2` and the
+# openai 2.x the tracker patches. MemOS uses the parts of the SDK that
+# did not change across the 2.0 line (Client, chat.completions,
+# embeddings, responses, NOT_GIVEN), and is measured against openai 2.x
+# here. Re-verify on a MemoryOS bump; drop this the day it lifts the cap.
+override-dependencies = ["openai>=2,<4", "fastapi>=0.116.2,<1"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
