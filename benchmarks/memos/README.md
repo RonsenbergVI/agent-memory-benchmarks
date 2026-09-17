@@ -18,10 +18,6 @@ The configuration is MemOS's own `get_default_config` / `get_default_cube_config
 
 `max_tokens` also moves from MemOS's default 1024 to 8192: a reasoning model can spend 1024 entirely on reasoning tokens and return no JSON for the extraction to parse.
 
-## Two workspace-wide dependency overrides
-
-MemoryOS 2.0.33 caps `openai<2` and `fastapi<0.116`, and one lockfile covers every member — so those caps would be the whole workspace's. Both are overridden in the root `pyproject.toml` (`[tool.uv] override-dependencies`): MemOS uses the parts of the openai SDK that did not change across the 2.0 line, and never imports FastAPI on this path (it is there for its API server). Its `transformers<5` does pull `huggingface-hub` back below 1.0 for every member — within `amb`'s own `>=0.34`, and the dataset loaders use `HfApi.list_repo_files` / `hf_hub_download`, unchanged across that line.
-
 ## Running it
 
 ```bash
