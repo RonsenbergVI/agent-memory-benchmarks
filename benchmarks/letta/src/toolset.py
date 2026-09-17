@@ -92,7 +92,8 @@ class LettaIngestToolset(IngestToolset):
         Returns:
             Whether the memory was stored.
         """
-        cited = [t for t in source_turn_ids if t in self.turn_ids()]
+        known = self.turn_ids()
+        cited = [t for t in source_turn_ids if t in known]
         if not cited:
             return "not stored: none of the cited turn markers exist in this session"
         t0 = time.perf_counter()
