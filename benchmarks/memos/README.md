@@ -45,7 +45,7 @@ docker compose -p memos-smoke -f benchmarks/memos/docker-compose.yaml down -v
 
 ## Notes
 
-- **Isolation is a user plus a MemCube** (`conv<id>` / `cube<id>`), and node-level tenancy in the graph. MemOS derives its tenant tag from the user id by stripping `-` and `_`, so the adapter's slug is alphanumeric — two conversation ids cannot collapse onto one tenant.
+- **Isolation is a user plus a MemCube** (`conv<id>` / `cube<id>`), and node-level tenancy in the graph. MemOS derives its tenant tag from the user id by stripping `-` and `_`, so the adapter's slug is alphanumeric — but it *escapes* the rest as `q<hex>q` (and a literal `q` as `qq`) instead of dropping them: stripping would collapse `a-b`, `a_b` and `ab` onto one tenant, which here means shared recall and a teardown that deletes both. `conv-26` is therefore `convq2dq26`.
 - **One MemOS user per conversation.** A LoCoMo conversation has two speakers, but the unit of memory here is the conversation, so both speak as one user; the speaker survives in the text of every message and in the `user`/`assistant` roles.
 - **Provenance is session-level.** A memory is an extraction over a window of a session's messages, not a verbatim turn, so hits carry `session_ids` and never claim `turn_ids`. MemOS keeps per-source snippets on a node, but its `simple_struct` reader does not carry a message id into them.
 - **Teardown deletes one tenant's nodes** (`delete_all` is scoped to the cube's `user_name`), so the conversations running beside it under `--workers N` — nodes in the same database — are untouched. The Neo4j driver is closed with it: MemOS opens one per cube and exposes no `close`.

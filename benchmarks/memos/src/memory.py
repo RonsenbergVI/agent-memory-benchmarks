@@ -79,7 +79,6 @@ without touching the conversations running beside it under
 import contextvars
 import logging
 import os
-import re
 import sys
 import threading
 from typing import Any, ClassVar
@@ -102,9 +101,11 @@ DEFAULT_MAX_TOKENS = 8192
 # model families that reject temperature, top_p and max_tokens
 _REASONING_MODELS = ("gpt-5", "o1", "o3", "o4")
 # MemOS derives the graph's tenant tag from the user id by stripping "-"
-# and "_", so ids that differ only in those would share a tenant; this
-# charset keeps the derivation injective
-_ID_SAFE = re.compile(r"[^a-z0-9]+")
+# and "_", and a cube id also names on-disk state, so a tenant name has
+# to stay inside a charset both leave alone
+_ID_SAFE = frozenset("abcdefghijklmnopqrstuvwxyz0123456789")
+# stands in for every character outside it, and so is never itself literal
+_ID_ESCAPE = "q"
 
 # Held across MOS construction: the user store is one SQLite file shared
 # by every instance in the process, and the graph's index creation is
@@ -275,8 +276,29 @@ class MemOSMemory(Memory):
 
     @staticmethod
     def _slug(value: str) -> str:
-        """An id MemOS's own tenant-tag derivation cannot collapse."""
-        return _ID_SAFE.sub("", value.lower()) or "unnamed"
+        """An id MemOS's own tenant-tag derivation cannot collapse.
+
+        These names are the only boundary between conversations sharing
+        one Neo4j database, so the mapping into the charset has to be
+        injective: two ids landing on one tenant would read each other's
+        memories, and either teardown would delete both. Characters
+        outside the charset are escaped as ``q<hex>q`` rather than
+        dropped, and a literal ``q`` as ``qq``.
+
+        Raises:
+            ValueError: if the conversation id is empty.
+        """
+        if not value:
+            raise ValueError("conversation id must not be empty")
+        out = []
+        for char in value:
+            if char == _ID_ESCAPE:
+                out.append(_ID_ESCAPE * 2)
+            elif char in _ID_SAFE:
+                out.append(char)
+            else:
+                out.append(f"{_ID_ESCAPE}{ord(char):x}{_ID_ESCAPE}")
+        return "".join(out)
 
     def _user(self, conversation_id: str) -> str:
         """The MemOS user one conversation's memories belong to.
