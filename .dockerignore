@@ -1,6 +1,8 @@
 .git
 .venv
 .data
+# MemOS's generated SQLite store and logs; baking them in leaks host data and starts runs stale
+.memos
 report
 plots
 **/__pycache__

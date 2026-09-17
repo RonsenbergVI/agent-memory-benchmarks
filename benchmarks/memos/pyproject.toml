@@ -1,0 +1,34 @@
+[project]
+# not `memos`: that is the SDK's own import name and an unrelated PyPI
+# project. The SDK's distribution is `MemoryOS`; this name is what the
+# Dockerfile (`uv sync --package memos-benchmark`), the release-please
+# extra-files jsonpath and uv.lock all key off.
+name = "memos-benchmark"
+version = "0.1.0"
+description = "MemOS benchmark."
+readme = "README.md"
+authors = [
+    { name = "René-Jean Corneille", email = "corneille.r.j@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "amb",
+    # tree-mem is the MemCube backend measured here (neo4j driver + its
+    # reorganize scheduler); mem-reader is MemOS's own extraction stack,
+    # whose chunker is built on every write
+    "MemoryOS[tree-mem,mem-reader]>=2.0,<2.1",
+]
+
+# every integration ships its module as `src` — SDKs own the pretty names
+[project.entry-points."amb.systems"]
+memos = "src.benchmark:MemOSBenchmark"
+
+[tool.uv.sources]
+amb = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
