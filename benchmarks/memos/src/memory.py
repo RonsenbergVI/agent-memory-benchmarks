@@ -112,6 +112,8 @@ _ID_ESCAPE = "q"
 # check-then-create. Workers arriving together would race both.
 _SETUP_LOCK = threading.Lock()
 _ACCOMMODATED = False
+# tracked apart: the backend is a per-instance choice, the rest is not
+_REASONING_PATCHED = False
 
 
 def _reasoning_llm_class() -> type:
@@ -183,12 +185,17 @@ def _quiet_logging() -> None:
     before there is a config to patch, so stdlib logging is switched off
     across the import. amb's own logging is loguru, which
     `logging.disable` does not reach.
+
+    The switch is global and this adapter is a guest in someone else's
+    process, so the level in force is restored rather than cleared, and
+    never loosened while the import runs.
     """
-    logging.disable(logging.CRITICAL)
+    previous = logging.root.manager.disable
+    logging.disable(max(previous, logging.CRITICAL))
     try:
         from memos import log as memos_log
     finally:
-        logging.disable(logging.NOTSET)
+        logging.disable(previous)
 
     memos_log.LOGGING_CONFIG["handlers"]["console"]["stream"] = sys.stderr
     memos_log.LOGGING_CONFIG["handlers"]["file"]["level"] = "WARNING"
@@ -216,19 +223,26 @@ def _quiet_graph_dumps() -> None:
 
 
 def _accommodate(reasoning: bool) -> None:
-    """Install this adapter's accommodations, once per process."""
-    global _ACCOMMODATED
+    """Install this adapter's accommodations, once per process.
+
+    All but one are process-wide and run on the first call. The
+    reasoning backend is chosen per instance, so it is installed the
+    first time an instance asks for it, which need not be that call —
+    it stays behind the others because building it imports MemOS, and
+    `_quiet_logging` is what makes that import quiet.
+    """
+    global _ACCOMMODATED, _REASONING_PATCHED
     with _SETUP_LOCK:
-        if _ACCOMMODATED:
-            return
-        _quiet_logging()
-        _quiet_graph_dumps()
-        _propagate_context()
-        if reasoning:
+        if not _ACCOMMODATED:
+            _quiet_logging()
+            _quiet_graph_dumps()
+            _propagate_context()
+            _ACCOMMODATED = True
+        if reasoning and not _REASONING_PATCHED:
             from memos.llms.factory import LLMFactory
 
             LLMFactory.backend_to_class["openai"] = _reasoning_llm_class()
-        _ACCOMMODATED = True
+            _REASONING_PATCHED = True
 
 
 class MemOSMemory(Memory):
@@ -481,14 +495,19 @@ class MemOSMemory(Memory):
         in the same shared database — are left alone. The Neo4j driver is
         closed with it: MemOS opens one per cube and exposes no close, so
         a run of many conversations would leak a connection pool each.
+        A failed delete must not cost the pool as well, so the close and
+        the reset happen whether or not the delete returned; the reset
+        goes first because it is the step that cannot fail.
         """
         text_mem = self._text_memory()
-        if text_mem is not None:
-            text_mem.delete_all()
-            driver = getattr(getattr(text_mem, "graph_store", None), "driver", None)
+        driver = getattr(getattr(text_mem, "graph_store", None), "driver", None)
+        try:
+            if text_mem is not None:
+                text_mem.delete_all()
+        finally:
+            self._sessions.clear()
             if driver is not None:
                 driver.close()
-        self._sessions.clear()
 
     def stats(self) -> dict:
         """Report what this run stored, and how it retrieved."""
