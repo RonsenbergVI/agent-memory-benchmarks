@@ -5,7 +5,9 @@ services:
   # migrations create the `vector` extension and its own tables, so this
   # is a stock image with no init scripts.
   postgres:
-    image: pgvector/pgvector:pg17
+    # PostgreSQL 17.11 + pgvector 0.8.6, pinned by digest: `pg17` moves, and a
+    # different pgvector changes retrieval without changing the LangMem version
+    image: pgvector/pgvector@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
     environment:
       - POSTGRES_USER=langmem
       - POSTGRES_PASSWORD=langmem

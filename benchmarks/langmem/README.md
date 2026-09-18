@@ -41,7 +41,7 @@ docker compose -p langmem-smoke -f benchmarks/langmem/docker-compose.yaml down -
 
 ## Notes
 
-- **The store's migrations are its own.** `store.setup()` creates the `vector` extension and both tables, so the compose image is stock `pgvector/pgvector:pg17` with no init script. They are check-then-create, so a process lock serializes them across `--workers N`.
+- **The store's migrations are its own.** `store.setup()` creates the `vector` extension and both tables, so the compose image is a stock `pgvector/pgvector` with no init script — PostgreSQL 17.11 + pgvector 0.8.6, pinned by digest because `pg17` moves and a different pgvector would change retrieval without changing the recorded LangMem version. They are check-then-create, so a process lock serializes them across `--workers N`.
 - **Memories are unstructured strings.** LangMem also takes `schemas=[...]` pydantic models; the default (a plain string per memory) is what is measured, and `_content` handles both shapes so a schema experiment needs no adapter change.
 - **`enable_deletes` stays at LangMem's default (off).** The manager updates and inserts; it does not retract. Turning it on changes what is being measured, not just how much it spends.
 - **Agentic mode exposes LangMem's own two verbs**, with the bodies its `create_manage_memory_tool` / `create_search_memory_tool` give an agent: a `put` and a `search`. Only the `create` action is exposed — `update` and `delete` need a memory id the agent could only get from a search result, and ids are deliberately kept out of tool results because they are retrieval's scoring labels.
