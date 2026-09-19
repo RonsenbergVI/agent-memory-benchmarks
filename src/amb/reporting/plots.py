@@ -24,7 +24,6 @@ import math
 from pathlib import Path
 from typing import Any
 
-from amb.constants import LIGHT
 from amb.contracts import Point, Series
 from amb.reporting.helpers import (
     hues,
@@ -36,6 +35,7 @@ from amb.reporting.helpers import (
     pretty,
     round_bars,
     styled_axes,
+    styles,
 )
 
 
@@ -111,27 +111,19 @@ def lines(
 ) -> Path:
     """Render one line per system over k and write it to `output`.
 
-    A single-k system appears as a lone dot; hues follow sorted-name order so
-    a system keeps its colour from chart to chart. Empty input is the caller's
-    job to check. Returns the path written.
-
-    Raises:
-        ValueError: past 8 series the palette is exhausted; filter or facet.
+    A single-k system appears as a lone dot; styles follow sorted-name order
+    so a system keeps its colour and shape from chart to chart. Empty input
+    is the caller's job to check. Returns the path written.
     """
-    if len(series) > len(LIGHT["categories"]):
-        raise ValueError(
-            f"{len(series)} systems exceed the {len(LIGHT['categories'])}-hue "
-            "categorical palette; filter or facet instead"
-        )
     fig, ax, c = styled_axes(dark)
 
-    for line, color in zip(series, c["categories"], strict=False):
+    for line, (color, marker) in zip(series, styles(len(series), c), strict=True):
         ax.plot(
             line.xs,
             line.ys,
             color=color,
             linewidth=2.0,
-            marker="o",
+            marker=marker,
             markersize=8,
             markeredgecolor=c["surface"],
             markeredgewidth=2.0,

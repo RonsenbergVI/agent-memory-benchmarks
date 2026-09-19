@@ -24,7 +24,7 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-from amb.constants import DARK, LIGHT
+from amb.constants import DARK, LIGHT, MARKERS
 from amb.contracts import Point, Series
 
 
@@ -123,6 +123,22 @@ def collect_points(summaries: list[dict], x: str, y: str) -> list[Point]:
     return [
         Point(label=system, x=flatten(s)[x], y=flatten(s)[y])
         for system, s in sorted(newest.items())
+    ]
+
+
+def styles(count: int, c: dict) -> list[tuple[str, str]]:
+    """Each series' (colour, marker), handed out in fixed order.
+
+    Colour alone tops out at the palette's hues, and a benchmark gains
+    systems; pairing each hue with a marker shape carries identity past
+    that instead of refusing to draw, so adding a system can never break
+    the publish job. Shape also does the work colour cannot under
+    colourblindness or in print.
+    """
+    palette = c["categories"]
+    return [
+        (palette[i % len(palette)], MARKERS[(i // len(palette)) % len(MARKERS)])
+        for i in range(count)
     ]
 
 
