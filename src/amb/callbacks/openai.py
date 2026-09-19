@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import contextvars
+import inspect
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -118,7 +119,23 @@ class OpenAIUsageTracker(Callback):
         counters = self._counters.get()
         if counters is None:
             return  # a call outside any sample's lifecycle
-        usage = self._usage(response)
+        self._book(counters, kind, self._usage(response))
+
+    async def _arecord(self, kind: str, response: object) -> None:
+        """Book one response from an async call.
+
+        `AsyncAPIResponse.parse()` is a coroutine, so the sync path would
+        read `.usage` off the coroutine object — never set — and leave it
+        un-awaited: zero tokens, plus a "never awaited" warning.
+        """
+        counters = self._counters.get()
+        if counters is None:
+            return  # a call outside any sample's lifecycle
+        self._book(counters, kind, await self._ausage(response))
+
+    @staticmethod
+    def _book(counters: dict, kind: str, usage: object | None) -> None:
+        """Add one call, and its tokens when the response reported any."""
         if kind == "embedding":
             counters["embedding_calls"] += 1
             if usage is not None:
@@ -143,27 +160,54 @@ class OpenAIUsageTracker(Callback):
                 )
 
     @staticmethod
-    def _usage(response: object) -> object | None:
-        """The billed usage, through the SDK's raw-response wrapper if needed.
+    def _parse(response: object) -> Callable | None:
+        """The response's `parse`, when the usage is only reachable through it.
 
         A caller that asks for the raw response — `client.with_raw_response
         .create(...)`, which is how langchain-openai calls every endpoint —
-        gets a `LegacyAPIResponse` carrying the HTTP response, not the
-        parsed model: no `.usage` on it, so the call was counted with zero
-        tokens against it. `parse()` is what the caller itself calls next
-        and caches its result, so reading through it costs nothing and
-        cannot consume the body twice.
+        gets a response carrying the HTTP body, not the parsed model: no
+        `.usage` on it, so the call was counted with zero tokens against
+        it. `parse()` is what the caller itself calls next and caches its
+        result, so reading through it costs nothing and cannot consume the
+        body twice.
         """
-        usage = getattr(response, "usage", None)
-        if usage is not None:
-            return usage
-        parse = getattr(response, "parse", None)
-        if not callable(parse):
+        if getattr(response, "usage", None) is not None:
             return None
+        parse = getattr(response, "parse", None)
+        return parse if callable(parse) else None
+
+    @classmethod
+    def _usage(cls, response: object) -> object | None:
+        """The billed usage, through the raw-response wrapper if needed."""
+        parse = cls._parse(response)
+        if parse is None:
+            return getattr(response, "usage", None)
         try:
-            return getattr(parse(), "usage", None)
+            parsed = parse()
         except Exception:  # a stream, or a body this SDK version cannot re-read
             return None
+        if inspect.isawaitable(parsed):
+            # an async response on the sync path: closing it keeps Python
+            # from warning about a coroutine nothing will ever await
+            close = getattr(parsed, "close", None)
+            if callable(close):
+                close()
+            return None
+        return getattr(parsed, "usage", None)
+
+    @classmethod
+    async def _ausage(cls, response: object) -> object | None:
+        """The billed usage, awaiting the raw-response wrapper if needed."""
+        parse = cls._parse(response)
+        if parse is None:
+            return getattr(response, "usage", None)
+        try:
+            parsed = parse()
+            if inspect.isawaitable(parsed):
+                parsed = await parsed
+        except Exception:  # a stream, or a body this SDK version cannot re-read
+            return None
+        return getattr(parsed, "usage", None)
 
     def _targets(self) -> list[tuple[type, str, str, bool]]:
         """List every usage-reporting entry point as (owner, method, kind, is_async).
@@ -228,7 +272,7 @@ class OpenAIUsageTracker(Callback):
                 client_self: object, *args: object, **kwargs: object
             ) -> object:
                 response = await original(client_self, *args, **kwargs)
-                self._record(kind, response)
+                await self._arecord(kind, response)
                 return response
 
         else:

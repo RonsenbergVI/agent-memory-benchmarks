@@ -24,6 +24,7 @@
 
 import asyncio
 import threading
+import warnings
 from types import SimpleNamespace
 
 import pytest
@@ -376,6 +377,63 @@ def test_raw_response_wrapper_books_the_tokens_behind_parse(fake_memory_class):
     assert tracker.counters["llm_input_tokens"] == 31
     assert tracker.counters["llm_output_tokens"] == 9
     assert tracker.counters["llm_calls"] == 1
+
+
+def test_async_raw_response_awaits_parse_and_books_the_tokens(fake_memory_class):
+    # openai 3.3's AsyncAPIResponse.parse() is a coroutine: the sync path
+    # read `.usage` off the coroutine itself (never set) and left it
+    # un-awaited, so async raw-response calls booked zero tokens
+    tracker = OpenAIUsageTracker()
+    tracker.on_sample_begin(_sample(), fake_memory_class())
+    parsed = _chat_response(31, 9)
+
+    async def parse():
+        return parsed
+
+    response = SimpleNamespace(parse=parse)
+
+    async def original(client_self, *args, **kwargs):
+        return response
+
+    wrapped = tracker._wrap(original, "llm", True)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)  # "never awaited"
+        assert asyncio.run(wrapped(object())) is response
+    assert tracker.counters["llm_input_tokens"] == 31
+    assert tracker.counters["llm_output_tokens"] == 9
+    assert tracker.counters["llm_calls"] == 1
+
+
+def test_async_raw_response_that_cannot_be_parsed_still_counts_the_call(
+    fake_memory_class,
+):
+    tracker = OpenAIUsageTracker()
+    tracker.on_sample_begin(_sample(), fake_memory_class())
+
+    async def parse():
+        raise RuntimeError("a stream cannot be re-read")
+
+    asyncio.run(tracker._arecord("llm", SimpleNamespace(parse=parse)))
+    assert tracker.counters["llm_calls"] == 1
+    assert tracker.counters["llm_input_tokens"] == 0
+
+
+def test_awaitable_parse_on_the_sync_path_is_closed_not_left_dangling(
+    fake_memory_class,
+):
+    # a mis-declared target would hand an async response to the sync path:
+    # it must not warn, and must not book the coroutine's absent usage
+    tracker = OpenAIUsageTracker()
+    tracker.on_sample_begin(_sample(), fake_memory_class())
+
+    async def parse():
+        return _chat_response(31, 9)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        tracker._record("llm", SimpleNamespace(parse=parse))
+    assert tracker.counters["llm_calls"] == 1
+    assert tracker.counters["llm_input_tokens"] == 0
 
 
 def test_raw_response_that_cannot_be_parsed_still_counts_the_call(fake_memory_class):
