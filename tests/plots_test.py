@@ -80,3 +80,45 @@ def test_table_chart_without_runs_at_k_has_no_data(tmp_path: Path) -> None:
     chart = _table_chart(tmp_path, [_summary("aaa", 0.5)], k=3)
     assert not chart.has_data()
     assert chart.draw() is None
+
+
+def test_styles_stay_unique_well_past_the_hue_count() -> None:
+    # the publish job died at 9 systems on an 8-hue palette; identity now
+    # rides on (hue, marker), so the ceiling is the product, not the hues
+    from amb.constants import DARK, LIGHT, MARKERS
+    from amb.reporting.helpers import styles
+
+    capacity = len(LIGHT["categories"]) * len(MARKERS)
+    assert capacity >= 32
+    assert len(LIGHT["categories"]) == len(DARK["categories"])
+    for palette in (LIGHT, DARK):
+        assigned = styles(capacity, palette)
+        assert len(set(assigned)) == capacity  # no pair handed out twice
+    # a system keeps its style as later ones are added
+    assert styles(4, LIGHT) == styles(capacity, LIGHT)[:4]
+
+
+def test_lines_draws_more_systems_than_the_palette_has_hues(tmp_path: Path) -> None:
+    # the exact shape of the CI break: one more system than there are hues
+    from amb.contracts import Series
+    from amb.reporting.plots import lines
+
+    from amb.constants import LIGHT  # isort: skip
+
+    count = len(LIGHT["categories"]) + 1
+    series = [
+        Series(label=f"system-{i:02d}", xs=[1, 3, 5, 10], ys=[0.1, 0.2, 0.3, 0.4])
+        for i in range(count)
+    ]
+    path = lines(series, "k", "F1", tmp_path / "many.png")
+    assert path.stat().st_size > 0
+
+
+def test_lines_draws_thirty_two_systems(tmp_path: Path) -> None:
+    from amb.contracts import Series
+    from amb.reporting.plots import lines
+
+    series = [
+        Series(label=f"system-{i:02d}", xs=[1, 10], ys=[0.1, 0.4]) for i in range(32)
+    ]
+    assert lines(series, "k", "F1", tmp_path / "thirtytwo.png").stat().st_size > 0
