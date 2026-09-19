@@ -26,6 +26,11 @@ memory:hindsight:
       - any-glob-to-any-file:
           - benchmarks/hindsight/**
 
+memory:langmem:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/langmem/**
+
 memory:letta:
   - changed-files:
       - any-glob-to-any-file:
