@@ -12,6 +12,7 @@
 [![Benchmark fraise](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise.yml)
 [![Benchmark graphiti](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti.yml)
 [![Benchmark hindsight](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml)
+[![Benchmark langmem](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem.yml)
 [![Benchmark letta](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/letta.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/letta.yml)
 [![Benchmark mem0](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml)
 [![Benchmark memos](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos.yml)
@@ -123,6 +124,7 @@ Pre-alpha. Methodology is being defined and the test harness is in development. 
 | EverOS (EverMind) | [EverMind-AI/EverOS](https://github.com/EverMind-AI/EverOS) | Apache-2.0 | Local-first, Markdown-native | [RESULTS.md](RESULTS.md) |
 | Hindsight | [vectorize-io/hindsight](https://github.com/vectorize-io/hindsight) | MIT | Memory units + hybrid search | [RESULTS.md](RESULTS.md) |
 | Cognee | [topoteretes/cognee](https://github.com/topoteretes/cognee) | Apache-2.0 | Embedded knowledge graph | [RESULTS.md](RESULTS.md) |
+| LangMem | [langchain-ai/langmem](https://github.com/langchain-ai/langmem) | MIT | LLM extraction over a LangGraph store | [RESULTS.md](RESULTS.md) |
 | MemOS (MemTensor) | [MemTensor/MemOS](https://github.com/MemTensor/MemOS) | Apache-2.0 | MemCube of extracted memories, held as a graph | [RESULTS.md](RESULTS.md) |
 
 ## Methodology
