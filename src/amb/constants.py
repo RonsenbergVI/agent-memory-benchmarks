@@ -69,6 +69,10 @@ LIGHT: dict = {
         "#008300",
         "#4a3aa7",
         "#e34948",
+        "#0e8f9e",
+        "#a05a18",
+        "#b53fa0",
+        "#6b8f00",
     ),
 }
 
@@ -87,8 +91,17 @@ DARK: dict = {
         "#008300",
         "#9085e9",
         "#e66767",
+        "#1ba4b4",
+        "#b5701f",
+        "#c964b4",
+        "#7aa016",
     ),
 }
+
+# Identity past the last hue is carried by shape as well as colour: the
+# (hue, marker) pairs are handed out in fixed order, so 12 x 6 = 72 series
+# stay distinguishable without inventing a hue no one validated.
+MARKERS: tuple[str, ...] = ("o", "s", "^", "D", "v", "P")
 
 # Identity fields that make two sets of runs different experiments, not repeats.
 GROUP_BY = ("dataset", "variant")
