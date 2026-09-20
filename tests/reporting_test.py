@@ -57,3 +57,75 @@ def test_summary_markdown_explains_only_the_cost_marks_it_used():
     assert "not measurable" in notes(["n/a"])
     # a table where every system is fully accounted carries no footnote
     assert notes(["130,112", "8,154", ""]) == ""
+
+
+def _categorised(system: str, version: str, k: int, f1: float, cats: dict) -> dict:
+    return {
+        "run_id": f"20260901T000000Z-{system}",
+        "system": system,
+        "system_version": version,
+        "dataset": "locomo",
+        "k": k,
+        "retrieval_f1": f1,
+        "by_category": {c: {"retrieval_f1": v} for c, v in cats.items()},
+    }
+
+
+def test_category_table_bolds_the_best_in_each_column():
+    from amb.reporting.run import ComparisonReport
+
+    report = ComparisonReport(
+        [
+            _categorised(
+                "alpha", "1.0", 10, 0.60, {"multi-hop": 0.30, "temporal": 0.90}
+            ),
+            _categorised(
+                "beta", "2.0", 10, 0.50, {"multi-hop": 0.70, "temporal": 0.10}
+            ),
+        ]
+    )
+    header, rows = report.category_table(10)
+    # columns are discovered from the runs, not hardcoded per dataset
+    assert header == ["system", "version", "multi-hop", "temporal", "overall"]
+    # best overall first, and each column bolded independently of the ranking
+    assert rows[0] == ["alpha", "1.0", "0.300", "**0.900**", "**0.600**"]
+    assert rows[1] == ["beta", "2.0", "**0.700**", "0.100", "0.500"]
+
+
+def test_category_table_leaves_an_unreported_category_blank():
+    from amb.reporting.run import ComparisonReport
+
+    report = ComparisonReport(
+        [
+            _categorised(
+                "alpha", "1.0", 10, 0.60, {"multi-hop": 0.30, "temporal": 0.90}
+            ),
+            _categorised("beta", "2.0", 10, 0.50, {"multi-hop": 0.70}),
+        ]
+    )
+    _, rows = report.category_table(10)
+    # a blank says "not measured"; a 0.000 would rank as "measured and bad"
+    assert rows[1][-2] == ""
+
+
+def test_category_table_is_empty_when_runs_carry_no_categories():
+    from amb.reporting.run import ComparisonReport
+
+    plain = {"run_id": "r", "system": "alpha", "dataset": "locomo", "k": 10}
+    assert ComparisonReport([plain]).category_table(10) == ([], [])
+
+
+def test_table_figure_strips_the_emphasis_markers(tmp_path):
+    # the same string feeds markdown (where ** is bold) and the figure
+    # (where it must render bold, not print asterisks)
+    from amb.reporting.plots import _plain, table
+
+    assert _plain("**0.900**") == "0.900"
+    assert _plain("0.900") == "0.900"
+    assert _plain("") == ""
+    path = table(
+        ["system", "version", "multi-hop"],
+        [["alpha", "1.0", "**0.900**"]],
+        output=tmp_path / "t.png",
+    )
+    assert path.stat().st_size > 0

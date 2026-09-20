@@ -26,7 +26,7 @@ from amb.base.reporting import Section
 from amb.constants import LATENCY, SUMMARY_ORDER, TOKENS
 from amb.contracts import Block, Figure, Heading, Paragraph, Rule, Table
 from amb.reporting.chart import Chart
-from amb.reporting.helpers import headline, pretty
+from amb.reporting.helpers import headline, pretty, slug
 from amb.reporting.report import RunGroup, precision_pinned
 from amb.reporting.run import ComparisonReport, run_date
 
@@ -98,6 +98,10 @@ class GroupCharts(Section):
     sets: list[tuple[int, list[Chart], list[Chart]]] = field(
         default_factory=list, init=False, repr=False
     )
+    # one recall sweep per question category: the breakdown table over k
+    category_sweeps: list[Chart] = field(default_factory=list, init=False, repr=False)
+    # per k: the question-category breakdown, when the runs label questions
+    breakdowns: dict[int, Chart] = field(default_factory=dict, init=False, repr=False)
     # planned charts with no data: reported rather than silently absent
     skipped: int = field(default=0, init=False)
 
@@ -122,6 +126,9 @@ class GroupCharts(Section):
         ]
         self.sweeps = [c for c in planned if c.has_data()]
         self.skipped += len(planned) - len(self.sweeps)
+        planned = [self._category_sweep(c) for c in self.group.categories()]
+        self.category_sweeps = [c for c in planned if c.has_data()]
+        self.skipped += len(planned) - len(self.category_sweeps)
         for k in self.group.ks():
             bars = [self._bars(metric, k) for _, metric in metrics]
             scatters = [
@@ -136,12 +143,51 @@ class GroupCharts(Section):
             bars = [c for c in bars if c.has_data()]
             scatters = [c for c in scatters if c.has_data()]
             self.skipped += planned - len(bars) - len(scatters)
+            breakdown = self._categories(k)
+            if breakdown.has_data():
+                self.breakdowns[k] = breakdown
+            else:
+                self.skipped += 1
             if bars or scatters:
                 self.sets.append((k, bars, scatters))
 
     def _at_k(self, k: int) -> list[dict]:
         """The group's runs at one k — what that k's charts actually show."""
         return [s for s in self.group.summaries if s.get("k") == k]
+
+    def _category_sweep(self, category: str) -> Chart:
+        """One category's recall across k, a line per system.
+
+        The breakdown table says where a system stands at one k; this says
+        whether a bigger budget is what it was missing.
+        """
+        return Chart(
+            kind="lines",
+            stem=f"k_recall_{slug(category)}",
+            y=f"by_category.{category}.retrieval_recall",
+            y_label=f"{category} recall",
+            out_dir=self.group.plot_dir,
+            summaries=self.group.summaries,
+            alt=f"Retrieval recall vs k for {category} questions",
+            title=headline(f"{category} recall vs k"),
+            subtitle=f"{self.group.label} · {self.group.mode} · "
+            f"newest run per system and k{freshness(self.group.summaries)}",
+        )
+
+    def _categories(self, k: int) -> Chart:
+        """The per-question-category breakdown at `k`."""
+        return Chart(
+            kind="categories",
+            stem=f"categories_k{k}",
+            y="retrieval_recall",
+            k=k,
+            out_dir=self.group.plot_dir,
+            summaries=self.group.summaries,
+            alt=f"Retrieval recall by question category at k={k}",
+            title=headline(f"recall by question category at k={k}"),
+            subtitle=f"{self.group.label} · {self.group.mode} · "
+            f"newest run per system{freshness(self._at_k(k))}",
+        )
 
     def _bars(self, metric: str, k: int) -> Chart:
         """One metric's system comparison at `k`."""
@@ -187,7 +233,12 @@ class GroupCharts(Section):
     def charts(self) -> list[Chart]:
         """The k-sweep lines, then every chart in every k's set."""
         per_k = [c for _, bars, scatters in self.sets for c in (*bars, *scatters)]
-        return [*self.sweeps, *per_k]
+        return [
+            *self.sweeps,
+            *self.category_sweeps,
+            *per_k,
+            *self.breakdowns.values(),
+        ]
 
     def blocks(self) -> list[Block]:
         """The group's heading, why its metric set is what it is, then each k."""
@@ -216,9 +267,38 @@ class GroupCharts(Section):
                 )
             )
             blocks += [Figure(alt=c.alt, path=c.path) for c in self.sweeps]
+        if self.category_sweeps:
+            blocks.append(
+                Heading(
+                    level=self.level + 1,
+                    text=f"{self.group.label}: recall vs k by question category",
+                )
+            )
+            blocks.append(
+                Paragraph(
+                    text="The breakdown table at one k, swept: whether a system "
+                    "is weak on a question type, or simply needed a bigger budget."
+                )
+            )
+            blocks += [Figure(alt=c.alt, path=c.path) for c in self.category_sweeps]
         for index, (k, bars, scatters) in enumerate(self.sets):
             if index or self.sweeps:
                 blocks.append(Rule())
+            if k in self.breakdowns:
+                chart = self.breakdowns[k]
+                blocks.append(
+                    Heading(
+                        level=self.level + 1,
+                        text=f"{self.group.label}: by question category (k={k})",
+                    )
+                )
+                blocks.append(
+                    Paragraph(
+                        text="What each system is good at, not just how good it "
+                        "is overall. The best score in each column is bold."
+                    )
+                )
+                blocks.append(Figure(alt=chart.alt, path=chart.path))
             if bars:
                 blocks.append(
                     Heading(
@@ -261,6 +341,8 @@ class GroupSummary(Section):
     # the compact table at `k` rendered as a figure: the README embeds an image
     # from plots/, where CI blocks hand edits, not editable markdown numbers
     summary: Chart | None = field(default=None, init=False, repr=False)
+    # the same rows broken out by question category, when the runs label them
+    categories: Chart | None = field(default=None, init=False, repr=False)
     skipped: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
@@ -278,6 +360,20 @@ class GroupSummary(Section):
             f"newest run per system{freshness(self.group.summaries)}",
         )
         self.summary = table if table.has_data() else None
+        breakdown = Chart(
+            kind="categories",
+            stem=f"categories_k{self.k}",
+            y="retrieval_recall",
+            k=self.k,
+            out_dir=self.group.plot_dir,
+            summaries=self.group.summaries,
+            alt=f"Retrieval recall by question category at k={self.k}",
+            title=headline(f"recall by question category at k={self.k}"),
+            subtitle=f"{self.group.label} · {self.group.mode} · "
+            f"newest run per system{freshness(self.group.summaries)}",
+        )
+        # a dataset whose runs carry no question labels simply has no table
+        self.categories = breakdown if breakdown.has_data() else None
         planned = [
             Chart(
                 kind="lines",
@@ -299,8 +395,9 @@ class GroupSummary(Section):
         self.skipped = len(planned) - len(self.lines) + (0 if self.summary else 1)
 
     def charts(self) -> list[Chart]:
-        """The group's summary table figure and its k-sweep charts."""
-        return ([self.summary] if self.summary else []) + list(self.lines)
+        """The group's summary tables and its k-sweep charts."""
+        tables = [c for c in (self.summary, self.categories) if c]
+        return tables + list(self.lines)
 
     def blocks(self) -> list[Block]:
         """Heading, the table figure at `k`, then the sweep charts."""
@@ -313,5 +410,7 @@ class GroupSummary(Section):
                 self.k, dataset=self.group.dataset, variant=self.group.variant or None
             )
             blocks.append(Table(header=header, rows=rows))
+        if self.categories:
+            blocks.append(Figure(alt=self.categories.alt, path=self.categories.path))
         blocks += [Figure(alt=c.alt, path=c.path) for c in self.lines]
         return blocks

@@ -204,6 +204,14 @@ def bars(
     return _finish(fig, ax, c, x_label, "", title, output, subtitle)
 
 
+def _plain(cell: object) -> str:
+    """A cell without its emphasis markers."""
+    text = str(cell)
+    if len(text) > 4 and text.startswith("**") and text.endswith("**"):
+        return text[2:-2]
+    return text
+
+
 def table(
     header: list[str],
     rows: list[list[str]],
@@ -225,7 +233,7 @@ def table(
 
     # column widths from content; the figure grows so text never squeezes
     cells = [header, *rows]
-    widths = [max(len(str(row[j])) for row in cells) for j in range(len(header))]
+    widths = [max(len(_plain(row[j])) for row in cells) for j in range(len(header))]
     gutter = 3.0
     total = sum(widths) + gutter * (len(widths) - 1)
     edges: list[tuple[float, float]] = []
@@ -239,16 +247,19 @@ def table(
         for j, cell in enumerate(row):
             left, right = edges[j]
             identity = j < 2
+            text = _plain(cell)
             ax.text(
                 left if identity else right,
                 y,
-                str(cell),
+                text,
                 transform=ax.transAxes,
                 ha="left" if identity else "right",
                 va="center",
                 color=color,
                 fontsize=size,
-                fontweight=weight,
+                # `**value**` marks a cell worth reading first; markdown gets
+                # the same emphasis from the same string
+                fontweight="bold" if text != str(cell) else weight,
             )
 
     step = 1.0 / len(cells)

@@ -39,7 +39,7 @@ class Chart:
     `Section.charts()` declares, and `amb plot all` draws exactly those.
     """
 
-    kind: str  # bars | lines | scatter | table
+    kind: str  # bars | lines | scatter | table | categories
     stem: str
     y: str
     out_dir: Path
@@ -48,6 +48,8 @@ class Chart:
     title: str = ""
     subtitle: str = ""
     x: str | None = None
+    # axis text when `y` is a dotted path no reader should see
+    y_label: str | None = None
     k: int | None = None
     better: str | None = None
     # floor system, drawn as a reference line; None on cost-vs-cost scatters
@@ -85,6 +87,9 @@ class Chart:
             case "table":
                 _, rows = self._table()
                 return rows
+            case "categories":
+                _, rows = self._category_table()
+                return rows
             case _:
                 raise ValueError(f"unknown chart kind {self.kind!r}")
 
@@ -95,6 +100,14 @@ class Chart:
         from amb.reporting.run import ComparisonReport
 
         return ComparisonReport(self.scoped()).summary_table(self.k or 10)
+
+    def _category_table(self) -> tuple[list[str], list[list[str]]]:
+        """The per-question-category breakdown this chart renders."""
+        from amb.reporting.run import ComparisonReport
+
+        return ComparisonReport(self.scoped()).category_table(
+            self.k or 10, metric=self.y
+        )
 
     def has_data(self) -> bool:
         """Whether any run in scope reports what this chart plots.
@@ -138,7 +151,7 @@ class Chart:
                 return plots.lines(
                     data,
                     x_label="k (hits requested per query)",
-                    y_label=self.y,
+                    y_label=self.y_label or self.y,
                     output=output,
                     title=self.title,
                     subtitle=self.subtitle,
@@ -160,8 +173,10 @@ class Chart:
                     baseline=floor,
                     dark=dark,
                 )
-            case "table":
-                header, rows = self._table()
+            case "table" | "categories":
+                header, rows = (
+                    self._table() if self.kind == "table" else self._category_table()
+                )
                 return plots.table(
                     header,
                     rows,
