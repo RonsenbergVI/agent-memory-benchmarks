@@ -1,0 +1,48 @@
+name: Redraw results
+
+# The plots and RESULTS.md are drawn by the harness, so a change to the
+# harness can change them with no new run behind it. The benchmark
+# workflows only redraw as a side effect of spending on a run; this
+# redraws from the runs already on main, for free.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+
+jobs:
+  redraw:
+    name: redraw plots and RESULTS.md
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-results
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
+          ref: main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the workspace
+        run: uv sync --locked
+
+      - name: Redraw from the committed runs
+        run: |
+          uv run amb plot all
+          uv run amb plot all --dark
+          uv run amb report --latest --k "$SUMMARY_K" \
+            --output RESULTS.md \
+            --commit "$GITHUB_SHA"
+        env:
+          SUMMARY_K: 10
+
+      - name: Commit results to main
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "results: redraw after harness change"
+          file_pattern: "plots RESULTS.md"
