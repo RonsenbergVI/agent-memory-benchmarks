@@ -133,6 +133,14 @@ class RunGroup:
         """Every retrieval budget these runs used, ascending."""
         return sorted({s["k"] for s in self.summaries if isinstance(s.get("k"), int)})
 
+    def categories(self) -> list[str]:
+        """Every question category these runs label, alphabetical.
+
+        Read off the runs rather than the dataset, so a loader that changes
+        its labels needs no change here.
+        """
+        return sorted({c for s in self.summaries for c in (s.get("by_category") or {})})
+
     def metrics(self, only: Sequence[str] = ()) -> tuple[tuple[str, str], ...]:
         """The retrieval metrics worth charting for this group.
 

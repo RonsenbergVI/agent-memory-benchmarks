@@ -372,6 +372,35 @@ class ComparisonReport(Report):
         Returns:
             The header labels and the formatted rows, ranked best F1 first.
         """
+        ranked = self._ranked_at_k(k, dataset, variant)
+        header = ["system", "version", "last run"]
+        header += [label for _, label, _ in SUMMARY_COLUMNS]
+        header += ["p50 search (s)"]
+        rows = []
+        for s in ranked:
+            cells = [
+                str(s.get("system", "?")),
+                str(s.get("system_version") or ""),
+                run_date(s.get("run_id")),
+            ]
+            cells += [self._cell(s, key, fmt) for key, _, fmt in SUMMARY_COLUMNS]
+            latency = s.get("search_latency", {})
+            cells += [f"{latency.get('p50_s', 0):.4f}" if latency else ""]
+            rows.append(cells)
+        return header, rows
+
+    def _ranked_at_k(
+        self,
+        k: int,
+        dataset: str | None = None,
+        variant: str | None = None,
+        metric: str = "retrieval_f1",
+    ) -> list[dict]:
+        """The newest run per system at one k, ranked best `metric` first.
+
+        Both tables select identically. A table ranks on the number it
+        actually prints, so its rightmost column always reads top-down.
+        """
         newest: dict[str, dict] = {}
         for s in self.summaries:
             if s.get("k") != k:
@@ -385,23 +414,65 @@ class ComparisonReport(Report):
                 newest[system].get("run_id") or ""
             ):
                 newest[system] = s
-        header = ["system", "version", "last run"]
-        header += [label for _, label, _ in SUMMARY_COLUMNS]
-        header += ["p50 search (s)"]
-        ranked = sorted(
+        return sorted(
             newest.values(),
-            key=lambda s: (-s.get("retrieval_f1", float("-inf")), s.get("system", "")),
+            key=lambda s: (-s.get(metric, float("-inf")), s.get("system", "")),
         )
+
+    def category_table(
+        self,
+        k: int = 10,
+        dataset: str | None = None,
+        variant: str | None = None,
+        metric: str = "retrieval_f1",
+    ) -> tuple[list[str], list[list[str]]]:
+        """Build the per-question-category table: a system per row, a type per column.
+
+        The headline number says which system retrieves best; this says what
+        it is good at. Columns are the categories the runs in scope actually
+        report, so a dataset that labels its questions differently needs no
+        change here. A system that has no run for a category leaves the cell
+        blank rather than scoring it zero.
+
+        Returns:
+            The header labels and the formatted rows, ranked best overall first
+            on `metric` — the same number the `overall` column prints.
+        """
+        ranked = self._ranked_at_k(k, dataset, variant, metric)
+        categories = sorted({c for s in ranked for c in (s.get("by_category") or {})})
+        if not categories:
+            return [], []
+        header = ["system", "version", *categories, "overall"]
+
+        def score(summary: dict, category: str | None) -> float | None:
+            source = (
+                summary
+                if category is None
+                else (summary.get("by_category") or {}).get(category) or {}
+            )
+            value = source.get(metric)
+            return float(value) if isinstance(value, int | float) else None
+
+        # the best in each column, so a reader sees at a glance who wins what
+        columns: list[str | None] = [*categories, None]
+        best = {
+            column: max(
+                (v for s in ranked if (v := score(s, column)) is not None),
+                default=None,
+            )
+            for column in columns
+        }
         rows = []
         for s in ranked:
-            cells = [
-                str(s.get("system", "?")),
-                str(s.get("system_version") or ""),
-                run_date(s.get("run_id")),
-            ]
-            cells += [self._cell(s, key, fmt) for key, _, fmt in SUMMARY_COLUMNS]
-            latency = s.get("search_latency", {})
-            cells += [f"{latency.get('p50_s', 0):.4f}" if latency else ""]
+            cells = [str(s.get("system", "?")), str(s.get("system_version") or "")]
+            for column in columns:
+                value = score(s, column)
+                if value is None:
+                    cells.append("")
+                    continue
+                cell = f"{value:.3f}"
+                # `**` reads as bold in markdown and renders bold in the figure
+                cells.append(f"**{cell}**" if value == best[column] else cell)
             rows.append(cells)
         return header, rows
 
