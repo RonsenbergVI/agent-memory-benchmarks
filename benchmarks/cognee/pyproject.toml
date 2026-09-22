@@ -14,7 +14,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "amb",
-    "cognee[neo4j,postgres-binary]>=1.5,<1.6",
+    "cognee[neo4j,postgres-binary]>=1.5,<1.7",
 ]
 
 [project.entry-points."amb.systems"]
