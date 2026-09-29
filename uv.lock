@@ -825,7 +825,7 @@ wheels = [
 
 [[package]]
 name = "cognee"
-version = "1.6.0"
+version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -837,11 +837,9 @@ dependencies = [
     { name = "cryptography" },
     { name = "datamodel-code-generator" },
     { name = "diskcache" },
-    { name = "enola-cli" },
     { name = "fakeredis", extra = ["lua"] },
     { name = "fastapi" },
     { name = "fastapi-users", extra = ["sqlalchemy"] },
-    { name = "fastembed" },
     { name = "filelock" },
     { name = "filetype" },
     { name = "gunicorn" },
@@ -856,8 +854,6 @@ dependencies = [
     { name = "nbformat" },
     { name = "networkx" },
     { name = "numpy" },
-    { name = "onnxruntime", version = "1.23.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
-    { name = "onnxruntime", version = "1.30.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
     { name = "openai" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -877,9 +873,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/75/ab5be35c447022788887a1117f32a543574e38882b14a7b7bd0ccf4a579b/cognee-1.6.0.tar.gz", hash = "sha256:95a3ba7b9e6bee9efd7bff7bd4051d63542d0878675da3427b5ec0a9e8dab27a", size = 39779909, upload-time = "2026-09-18T22:50:45.761Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/47/3228a5f6051494356bf3f4aeece4a5385a714996cb0c0ace063bd2ca5c94/cognee-1.5.4.tar.gz", hash = "sha256:f1be8b050599721eb64e3b97c6f5270f7d24ca576a54837b6887262aa361b272", size = 27736566, upload-time = "2026-09-04T16:26:02.885Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4b/39/70d41b07fa842a9082973b11be749c83844fce223249b1550f2889af73ae/cognee-1.6.0-py3-none-any.whl", hash = "sha256:5cc8632c34f584af8ab66c404b5fc6627e949e02e1bd6bdc2076b95d220e1ced", size = 21035884, upload-time = "2026-09-18T22:50:42.562Z" },
+    { url = "https://files.pythonhosted.org/packages/38/0b/ce0bf8e9823be079c92aea7f8fca7a3d90468037985d84859f6b817e3c88/cognee-1.5.4-py3-none-any.whl", hash = "sha256:b12522572b5f8e9cd40a31501b94610ffeeb8fb66c8d08a82a34301357c06ac2", size = 8840526, upload-time = "2026-09-04T16:25:58.942Z" },
 ]
 
 [package.optional-dependencies]
@@ -1220,19 +1216,6 @@ wheels = [
 ]
 
 [[package]]
-name = "enola-cli"
-version = "0.4.21"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/18/f5419cf63909c1a9d99395c7e880c665d90ead40e0ea065fcd676c4342dd/enola_cli-0.4.21-py3-none-macosx_12_0_arm64.whl", hash = "sha256:fd88b9f98fcac1ecdfd914a6cf361a21c450c51a41b4bd5b5edf862c7637d442", size = 10814485, upload-time = "2026-09-18T16:10:54.417Z" },
-    { url = "https://files.pythonhosted.org/packages/f8/9c/846a526bc3e67a3d4bb55fa3483bcab5ce6b4aa46cc32b9aaeccc19a3b41/enola_cli-0.4.21-py3-none-macosx_12_0_x86_64.whl", hash = "sha256:ac7e0b1616b13b6d84e191920211b2b0e67d1f221a6dd9ffc4dc92aa4cc56ccd", size = 11304277, upload-time = "2026-09-18T16:10:56.55Z" },
-    { url = "https://files.pythonhosted.org/packages/20/8c/08310419eeea21aa63279dd5fdf6c8d937293435849e5801b867f1dd0abe/enola_cli-0.4.21-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:cfe40cf48a7babf2b709aa7474bff3429f4e0488d4c3c0fb434d14461a3c024b", size = 10412718, upload-time = "2026-09-18T16:10:58.53Z" },
-    { url = "https://files.pythonhosted.org/packages/40/92/90bf6e869718fdb0138a931229f837c95e627979900b98090bfebb9b5e9e/enola_cli-0.4.21-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b9564fe748b6093bd19105e0614c94a6505a9b3db8af21073e826cc8b2afeaec", size = 11293226, upload-time = "2026-09-18T16:11:00.847Z" },
-    { url = "https://files.pythonhosted.org/packages/ef/89/4e4d68c6341dd690abe2b31f7bd7009e7776308ef5edfa97dcd9202e9b45/enola_cli-0.4.21-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:572601e0e73808f2afe282cf36a3ef849f7e843dd1285657424df822e2fcd8be", size = 10414603, upload-time = "2026-09-18T16:11:02.928Z" },
-    { url = "https://files.pythonhosted.org/packages/82/ce/f277403d6c01d9701dfa9c8629949e1233d79d01e52b96141c34bf6aef18/enola_cli-0.4.21-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:3149c11393614820202b9c8bac4ba9de33cf65ea871b6a5c2761ff2175b63b44", size = 11291136, upload-time = "2026-09-18T16:11:05.34Z" },
-]
-
-[[package]]
 name = "et-xmlfile"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1499,7 +1482,7 @@ wheels = [
 
 [[package]]
 name = "fastembed"
-version = "0.8.0"
+version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "huggingface-hub" },
@@ -1514,9 +1497,9 @@ dependencies = [
     { name = "tokenizers" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/26/25/58865e36b6e8a9a0d0ff905b5601aa30db97956327c0df42ec4ed6accc21/fastembed-0.8.0.tar.gz", hash = "sha256:75966edfa8b006ee78514c726bd7f6a50721dadc89305279052be9db72fd53e8", size = 75115, upload-time = "2026-03-23T16:34:41.699Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/84/09d221078b6e2e2169fab52506dc2e0a6c7a9a4f0699000e9b9df55b42b2/fastembed-0.8.1.tar.gz", hash = "sha256:ad815f14873dce918f755a99f16929a1384775f91ca8a14645993a165b5f65ba", size = 82392, upload-time = "2026-09-22T20:01:24.201Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2a/e8/26b7d78bb8972498c467ca34cb12ee2e60d26ba5eae6d8443189a1af37a5/fastembed-0.8.0-py3-none-any.whl", hash = "sha256:40bee672657574a1009e35ec50030a55f2b426842cb011845379817641bbbbd0", size = 116572, upload-time = "2026-03-23T16:34:40.69Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/76/209f9f4c421853f729176c5a6ca99a9cd92b3b593390a20f9414fd333ad7/fastembed-0.8.1-py3-none-any.whl", hash = "sha256:b4f4043080af36ee820d22d2d3034df635c1a8b9764e5d2a642bc7aeb1d0e749", size = 129755, upload-time = "2026-09-22T20:01:22.789Z" },
 ]
 
 [[package]]
