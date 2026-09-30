@@ -40,6 +40,28 @@ def freshness(summaries: list[dict]) -> str:
     return f" · run {stamp}" if stamp else ""
 
 
+def spend_sweep(group: RunGroup, stem: str, metric: str) -> Chart:
+    """One metric against the hits each k actually returned, a line per system.
+
+    k is the budget the harness grants; hits per query is what a system
+    spends of it. At a matched spend, returning fewer hits than allowed
+    cannot pass for ranking better.
+    """
+    return Chart(
+        kind="lines",
+        stem=f"hits_{stem}",
+        x="hits_per_query",
+        x_label="hits returned per query (mean)",
+        y=metric,
+        out_dir=group.plot_dir,
+        summaries=group.summaries,
+        alt=f"Retrieval {pretty(stem)} vs hits returned per query",
+        title=headline(f"{pretty(metric)} vs hits returned"),
+        subtitle=f"{group.label} · {group.mode} · a point per k, "
+        f"newest run per system and k{freshness(group.summaries)}",
+    )
+
+
 @dataclass
 class Prose(Section):
     """Static blocks — a title, an introduction, a closing note."""
@@ -94,6 +116,8 @@ class GroupCharts(Section):
     # k-sweep lines; same figures (and paths) GroupSummary links, so the
     # reports' chart sets deduplicate to one drawing
     sweeps: list[Chart] = field(default_factory=list, init=False, repr=False)
+    # the same sweeps against hits returned, shared with GroupSummary likewise
+    spends: list[Chart] = field(default_factory=list, init=False, repr=False)
     # per k: its bar charts and its trade-off scatters
     sets: list[tuple[int, list[Chart], list[Chart]]] = field(
         default_factory=list, init=False, repr=False
@@ -126,6 +150,14 @@ class GroupCharts(Section):
         ]
         self.sweeps = [c for c in planned if c.has_data()]
         self.skipped += len(planned) - len(self.sweeps)
+        planned = [
+            spend_sweep(self.group, stem, metric)
+            for stem, metric in sorted(
+                metrics, key=lambda pair: SUMMARY_ORDER.index(pair[0])
+            )
+        ]
+        self.spends = [c for c in planned if c.has_data()]
+        self.skipped += len(planned) - len(self.spends)
         planned = [self._category_sweep(c) for c in self.group.categories()]
         self.category_sweeps = [c for c in planned if c.has_data()]
         self.skipped += len(planned) - len(self.category_sweeps)
@@ -235,6 +267,7 @@ class GroupCharts(Section):
         per_k = [c for _, bars, scatters in self.sets for c in (*bars, *scatters)]
         return [
             *self.sweeps,
+            *self.spends,
             *self.category_sweeps,
             *per_k,
             *self.breakdowns.values(),
@@ -267,6 +300,23 @@ class GroupCharts(Section):
                 )
             )
             blocks += [Figure(alt=c.alt, path=c.path) for c in self.sweeps]
+        if self.spends:
+            blocks.append(
+                Heading(
+                    level=self.level + 1,
+                    text=f"{self.group.label}: retrieval vs hits returned",
+                )
+            )
+            blocks.append(
+                Paragraph(
+                    text="The same sweep, placed at the hits each k actually "
+                    "returned: k is the budget granted, hits per query what a "
+                    "system spent of it. Compare systems at a matched spend, "
+                    "where returning fewer hits than allowed cannot pass for "
+                    "ranking better."
+                )
+            )
+            blocks += [Figure(alt=c.alt, path=c.path) for c in self.spends]
         if self.category_sweeps:
             blocks.append(
                 Heading(
@@ -338,6 +388,7 @@ class GroupSummary(Section):
     level: int = 3
     metric_filter: tuple[str, ...] = ()
     lines: list[Chart] = field(default_factory=list, init=False, repr=False)
+    spends: list[Chart] = field(default_factory=list, init=False, repr=False)
     # the compact table at `k` rendered as a figure: the README embeds an image
     # from plots/, where CI blocks hand edits, not editable markdown numbers
     summary: Chart | None = field(default=None, init=False, repr=False)
@@ -393,11 +444,20 @@ class GroupSummary(Section):
         ]
         self.lines = [c for c in planned if c.has_data()]
         self.skipped = len(planned) - len(self.lines) + (0 if self.summary else 1)
+        planned = [
+            spend_sweep(self.group, stem, metric)
+            for stem, metric in sorted(
+                self.group.metrics(self.metric_filter),
+                key=lambda pair: SUMMARY_ORDER.index(pair[0]),
+            )
+        ]
+        self.spends = [c for c in planned if c.has_data()]
+        self.skipped += len(planned) - len(self.spends)
 
     def charts(self) -> list[Chart]:
-        """The group's summary tables and its k-sweep charts."""
+        """The group's summary tables, its k sweeps, and their spend twins."""
         tables = [c for c in (self.summary, self.categories) if c]
-        return tables + list(self.lines)
+        return tables + list(self.lines) + list(self.spends)
 
     def blocks(self) -> list[Block]:
         """Heading, the table figure at `k`, then the sweep charts."""
@@ -413,4 +473,5 @@ class GroupSummary(Section):
         if self.categories:
             blocks.append(Figure(alt=self.categories.alt, path=self.categories.path))
         blocks += [Figure(alt=c.alt, path=c.path) for c in self.lines]
+        blocks += [Figure(alt=c.alt, path=c.path) for c in self.spends]
         return blocks

@@ -108,12 +108,14 @@ def lines(
     title: str | None = None,
     subtitle: str | None = None,
     dark: bool = False,
+    discrete: bool = True,
 ) -> Path:
     """Render one line per system over k and write it to `output`.
 
     A single-k system appears as a lone dot; styles follow sorted-name order
-    so a system keeps its colour and shape from chart to chart. Empty input
-    is the caller's job to check. Returns the path written.
+    so a system keeps its colour and shape from chart to chart. `discrete`
+    ticks exactly the x values run (k); off, a measured x gets a plain axis.
+    Empty input is the caller's job to check. Returns the path written.
     """
     fig, ax, c = styled_axes(dark)
 
@@ -132,11 +134,14 @@ def lines(
         )
 
     if series:
-        # discrete ticks at the k values run, right room for line-end labels
-        ks = sorted({x for line in series for x in line.xs})
-        span = (ks[-1] - ks[0]) or 1.0
-        ax.set_xticks(ks)
-        ax.set_xlim(ks[0] - span * 0.08, ks[-1] + span * 0.3)
+        xs = sorted({x for line in series for x in line.xs})
+        if discrete:
+            # ticks at the k values run, right room for line-end labels
+            span = (xs[-1] - xs[0]) or 1.0
+            ax.set_xticks(xs)
+            ax.set_xlim(xs[0] - span * 0.08, xs[-1] + span * 0.3)
+        else:
+            pad_axis(xs, ax.set_xlim)
         pad_axis(
             [y for line in series for y in line.ys],
             ax.set_ylim,
