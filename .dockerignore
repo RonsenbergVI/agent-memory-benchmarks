@@ -3,6 +3,8 @@
 .data
 # MemOS's generated SQLite store and logs; baking them in leaks host data and starts runs stale
 .memos
+# memvid's per-conversation .mv2 files, for the same reason
+.memvid
 report
 plots
 **/__pycache__

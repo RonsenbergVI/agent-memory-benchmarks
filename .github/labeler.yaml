@@ -46,6 +46,11 @@ memory:memos:
       - any-glob-to-any-file:
           - benchmarks/memos/**
 
+memory:memvid:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/memvid/**
+
 memory:package:
   - changed-files:
       - any-glob-to-any-file:
