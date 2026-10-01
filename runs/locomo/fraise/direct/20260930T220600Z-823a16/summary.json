@@ -1,0 +1,74 @@
+{
+  "run_id": "20260930T220600Z-823a16",
+  "system": "fraise",
+  "system_version": "0.2.2",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 1,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 19196.606459899005,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 497.73220026399986
+  },
+  "retrieval_precision": 0.6942482341069627,
+  "retrieval_recall": 0.6438189739400636,
+  "retrieval_f1": 0.6578746416158125,
+  "turn_precision": 0.3794147325933401,
+  "turn_recall": 0.34215300620446937,
+  "turn_f1": 0.35234611503531776,
+  "search_latency": {
+    "p50_s": 0.2302951149999899,
+    "p95_s": 0.329229856999973,
+    "p99_s": 0.638380099999722
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 901970,
+      "llm_output_tokens": 1821177
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 2950002.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.7645739910313901,
+      "retrieval_recall": 0.7645739910313901,
+      "retrieval_f1": 0.7645739910313901
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.5141843971631206,
+      "retrieval_recall": 0.2241064392660139,
+      "retrieval_f1": 0.304498761679613
+    },
+    "open-domain": {
+      "retrieval_precision": 0.358695652173913,
+      "retrieval_recall": 0.286425983436853,
+      "retrieval_f1": 0.3029589371980676
+    },
+    "single-hop": {
+      "retrieval_precision": 0.7669441141498217,
+      "retrieval_recall": 0.7663495838287753,
+      "retrieval_f1": 0.7665477606024574
+    },
+    "temporal": {
+      "retrieval_precision": 0.660436137071651,
+      "retrieval_recall": 0.6261682242990654,
+      "retrieval_f1": 0.6370716510903426
+    }
+  }
+}

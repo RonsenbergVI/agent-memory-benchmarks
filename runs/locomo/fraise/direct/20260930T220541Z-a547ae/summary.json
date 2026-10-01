@@ -1,0 +1,74 @@
+{
+  "run_id": "20260930T220541Z-a547ae",
+  "system": "fraise",
+  "system_version": "0.2.2",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 5,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 19083.376631364,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 484.61145823199877
+  },
+  "retrieval_precision": 0.30803060881264666,
+  "retrieval_recall": 0.8330181955055816,
+  "retrieval_f1": 0.42815319841051075,
+  "turn_precision": 0.1388328287924626,
+  "turn_recall": 0.5864590831802314,
+  "turn_f1": 0.21768780888356784,
+  "search_latency": {
+    "p50_s": 0.2270632409999962,
+    "p95_s": 0.30683427100029803,
+    "p99_s": 0.5167176179998023
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 901970,
+      "llm_output_tokens": 1827634
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 2956459.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.32002989536621834,
+      "retrieval_recall": 0.9170403587443946,
+      "retrieval_f1": 0.45717488789237753
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.360520094562648,
+      "retrieval_recall": 0.5393884385905664,
+      "retrieval_f1": 0.41386765322935554
+    },
+    "open-domain": {
+      "retrieval_precision": 0.2166666666666666,
+      "retrieval_recall": 0.5318969979296068,
+      "retrieval_f1": 0.28518021833239204
+    },
+    "single-hop": {
+      "retrieval_precision": 0.31196987713040075,
+      "retrieval_recall": 0.9179548156956004,
+      "retrieval_f1": 0.4490289338089555
+    },
+    "temporal": {
+      "retrieval_precision": 0.2611111111111113,
+      "retrieval_recall": 0.838006230529595,
+      "retrieval_f1": 0.3866636997478123
+    }
+  }
+}

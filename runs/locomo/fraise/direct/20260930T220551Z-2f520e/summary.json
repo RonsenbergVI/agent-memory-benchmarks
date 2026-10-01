@@ -1,0 +1,74 @@
+{
+  "run_id": "20260930T220551Z-2f520e",
+  "system": "fraise",
+  "system_version": "0.2.2",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 10,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 18965.956968006,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 455.3706032900009
+  },
+  "retrieval_precision": 0.17406139381416885,
+  "retrieval_recall": 0.891873888808803,
+  "retrieval_f1": 0.28122333514284825,
+  "turn_precision": 0.08415283001559279,
+  "turn_recall": 0.6907961991038237,
+  "turn_f1": 0.14607130629510182,
+  "search_latency": {
+    "p50_s": 0.21770688699962193,
+    "p95_s": 0.2867529719999311,
+    "p99_s": 0.42039089300010346
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 901970,
+      "llm_output_tokens": 1833099
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 2961924.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.16628852587372828,
+      "retrieval_recall": 0.9506726457399103,
+      "retrieval_f1": 0.2784010832217121
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.2609338061465722,
+      "retrieval_recall": 0.6797028031070587,
+      "retrieval_f1": 0.362645102781551
+    },
+    "open-domain": {
+      "retrieval_precision": 0.1565346790890268,
+      "retrieval_recall": 0.6722955486542445,
+      "retrieval_f1": 0.23796161567900695
+    },
+    "single-hop": {
+      "retrieval_precision": 0.16137062831474266,
+      "retrieval_recall": 0.9560047562425684,
+      "retrieval_f1": 0.2728624790455951
+    },
+    "temporal": {
+      "retrieval_precision": 0.14681550709588115,
+      "retrieval_recall": 0.8914849428868121,
+      "retrieval_f1": 0.24791911100322342
+    }
+  }
+}
