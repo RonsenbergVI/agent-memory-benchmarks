@@ -42,5 +42,5 @@ docs:  ## Regenerate the charts and the generated documents (RESULTS.md, README.
 	uv run amb report --latest --output RESULTS.md --summary README.md
 
 clean:  ## Remove caches and build artifacts
-	rm -rf .pytest_cache .ruff_cache dist build
+	rm -rf .pytest_cache .ruff_cache dist build .venv .data
 	find . -name __pycache__ -type d -prune -not -path "./.venv/*" -exec rm -rf {} +
