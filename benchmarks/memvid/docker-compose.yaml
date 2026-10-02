@@ -1,0 +1,29 @@
+services:
+  # memvid is a single-file store: the Rust core ships inside the
+  # memvid-sdk wheel, and each conversation is one .mv2 under MEMVID_ROOT
+  # in the container. There is no server and no database for this stack
+  # to stand up — only the runner, which reaches OpenAI for embeddings.
+  benchmark:
+    build:
+      context: ../..
+      dockerfile: benchmarks/memvid/Dockerfile
+    image: amb-memvid
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # native crashes (SIGSEGV/SIGABRT) print the failing stack, not a bare exit
+      - PYTHONFAULTHANDLER=1
+      # httpx2's (openai's HTTP stack) default truststore SSL context mutates the
+      # OpenSSL cert store per handshake and is not thread-safe — parallel workers
+      # corrupted the heap (double free -> abort). SSL_CERT_FILE forces a plain
+      # stdlib context over certifi, which is thread-safe.
+      - SSL_CERT_FILE=/amb/.venv/lib/python3.13/site-packages/certifi/cacert.pem
+      # the SDK reports every put/find to memvid.com unless told not to
+      - MEMVID_TELEMETRY=0
+      - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
+    command: run --system memvid --dataset locomo
+    volumes:
+      - ../../.data:/amb/.data
+      - ../../runs:/amb/runs
