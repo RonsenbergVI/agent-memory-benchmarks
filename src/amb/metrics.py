@@ -144,6 +144,14 @@ class Mean(Metric):
         self._total = 0.0
 
 
+class DistinctMean(Mean):
+    """Mean number of distinct values in list-valued observations."""
+
+    def accumulate(self, value: list) -> None:
+        """Add how many distinct values the observation carried."""
+        super().accumulate(len(set(value)))
+
+
 class LatencyPercentiles(Metric):
     """p50/p95/p99 over observed latencies, in seconds."""
 
@@ -323,6 +331,9 @@ def default_metrics() -> list[Metric]:
         TurnPrecision(),
         TurnRecall(),
         TurnF1(),
+        # k is the budget granted; these are what the system spent of it
+        Mean("hits_per_query", "num_hits"),
+        DistinctMean("sessions_per_query", "retrieved_session_ids"),
         AnswerF1(),
         ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),

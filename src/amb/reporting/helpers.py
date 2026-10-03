@@ -82,16 +82,17 @@ def available_metrics(summaries: list[dict]) -> list[str]:
     return sorted(paths)
 
 
-def collect_series(summaries: list[dict], metric: str) -> list[Series]:
+def collect_series(summaries: list[dict], metric: str, x: str = "k") -> list[Series]:
     """Build one line per system: `metric` at each k, newest run per (system, k).
 
-    Systems never reporting the metric are left out; series come back in
-    sorted-name order, points in k order.
+    Each point sits at `x`, k itself by default, or a measured path such as
+    `hits_per_query`. Systems never reporting both are left out; series come
+    back in sorted-name order, points in k order.
     """
     newest: dict[tuple[str, float], dict] = {}
     for summary in summaries:
         flat = flatten(summary)
-        if metric not in flat or "k" not in flat:
+        if metric not in flat or x not in flat or "k" not in flat:
             continue
         key = (str(summary.get("system", "?")), flat["k"])
         current = newest.get(key)
@@ -100,10 +101,11 @@ def collect_series(summaries: list[dict], metric: str) -> list[Series]:
         ):
             newest[key] = summary
     series: dict[str, Series] = {}
-    for (system, k), summary in sorted(newest.items()):
+    for (system, _), summary in sorted(newest.items()):
+        flat = flatten(summary)
         line = series.setdefault(system, Series(label=system))
-        line.xs.append(k)
-        line.ys.append(flatten(summary)[metric])
+        line.xs.append(flat[x])
+        line.ys.append(flat[metric])
     return [series[system] for system in sorted(series)]
 
 

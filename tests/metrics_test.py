@@ -32,6 +32,7 @@ from amb.metrics import (
     AnswerF1,
     Count,
     DictSum,
+    DistinctMean,
     ExactMatch,
     LatencyPercentiles,
     Mean,
@@ -127,6 +128,17 @@ def test_mean_counts_falsy_but_present_booleans() -> None:
         metric.update_state(_q(judge_correct=verdict))
     assert metric.count == 3
     assert metric.result() == pytest.approx(2 / 3)
+
+
+def test_distinct_mean_counts_each_value_once_per_record() -> None:
+    # graphiti edges cite several episodes, so one session can repeat in a row
+    metric = DistinctMean("sessions_per_query", "retrieved_session_ids")
+    metric.update_state(_q(retrieved_session_ids=["s1", "s1", "s2"]))
+    metric.update_state(_q(retrieved_session_ids=["s3"]))
+    metric.update_state(_q(retrieved_session_ids=[]))
+    metric.update_state(_q())  # no provenance: not a zero, just absent
+    assert metric.count == 3
+    assert metric.result() == 1.0
 
 
 def test_sum_hand_computed() -> None:
@@ -524,6 +536,15 @@ def test_default_metrics_load_bearing_entries() -> None:
     judge = by_name["judge_accuracy"]
     assert isinstance(judge, Mean)
     assert judge.key == "judge_correct"
+
+    # undotted on purpose: top-level floats are what the tables pick up
+    hits = by_name["hits_per_query"]
+    assert type(hits) is Mean
+    assert hits.key == "num_hits"
+
+    sessions = by_name["sessions_per_query"]
+    assert isinstance(sessions, DistinctMean)
+    assert sessions.key == "retrieved_session_ids"
 
 
 def test_default_metrics_cover_both_retrieval_levels() -> None:
