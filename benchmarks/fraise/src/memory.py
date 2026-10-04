@@ -23,12 +23,12 @@
 """Fraise (RonsenbergVI/fraise) — hybrid full-text + graph memory database.
 
 Needs a running fraise server (docker-compose.yaml here), named by
-FRAISE_BASE_URL. The SDK has no extractor, so direct-mode ingestion runs
-one in the adapter: every message is stored verbatim, and gpt-5-mini
-(the same ingestion model as every other system) tags each one with the
-topics and entities that drive fraise's filtering and graph walk. The
-SDK's OpenAIEmbedder (text-embedding-3-small) encodes messages and
-queries in-process, so token spend is visible to the OpenAIUsageTracker.
+FRAISE_BASE_URL. Direct-mode ingestion stores every message verbatim, and
+the SDK's OpenAIExtractor — gpt-5-mini, the same ingestion model as every
+other system — files each one under the topics and entities that drive
+fraise's filtering and graph walk. The SDK's OpenAIEmbedder
+(text-embedding-3-small) encodes messages and queries. Both run
+in-process, so token spend is visible to the OpenAIUsageTracker.
 In agentic mode the driving agent is the extractor. ``--param
 model=none`` drops the tagger; ``--param embedding_model=none`` drops
 the embedder; both give fraise's stock hybrid retrieval with no LLM or
@@ -47,25 +47,13 @@ delete, so teardown is a no-op — the server runs without a volume and
 each `up` starts empty.
 """
 
-import json
 import os
-import re
 import zlib
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import ClassVar
 
 from amb.base import Memory
-from amb.contracts import MemoryHit, Session, Turn
+from amb.contracts import MemoryHit, Session
 from amb.logs import logger
-
-if TYPE_CHECKING:
-    from openai.types.chat import ChatCompletionMessageParam
-    from openai.types.chat.completion_create_params import ResponseFormat
-
-# gpt-5-mini's hidden reasoning tokens share the completion budget and vary
-# call to call; uncapped, a long reasoning pass truncated the JSON mid-string
-# (observed json.JSONDecodeError). 16k is generous headroom for one
-# message's tags.
-EXTRACTION_MAX_COMPLETION_TOKENS = 16000
 
 DEFAULT_INGESTION_MODEL = "gpt-5-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
@@ -73,23 +61,6 @@ DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 DEFAULT_RECALL_DEPTH = 2
 # must match the server's -num-graphs (the compose file sets 256)
 DEFAULT_NUM_GRAPHS = 256
-
-EXTRACTION_SYSTEM_PROMPT = """\
-You are tagging one conversation message for a memory database. Return
-the topics the message is about — short tags a later search could filter
-on (e.g. "travel", "health") — and the entities it names: the people,
-places, organizations, and things. Return empty lists when the message
-is pure filler."""
-
-_TAGS_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "topics": {"type": "array", "items": {"type": "string"}},
-        "entities": {"type": "array", "items": {"type": "string"}},
-    },
-    "required": ["topics", "entities"],
-    "additionalProperties": False,
-}
 
 
 class FraiseMemory(Memory):
@@ -141,22 +112,20 @@ class FraiseMemory(Memory):
         return super().version()
 
     def setup(self) -> None:
-        """Connect to the fraise server, with an embedder when one is configured."""
+        """Connect to the fraise server, with whichever providers are configured."""
         from fraise_sdk import FraiseClient
+        from fraise_sdk.providers.openai import OpenAIEmbedder, OpenAIExtractor
 
         embedder = None
         if self.embedding_model:
-            from fraise_sdk.providers import OpenAIEmbedder
-
             embedder = OpenAIEmbedder(
                 model=self.embedding_model,
                 dimensions=self.embedding_dimensions,
             )
-        self.client = FraiseClient(self.base_url, embedder=embedder)
-        if self.model:
-            from openai import OpenAI
-
-            self._openai = OpenAI()
+        extractor = OpenAIExtractor(model=self.model) if self.model else None
+        self.client = FraiseClient(
+            self.base_url, embedder=embedder, extractor=extractor
+        )
 
     def _graph(self, conversation_id: str) -> int:
         """The conversation's own graph — a stable hash over the server's pool.
@@ -168,16 +137,6 @@ class FraiseMemory(Memory):
         """
         return zlib.crc32(conversation_id.encode()) % self.num_graphs
 
-    @staticmethod
-    def _tokens(values: list[str] | None) -> list[str]:
-        """Free-form topics/entities as FQL tokens.
-
-        The grammar splits on whitespace, so multi-word values are
-        hyphenated to survive as a single filter.
-        """
-        tokens = (re.sub(r"[^A-Za-z0-9]+", "-", v).strip("-") for v in values or [])
-        return [t for t in tokens if t]
-
     def store(
         self,
         conversation_id: str,
@@ -187,10 +146,12 @@ class FraiseMemory(Memory):
         turn_ids: list[str],
         topics: list[str] | None = None,
         entities: list[str] | None = None,
+        extract: bool = False,
     ) -> None:
         """Remember one value in the conversation's graph, under its forced anchors.
 
-        `turn_ids` feed the local provenance map that search reads back.
+        `turn_ids` feed the local provenance map that search reads back;
+        `extract` also files the value under the extractor's anchors.
         """
         # FQL phrases have no apostrophe escape; the typographic swap
         # round-trips identically, which the provenance map relies on
@@ -198,9 +159,9 @@ class FraiseMemory(Memory):
         remember_topics = [
             f"conv-{conversation_id}",
             f"session-{session_id}",
-            *self._tokens(topics),
+            *(t for t in topics or [] if t.strip()),
         ]
-        remember_entities = self._tokens(entities)
+        remember_entities = [e for e in entities or [] if e.strip()]
         graph = self._graph(conversation_id)
         try:
             self.client.remember(
@@ -208,6 +169,7 @@ class FraiseMemory(Memory):
                 graph=graph,
                 topics=remember_topics,
                 entities=remember_entities,
+                extract=extract,
             )
         except Exception:
             # a 400 here has been a live FQL-grammar edge case (e.g. "found
@@ -235,77 +197,18 @@ class FraiseMemory(Memory):
     def ingest_session(self, conversation_id: str, session: Session) -> None:
         """Store every message, tagged with topics and entities when a model is set.
 
-        The message text is stored verbatim either way — the extractor only
-        contributes the tags that drive fraise's filtering and graph walk —
-        so a failed extraction costs the tags, never the message.
+        The SDK stores the text verbatim either way — the extractor only adds
+        anchors — so a failed extraction costs the tags, never the message.
         """
         for turn in session.turns:
-            topics: list[str] = []
-            entities = [turn.speaker]
-            if self.model:
-                tags = self._extract_tags(conversation_id, session, turn)
-                topics = [t for t in tags["topics"] if t.strip()]
-                entities += [
-                    e for e in tags["entities"] if e.strip() and e != turn.speaker
-                ]
             self.store(
                 conversation_id,
                 f"{turn.speaker}: {turn.text}",
                 session_id=session.session_id,
                 turn_ids=[turn.turn_id],
-                topics=topics,
-                entities=entities,
+                entities=[turn.speaker],
+                extract=self.model is not None,
             )
-
-    def _extract_tags(
-        self, conversation_id: str, session: Session, turn: Turn
-    ) -> dict[str, list[str]]:
-        """One extraction call: the message in, its topics and entities out.
-
-        A truncated/malformed response is logged and treated as no tags —
-        the message is stored untagged rather than failing the run.
-        """
-        messages: list[ChatCompletionMessageParam] = [
-            {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
-            {"role": "user", "content": f"{turn.speaker}: {turn.text}"},
-        ]
-        # the cast bridges the nested-schema dict the checker cannot narrow
-        response_format = cast(
-            "ResponseFormat",
-            {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "tags",
-                    "strict": True,
-                    "schema": _TAGS_SCHEMA,
-                },
-            },
-        )
-        # setup() builds self._openai only when a model is set
-        assert self.model is not None
-        response = self._openai.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            max_completion_tokens=EXTRACTION_MAX_COMPLETION_TOKENS,
-            response_format=response_format,
-        )
-        choice = response.choices[0]
-        # refusal/empty completion has content=None — same exit as bad JSON
-        if choice.message.content is not None:
-            try:
-                tags = json.loads(choice.message.content)
-                return {"topics": tags["topics"], "entities": tags["entities"]}
-            except (json.JSONDecodeError, KeyError):
-                pass
-        logger.bind(scope="fraise").warning(
-            "{}/{}: tag extraction unparseable for {} (finish_reason={}); "
-            "storing the message untagged",
-            conversation_id,
-            session.session_id,
-            turn.turn_id,
-            choice.finish_reason,
-        )
-        return {"topics": [], "entities": []}
 
     def recall_hits(
         self,
