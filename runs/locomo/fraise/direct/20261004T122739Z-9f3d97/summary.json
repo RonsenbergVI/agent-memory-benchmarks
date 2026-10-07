@@ -1,0 +1,74 @@
+{
+  "run_id": "20261004T122739Z-9f3d97",
+  "system": "fraise",
+  "system_version": "0.3.0",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 10,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 19015.903380911,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 543.6364425400006
+  },
+  "retrieval_precision": 0.17842787468165927,
+  "retrieval_recall": 0.9003067288132879,
+  "retrieval_f1": 0.2876370860759758,
+  "turn_precision": 0.08309329419319117,
+  "turn_recall": 0.681282429219513,
+  "turn_f1": 0.1440894131445874,
+  "search_latency": {
+    "p50_s": 0.26694212300026265,
+    "p95_s": 0.3338186420000966,
+    "p99_s": 0.480914856999334
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 907758,
+      "llm_output_tokens": 1728303
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 2862916.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.1720424941276966,
+      "retrieval_recall": 0.9753363228699552,
+      "retrieval_f1": 0.28870624890804353
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.2661023865811102,
+      "retrieval_recall": 0.6794269953844423,
+      "retrieval_f1": 0.36757238496913125
+    },
+    "open-domain": {
+      "retrieval_precision": 0.1503838854382332,
+      "retrieval_recall": 0.6392339544513458,
+      "retrieval_f1": 0.2281701390397042
+    },
+    "single-hop": {
+      "retrieval_precision": 0.16538040503557758,
+      "retrieval_recall": 0.9678953626634959,
+      "retrieval_f1": 0.27885985727840684
+    },
+    "temporal": {
+      "retrieval_precision": 0.1524983929189538,
+      "retrieval_recall": 0.8878504672897196,
+      "retrieval_f1": 0.25596732792994514
+    }
+  }
+}

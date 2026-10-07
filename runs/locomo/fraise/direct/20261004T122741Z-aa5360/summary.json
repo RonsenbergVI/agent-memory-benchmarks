@@ -1,0 +1,74 @@
+{
+  "run_id": "20261004T122741Z-aa5360",
+  "system": "fraise",
+  "system_version": "0.3.0",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 3,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 18171.494133715998,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 467.2083427090006
+  },
+  "retrieval_precision": 0.4842751429532498,
+  "retrieval_recall": 0.8129568897858502,
+  "retrieval_f1": 0.576726432553877,
+  "turn_precision": 0.2053481331987869,
+  "turn_recall": 0.5332418160880906,
+  "turn_f1": 0.28768819475176627,
+  "search_latency": {
+    "p50_s": 0.22909012899981462,
+    "p95_s": 0.3044830059998276,
+    "p99_s": 0.4106044189993554
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 907758,
+      "llm_output_tokens": 1734658
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 2869271.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.5358744394618844,
+      "retrieval_recall": 0.9327354260089686,
+      "retrieval_f1": 0.6524663677130037
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.450945626477541,
+      "retrieval_recall": 0.45763959248001795,
+      "retrieval_f1": 0.4360307737967316
+    },
+    "open-domain": {
+      "retrieval_precision": 0.29347826086956513,
+      "retrieval_recall": 0.4354296066252588,
+      "retrieval_f1": 0.3222222222222223
+    },
+    "single-hop": {
+      "retrieval_precision": 0.5188267934997998,
+      "retrieval_recall": 0.9167657550535078,
+      "retrieval_f1": 0.634958382877529
+    },
+    "temporal": {
+      "retrieval_precision": 0.4060228452751813,
+      "retrieval_recall": 0.7949117341640706,
+      "retrieval_f1": 0.5154724818276218
+    }
+  }
+}
