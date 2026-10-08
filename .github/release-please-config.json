@@ -171,6 +171,19 @@
           "jsonpath": "$.package[?(@.name.value=='langmem-benchmark')].version"
         }
       ]
+    },
+    "benchmarks/memvid": {
+      "release-type": "python",
+      "component": "memvid",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='memvid')].version"
+        }
+      ]
     }
   }
 }
