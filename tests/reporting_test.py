@@ -129,3 +129,27 @@ def test_table_figure_strips_the_emphasis_markers(tmp_path):
         output=tmp_path / "t.png",
     )
     assert path.stat().st_size > 0
+
+
+def test_summary_table_shows_what_each_system_spent_of_k():
+    # k is granted; a system returning fewer hits must not read as ranking better
+    from amb.reporting.run import ComparisonReport
+
+    spent = {
+        "run_id": "20260901T000000Z",
+        "system": "alpha",
+        "dataset": "locomo",
+        "k": 10,
+        "retrieval_f1": 0.323,
+        "hits_per_query": 5.5745,
+        "sessions_per_query": 5.452,
+    }
+    older = {"run_id": "20260801T000000Z", "system": "beta", "dataset": "locomo"}
+    header, rows = ComparisonReport([spent, {**older, "k": 10}]).summary_table(10)
+    hits, sessions = header.index("hits/q"), header.index("sessions/q")
+    assert sessions == hits + 1
+    assert rows[0][hits] == "5.57"
+    assert rows[0][sessions] == "5.45"
+    # a run scored before the metrics existed is blank, not 0.00
+    assert rows[1][hits] == ""
+    assert rows[1][sessions] == ""

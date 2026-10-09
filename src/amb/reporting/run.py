@@ -39,6 +39,8 @@ SUMMARY_COLUMNS = (
     ("retrieval_precision", "precision", "{:.3f}"),
     ("retrieval_recall", "recall", "{:.3f}"),
     ("retrieval_f1", "F1", "{:.3f}"),
+    ("hits_per_query", "hits/q", "{:.2f}"),
+    ("sessions_per_query", "sessions/q", "{:.2f}"),
     ("memory_tokens_total", "memory tokens", "{:,.0f}"),
 )
 

@@ -47,8 +47,10 @@ class Chart:
     alt: str = ""
     title: str = ""
     subtitle: str = ""
+    # scatter's x; on lines, a measured x in place of k
     x: str | None = None
-    # axis text when `y` is a dotted path no reader should see
+    # axis text when a metric path is not what a reader should see
+    x_label: str | None = None
     y_label: str | None = None
     k: int | None = None
     better: str | None = None
@@ -81,7 +83,7 @@ class Chart:
                     for line in helpers.collect_series(scoped, self.y)
                 ]
             case "lines":
-                return helpers.collect_series(scoped, self.y)
+                return helpers.collect_series(scoped, self.y, self.x or "k")
             case "scatter":
                 return helpers.collect_points(scoped, self.x or "", self.y)
             case "table":
@@ -150,12 +152,13 @@ class Chart:
             case "lines":
                 return plots.lines(
                     data,
-                    x_label="k (hits requested per query)",
+                    x_label=self.x_label or self.x or "k (hits requested per query)",
                     y_label=self.y_label or self.y,
                     output=output,
                     title=self.title,
                     subtitle=self.subtitle,
                     dark=dark,
+                    discrete=self.x is None,
                 )
             case "scatter":
                 floor = self.baseline()

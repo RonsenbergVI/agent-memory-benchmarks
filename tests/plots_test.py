@@ -122,3 +122,45 @@ def test_lines_draws_thirty_two_systems(tmp_path: Path) -> None:
         Series(label=f"system-{i:02d}", xs=[1, 10], ys=[0.1, 0.4]) for i in range(32)
     ]
     assert lines(series, "k", "F1", tmp_path / "thirtytwo.png").stat().st_size > 0
+
+
+def _swept(system: str, k: int, hits: float, f1: float) -> dict:
+    return {**_summary(system, f1), "k": k, "hits_per_query": hits}
+
+
+def test_spend_sweep_places_each_k_at_the_hits_it_returned(tmp_path: Path) -> None:
+    from amb.reporting.report import RunGroup
+    from amb.reporting.sections import spend_sweep
+
+    group = RunGroup(
+        key=(("dataset", "locomo"),),
+        summaries=[
+            _swept("aaa", 3, 1.83, 0.64),
+            _swept("aaa", 10, 5.57, 0.32),
+            _swept("bbb", 3, 3.0, 0.55),
+            _swept("bbb", 10, 10.0, 0.28),
+        ],
+    )
+    chart = spend_sweep(group, "f1", "retrieval_f1")
+    lines = {line.label: line for line in chart.data()}
+    assert lines["aaa"].xs == [1.83, 5.57]
+    assert lines["bbb"].xs == [3.0, 10.0]
+    assert lines["aaa"].ys == [0.64, 0.32]
+    chart.out_dir = tmp_path
+    path = chart.draw()
+    assert path is not None
+    assert path.stat().st_size > 0
+
+
+def test_spend_sweep_is_dropped_for_runs_scored_before_it(tmp_path: Path) -> None:
+    # published summaries predate hits_per_query: no data, so no dead link
+    from amb.reporting.report import RunGroup
+    from amb.reporting.run import ComparisonReport
+    from amb.reporting.sections import GroupSummary, spend_sweep
+
+    summaries = [_summary("aaa", 0.5)]
+    group = RunGroup(key=(("dataset", "locomo"),), summaries=summaries)
+    assert not spend_sweep(group, "f1", "retrieval_f1").has_data()
+    section = GroupSummary(group, ComparisonReport(summaries), k=10)
+    assert section.spends == []
+    assert not any(c.stem.startswith("hits_") for c in section.charts())
