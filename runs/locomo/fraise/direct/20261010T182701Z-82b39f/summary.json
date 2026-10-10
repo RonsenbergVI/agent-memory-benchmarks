@@ -1,0 +1,76 @@
+{
+  "run_id": "20261010T182701Z-82b39f",
+  "system": "fraise",
+  "system_version": "0.3.2",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 10,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 15178.555145734997,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 451.2310251340008
+  },
+  "retrieval_precision": 0.25502498678583346,
+  "retrieval_recall": 0.8925896561113512,
+  "retrieval_f1": 0.37686557472127624,
+  "turn_precision": 0.09322997890101573,
+  "turn_recall": 0.7647096189789251,
+  "turn_f1": 0.16210631329878192,
+  "hits_per_query": 10.0,
+  "sessions_per_query": 4.770433905146317,
+  "search_latency": {
+    "p50_s": 0.20110552500000267,
+    "p95_s": 0.27133659099990837,
+    "p99_s": 0.37580069599994204
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 907758,
+      "llm_output_tokens": 1708899
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 2843512.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.2536007900918219,
+      "retrieval_recall": 0.968609865470852,
+      "retrieval_f1": 0.388175314969038
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.33355707531239476,
+      "retrieval_recall": 0.640850500956884,
+      "retrieval_f1": 0.4163576769959749
+    },
+    "open-domain": {
+      "retrieval_precision": 0.20775103519668733,
+      "retrieval_recall": 0.6238354037267081,
+      "retrieval_f1": 0.29010995043603727
+    },
+    "single-hop": {
+      "retrieval_precision": 0.24939556084026832,
+      "retrieval_recall": 0.9631391200951248,
+      "retrieval_f1": 0.3818573882188617
+    },
+    "temporal": {
+      "retrieval_precision": 0.2163106364040947,
+      "retrieval_recall": 0.9003115264797508,
+      "retrieval_f1": 0.33824403357113697
+    }
+  }
+}

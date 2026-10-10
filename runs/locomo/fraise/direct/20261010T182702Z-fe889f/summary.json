@@ -1,0 +1,76 @@
+{
+  "run_id": "20261010T182702Z-fe889f",
+  "system": "fraise",
+  "system_version": "0.3.2",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 5,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 15320.679704797,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 451.79735210300055
+  },
+  "retrieval_precision": 0.4561722166162157,
+  "retrieval_recall": 0.8414051863597775,
+  "retrieval_f1": 0.5544894447053325,
+  "turn_precision": 0.15327951564076328,
+  "turn_recall": 0.6529839367481084,
+  "turn_f1": 0.24154009881809663,
+  "hits_per_query": 5.0,
+  "sessions_per_query": 2.6564076690211906,
+  "search_latency": {
+    "p50_s": 0.2137127999999393,
+    "p95_s": 0.2947190530003354,
+    "p99_s": 0.46788857899991854
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 907758,
+      "llm_output_tokens": 1719978
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 2854591.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.4841928251121083,
+      "retrieval_recall": 0.9439461883408071,
+      "retrieval_f1": 0.6069506726457395
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.4488179669030732,
+      "retrieval_recall": 0.5111603624901501,
+      "retrieval_f1": 0.4503020019257424
+    },
+    "open-domain": {
+      "retrieval_precision": 0.2902173913043477,
+      "retrieval_recall": 0.5201216356107661,
+      "retrieval_f1": 0.33937433339607254
+    },
+    "single-hop": {
+      "retrieval_precision": 0.4941934205311119,
+      "retrieval_recall": 0.9381688466111772,
+      "retrieval_f1": 0.611375346809355
+    },
+    "temporal": {
+      "retrieval_precision": 0.3716510903426788,
+      "retrieval_recall": 0.8276220145379023,
+      "retrieval_f1": 0.4857439549028338
+    }
+  }
+}
