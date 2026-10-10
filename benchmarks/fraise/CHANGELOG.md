@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.5.0...fraise/v0.6.0) (2026-10-10)
+
+
+### Maintenance
+
+* **fraise:** move to server v0.3.2 ([#219](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/219)) ([1709579](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/1709579fa044294e9b44d19aa97f6714e3c25356))
+
 ## [0.5.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.4.0...fraise/v0.5.0) (2026-10-04)
 
 
