@@ -1,7 +1,7 @@
 services:
   fraise:
-    # v0.3.2 (commit d123199b), pinned by digest
-    image: ghcr.io/fraisehq/fraise@sha256:5796b4d589b7572428fe04fc683128baa7c2561c9fa08f62bda62bc7dd74fd1f
+    # v0.3.3 (commit 1e25318c), pinned by digest
+    image: ghcr.io/fraisehq/fraise@sha256:89af8ea78817d73306152a75d3c7655c933d16636d396d940bdf5aaf17390c5c
     # one graph per conversation (the SDK selector's uint8 ceiling); the
     # adapter's num_graphs param must match
     command: ["-num-graphs", "256"]
