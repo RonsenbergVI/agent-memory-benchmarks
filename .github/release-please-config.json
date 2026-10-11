@@ -171,6 +171,19 @@
           "jsonpath": "$.package[?(@.name.value=='langmem-benchmark')].version"
         }
       ]
+    },
+    "benchmarks/honcho": {
+      "release-type": "python",
+      "component": "honcho",
+      "tag-separator": "/",
+      "versioning": "always-bump-minor",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='honcho-benchmark')].version"
+        }
+      ]
     }
   }
 }

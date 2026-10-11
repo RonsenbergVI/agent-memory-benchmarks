@@ -22,6 +22,7 @@ members = [
     "fraise",
     "graphiti",
     "hindsight-benchmark",
+    "honcho-benchmark",
     "langmem-benchmark",
     "letta",
     "mem0",
@@ -2036,6 +2037,34 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e4/e9/d2880efde91a89980a3ecaf70c0a59742cfcddf8282855b8f6d6636328dd/hindsight_client-0.10.2.tar.gz", hash = "sha256:0d1cb80a4cc0aff9b4b74219c39af302eb65af47c8aa4f113114a22bcd416b4f", size = 200987, upload-time = "2026-09-29T09:41:52.904Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f4/08/fef2d8ce6bad91a6ea3dd9c9f02812457fdc2e9f9e08fdb3f03fbd6aad97/hindsight_client-0.10.2-py3-none-any.whl", hash = "sha256:6843e625d813333a42ca4bff38e8cab39b58ec6ed5a33d7eb596f71e16c7ef64", size = 447714, upload-time = "2026-09-29T09:41:51.337Z" },
+]
+
+[[package]]
+name = "honcho-ai"
+version = "2.5.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/80/e8/84757cf30415acc842b0fff9107918fda5387b28dccc3d42ab8376a95ca1/honcho_ai-2.5.1.tar.gz", hash = "sha256:6169731c76f83298afcf080057ba6774eb679e5aab1de4b74bb3a271e1a9dde3", size = 68412, upload-time = "2026-09-24T20:15:17.2Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/00/2e/d08dc0670f0665780b15f05efff5c62742728648da43a820f78cefbca550/honcho_ai-2.5.1-py3-none-any.whl", hash = "sha256:ef354c086b05d911b8f9db14cc552488ffd332e57947ee0378bbb3657f51cd7e", size = 79186, upload-time = "2026-09-24T20:15:18.425Z" },
+]
+
+[[package]]
+name = "honcho-benchmark"
+version = "0.1.0"
+source = { editable = "benchmarks/honcho" }
+dependencies = [
+    { name = "amb" },
+    { name = "honcho-ai" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amb", editable = "." },
+    { name = "honcho-ai", specifier = ">=2.5.1,<2.6" },
 ]
 
 [[package]]

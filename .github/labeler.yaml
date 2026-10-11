@@ -26,6 +26,11 @@ memory:hindsight:
       - any-glob-to-any-file:
           - benchmarks/hindsight/**
 
+memory:honcho:
+  - changed-files:
+      - any-glob-to-any-file:
+          - benchmarks/honcho/**
+
 memory:langmem:
   - changed-files:
       - any-glob-to-any-file:
