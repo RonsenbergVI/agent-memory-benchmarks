@@ -26,7 +26,9 @@ Needs a running fraise server (docker-compose.yaml here), named by
 FRAISE_BASE_URL. Direct-mode ingestion stores every message verbatim, and
 the SDK's OpenAIExtractor — gpt-5-mini, the same ingestion model as every
 other system — files each one under the topics and entities that drive
-fraise's filtering and graph walk. The SDK's OpenAIEmbedder
+fraise's filtering and graph walk, reading it beside the graph's last
+three messages and its most-used anchors (context the client keeps per
+graph, so per conversation here). The SDK's OpenAIEmbedder
 (text-embedding-3-small) encodes messages and queries. Both run
 in-process, so token spend is visible to the OpenAIUsageTracker.
 In agentic mode the driving agent is the extractor. ``--param
