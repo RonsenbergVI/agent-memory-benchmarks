@@ -1,0 +1,76 @@
+{
+  "run_id": "20261011T173508Z-dbf1c2",
+  "system": "fraise",
+  "system_version": "0.3.3",
+  "dataset": "locomo",
+  "variant": null,
+  "mode": "direct",
+  "k": 1,
+  "model": null,
+  "judge_model": null,
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "gpt-5-mini",
+  "embedding_model": "text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 24466.408198102,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 405.44647778799754
+  },
+  "retrieval_precision": 0.7250252270433906,
+  "retrieval_recall": 0.6759125782839204,
+  "retrieval_f1": 0.689426465170663,
+  "turn_precision": 0.39606458123107974,
+  "turn_recall": 0.3620985878680128,
+  "turn_f1": 0.3713869267855138,
+  "hits_per_query": 1.0,
+  "sessions_per_query": 1.0,
+  "search_latency": {
+    "p50_s": 0.1958166650001658,
+    "p95_s": 0.2495739579990186,
+    "p99_s": 0.31208182299997134
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 5882,
+      "embedding_tokens": 202786,
+      "llm_calls": 5882,
+      "llm_input_tokens": 3981495,
+      "llm_output_tokens": 3248022
+    },
+    "search_total": 24069
+  },
+  "errors": 0,
+  "memory_tokens_total": 7456372.0,
+  "by_category": {
+    "adversarial": {
+      "retrieval_precision": 0.8183856502242153,
+      "retrieval_recall": 0.8183856502242153,
+      "retrieval_f1": 0.8183856502242153
+    },
+    "multi-hop": {
+      "retrieval_precision": 0.5035460992907801,
+      "retrieval_recall": 0.21592508161657112,
+      "retrieval_f1": 0.29498339524935285
+    },
+    "open-domain": {
+      "retrieval_precision": 0.34782608695652173,
+      "retrieval_recall": 0.2746506211180124,
+      "retrieval_f1": 0.2908471359558316
+    },
+    "single-hop": {
+      "retrieval_precision": 0.8097502972651606,
+      "retrieval_recall": 0.8091557669441142,
+      "retrieval_f1": 0.8093539437177963
+    },
+    "temporal": {
+      "retrieval_precision": 0.67601246105919,
+      "retrieval_recall": 0.6479750778816199,
+      "retrieval_f1": 0.6568016614745587
+    }
+  }
+}
