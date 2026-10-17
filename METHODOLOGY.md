@@ -12,59 +12,27 @@ How the benchmark is designed and run: design principles, evaluation axes, the h
 
 ## Evaluation axes
 
-The benchmark measures systems across the following axes:
+Every run's summary reports these axes (the metric set is `default_metrics()` in `src/amb/metrics.py`):
 
-### Recall accuracy
+### Answer accuracy
 
-Does the system surface the right facts when asked? Measured against ground-truth labels on multi-turn conversations where the agent must recall earlier-mentioned facts.
+Did the agent, searching the system, answer correctly? `judge_accuracy` is the share of questions the judge grades correct, with its 95% Wilson interval (`judge_accuracy_ci`), also broken down by the dataset's question category (LoCoMo: single-hop, multi-hop, temporal, open-domain, adversarial; LongMemEval: its `question_type`s). Token-overlap `answer_f1` and `exact_match` are computed too but never headlined.
 
-- **Single-hop recall**: agent recalls a fact mentioned earlier in the same conversation.
-- **Multi-hop recall**: agent recalls a fact connected via relationships to the query.
-- **Temporal recall**: agent recalls the most recent fact when multiple versions exist.
-- **Cross-session recall**: agent recalls facts from prior sessions in a new session. Metric: F1 on retrieved fact set against ground truth.
+### Retrieval
+
+Did the agent's searches surface the evidence? Retrieved ids are scored against the dataset's evidence labels as two separate families: session-level `retrieval_precision/recall/f1` (every system can attest a memory's session) and turn-level `turn_precision/recall/f1` (only verbatim-turn stores, like naive). Session-level recall is the diagnostic published beside accuracy; precision mostly measures how sparingly the agent searched, so it is not headlined. `hits_per_query` and `sessions_per_query` show how much of the `--k` budget each search used.
 
 ### Latency
 
-End-to-end query latency including any LLM calls the memory system makes during recall.
+`ingest.total_s` (summed ingestion), plus p50/p95/p99 of per-question `search_latency` (the time spent in all of the agent's searches for that question) and `answer_latency` (the whole agent turn).
 
-Metric: p50, p95, p99 over fixed query workloads.
+### Token spend
 
-### Token efficiency
+The memory system's own spend, `memory_tokens.ingest` and `memory_tokens.search_total`, counted by its spend tracker (`usage_coverage` records how). The question agent's tokens are reported separately per question (`tokens.input_per_question` / `output_per_question`) and never counted as memory spend.
 
-How many input + output tokens does the agent's interaction with the memory system consume per useful recall? Lower is better.
+### Not measured yet
 
-Metric: average tokens per useful recall, separated by input and output.
-
-### Memory footprint
-
-RAM per stored fact (where measurable) and total memory growth over a fixed conversation length.
-
-Metric: bytes per fact, total bytes after N facts.
-
-### Setup complexity
-
-How many lines of glue code does the agent integration require? How many external dependencies? How many configuration knobs to get a working setup?
-
-Metric: SLOC of integration code, dependency count, required config fields.
-
-### Update semantics
-
-What does the system do when an existing fact is updated, removed, or contradicted?
-
-Reported qualitatively as a feature matrix.
-
-## Test corpora
-
-The benchmark uses two corpora:
-
-- LoCoMo
-- LongMemEval
-
-each with different characteristics:
-
-1. **Conversational** (5,000 facts across 200 sessions) — synthetic conversations between an agent and a user, with ground-truth recall queries embedded at varying time offsets.
-2. **Knowledge stream** (10,000 facts) — parsed knowledge from a small domain (e.g., Wikipedia subset), with structured queries that require multi-hop reasoning.
-3. **Long-horizon** (1,000 facts over 100 sessions) — extreme cross-session recall test, where facts mentioned weeks of conversation ago must be surfaced in current context. Corpora and their generation scripts are published in `/data/`.
+Memory footprint (bytes per stored fact), setup complexity (integration SLOC, dependencies, config knobs) and update semantics (what happens when a fact is updated, removed or contradicted) are on the roadmap. No run reports them today.
 
 ## Harness design
 
@@ -73,11 +41,11 @@ The repo is a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspa
 - **`src/amb`** — the evaluation library only: the normalized conversation schema, dataset loaders (LoCoMo, LongMemEval), metrics, the pydantic-ai answer agent + LLM judge, the `Runner` that executes a benchmark, the `amb` CLI, and a `naive` BM25 baseline. It knows nothing about specific memory systems.
 - **`benchmarks/<provider>/`** — one workspace package per integration (like `dbt-postgres` against `dbt-core`). Each implements the base classes from `amb.base`: a `Memory` subclass (`memory.py`) and its specialized `Benchmark` subclass (`benchmark.py`), registered under the `amb.systems` entry-point group so `amb run` invokes the integration's own object. Each also ships its own `pyproject.toml`, a standalone uv `Dockerfile`, and a `docker-compose.yaml` wiring any backing database (Neo4j for Graphiti, the Fraise server, ...) to the benchmark runner.
 
-**A benchmark declares, the runner executes, callbacks measure.** A `Benchmark` says *what* is under test (which `MemorySystem`, its `--param`s, the search tools it exposes to the agent, the callbacks that meter it) and never sees a `RunConfig` — the same split HuggingFace draws between a model and its `Trainer`. `amb.runner.Runner` owns the protocol: sample selection, the turn budget, parallelism, direct vs agentic. It records nothing itself; every phase is bracketed by a hook, and everything a run reports about itself — latencies from `TimingTracker`, token spend from `OpenAIUsageTracker` — is produced by an observer attached to those hooks. So a new axis of measurement is a new callback, never an edit to the loop, and `Runner.core_callback_classes` attaches the ones no run may be missing before any the benchmark declares:
+**A benchmark declares, the runner executes, callbacks measure.** A `Benchmark` says *what* is under test (which `MemorySystem`, its `--param`s, the search tools it exposes to the agent, the callbacks that meter it) and never sees a `RunConfig` — the same split HuggingFace draws between a model and its `Trainer`. `amb.runner.Runner` owns the protocol: sample selection, the turn budget, the question budget, parallelism. It records nothing itself; every phase is bracketed by a hook, and everything a run reports about itself — latencies from `TimingTracker`, token spend from `OpenAIUsageTracker` — is produced by an observer attached to those hooks. So a new axis of measurement is a new callback, never an edit to the loop, and `Runner.core_callback_classes` attaches the ones no run may be missing before any the benchmark declares:
 
 ```python
-data = Runner(FraiseBenchmark(params={"model": "gpt-5-mini"}),
-              RunConfig(dataset="locomo", k=10)).run()
+data = Runner(FraiseBenchmark(params={"model": "openai:gpt-5-mini"}),
+              RunConfig(dataset="locomo", model="anthropic:claude-haiku-5-5", k=10)).run()
 ```
 
 Every experiment is the same pipeline — **ingest → qa → evaluation** — measured the way an agent uses memory:
@@ -88,7 +56,7 @@ Every experiment is the same pipeline — **ingest → qa → evaluation** — m
 
 There is no retrieval-only mode: earlier releases scored a harness-driven search on retrieval F1, and those results were withdrawn — they measured a search engine, not memory in an agent.
 
-`Runner.run()` does: setup -> ingest sessions (timed) -> per question: the agent searches (each search timed) and answers -> record retrieval against evidence labels -> teardown. Judging is an **evaluation** step, not part of the run: `amb judge <run-dir>` (or `amb run --judge` as a convenience) grades saved predictions, and can re-grade them with a different judge without re-running the system. Every run automatically writes its JSON report (`summary.json`, per-question `results.jsonl`, `ingest.json`) to `runs/<dataset>/<system>/<run-id>/` in the repo (`runs/<dataset>/<variant>/<system>/<run-id>/` when the run named a `--variant` — a different dataset variant is a different experiment, not a different run of the same one, so it gets its own path level) — the Docker environments volume-mount `runs/` so containerized runs land there too. `ComparisonReport` aggregates saved runs into the final cross-system comparison (`amb report`), and `amb.reporting` turns that comparison into the published documents: [RESULTS.md](RESULTS.md) and the [README's results section](README.md#results) are generated, never hand-edited. Each report is a list of sections, and **a section declares the charts it shows and links exactly those** — so `amb plot all` draws precisely the figures the documents reference, and a new dataset, variant, or model generation adds a section (and its own `plots/` directory) by appearing in `runs/`, with no code change.
+`Runner.run()` does: setup -> ingest sessions (timed) -> per question: the agent searches (each search timed) and answers -> record retrieval against evidence labels -> teardown. Judging is an **evaluation** step, not part of the run: `amb judge <run-dir>` (or `amb run --judge` as a convenience) grades saved predictions, and can re-grade them with a different judge without re-running the system. Every run automatically writes its JSON report (`summary.json`, per-question `results.jsonl`, `ingest.json`) to `runs/<dataset>/<system>/<run-id>/` in the repo (`runs/<dataset>/<variant>/<system>/<run-id>/` when the run named a `--variant` — a different dataset variant is a different experiment, not a different run of the same one, so it gets its own path level) — the Docker environments volume-mount `runs/` so containerized runs land there too. `ComparisonReport` aggregates saved runs into the final cross-system comparison (`amb report`), and `amb.reporting` turns that comparison into the published document: [RESULTS.md](RESULTS.md) is generated, never hand-edited. The [README's results section](README.md#results) is hand-written and embeds the generated charts by path. Each report is a list of sections, and **a section declares the charts it shows and links exactly those** — so `amb plot all` draws precisely the figures the documents reference, and a new dataset, variant, or model generation adds a section (and its own `plots/` directory) by appearing in `runs/`, with no code change.
 
 ## Datasets
 
@@ -160,7 +128,7 @@ The gap between `xs` and `xs-shared` is what a shared history costs, on identica
 A run uses two independent sets of models, and they are worth keeping straight because they measure different things:
 
 - **Ingestion models** — what the *memory system* calls internally to extract and embed facts. This is the system under test, and it dominates run cost.
-- **Answering models** — what the *harness* calls to answer benchmark questions and (with `--judge`) grade them: amb's question agent and judge. This is the evaluator, and it should stay fixed while you compare memory systems. The published runs use `anthropic:claude-haiku-5-5` for both (needs `ANTHROPIC_API_KEY`).
+- **Answering models** — what the *harness* calls to answer benchmark questions and (with `--judge`) grade them: amb's question agent and judge. This is the evaluator, and it should stay fixed while you compare memory systems. The published runs use `anthropic:claude-haiku-5-5` for both (needs `ANTHROPIC_API_KEY`), and as every system's `--llm`, with `openai:text-embedding-3-small` as its `--embedding`.
 
 Every model is chosen on the command line — there are no model environment variables, so a run is fully described by its command:
 
@@ -197,8 +165,8 @@ Hindsight extracts inside its server, so its compose stack is configured from th
 
 **Run parameters are CLI-only; infrastructure is environment-only.** Nothing is settable both ways, so a benchmark's behaviour never depends on ambient state — the command fully describes the run, and the same command means the same thing on any machine.
 
-- **CLI** — everything that changes what a run measures: models, `--limit` / `--turns` / `--questions`, `--data-dir`, `--report-dir`, and dataset sources.
-- **Environment** — only where things live and how to authenticate: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `HF_TOKEN`, and the database endpoints (`QDRANT_HOST` / `QDRANT_PORT`, `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD`, `FRAISE_BASE_URL`). The compose files set the endpoints; locally they default to localhost.
+- **CLI** — everything that changes what a run measures: models, `--limit` / `--turns` / `--questions`, `--data-dir`, `--runs-dir`, and dataset sources.
+- **Environment** — only where things live and how to authenticate: `OPENAI_API_KEY` (and `OPENAI_BASE_URL`), `ANTHROPIC_API_KEY`, `HF_TOKEN`, and the endpoints and storage roots (`QDRANT_HOST` / `QDRANT_PORT`, `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD`, `FRAISE_BASE_URL`, `HINDSIGHT_BASE_URL`, `LANGMEM_DATABASE_URL`, `COGNEE_ROOT`, `EVEROS_ROOT`). The compose files set the endpoints; locally they default to localhost.
 
 `src/amb` reads no environment variables at all; only the `benchmarks/*` adapters do, and only for their endpoints, each with a localhost default. One repo-root `.env` can hold every integration's variables at once — the compose files pass it through, and unrelated variables are ignored.
 
@@ -236,12 +204,12 @@ Consequences worth knowing before planning a run:
 - **A turn budget makes the scores partial, so the run is marked.** Questions whose evidence falls outside the budget are skipped rather than scored — they are unanswerable by construction, and scoring them would blame the memory system for data it never received. The count lands in the report as `ingest.questions_dropped`. Truncated runs record `max_turns` and form a separate identity in `amb report --latest`, so a smoke run can never displace a real one.
 - **The two flags compose in that order: filter, then cap.** `--questions N` gives you N *answerable* questions, not N candidates of which some are dead. On one LoCoMo conversation, `--turns 100` leaves 59 of 199 questions answerable; adding `--questions 5` asks 5 of those 59.
 - **Runs can be scaled out and amortized.** `--workers N` runs conversations in parallel (they are independent; sessions within each stay ordered — verified to produce byte-identical scores to a serial run). `--seed N` draws `--limit` conversations at random but reproducibly, and the seed is recorded in the summary and the comparison identity. `--keep` skips teardown so the store retains this run's memories; a later `--reuse` run skips ingestion entirely and queries the store as-is — the report charges `ingest_s: 0` and marks each sample `reused`. **`--reuse` trusts you that the store matches the scope**: run it with the same dataset/limit/turns as the `--keep` run that populated it.
-- **Retrieval is scored at the level each system can attest.** Systems citing turns (naive) score turn-level; systems citing sessions (mem0, graphiti) score session-level. The level is recorded per row and summarised as `retrieval_levels` — never compare recall across levels.
+- **Retrieval is scored at every level the labels and the hits both support**, as two metric families that never share a name: session-level `retrieval_*`, which every system can attest, and turn-level `turn_*`, which only verbatim-turn stores (naive) can. Comparisons use only the session-level columns. Hits with no provenance at any labelled level are excluded with a warning rather than scored 0.
 - **The filter trusts the dataset's evidence labels.** A question is kept when every evidence turn it names was ingested (or, for session-level labels, when the whole evidence session was). Where labels are incomplete — a multi-hop question needing context the labels don't list — a kept question can still be harder than it would be on the full corpus.
 
 ## Ingestion cost
 
-Ingestion is serial and, for LLM-backed systems, is the dominant cost of a run. Measured with Mem0 (`gpt-5-mini` extraction, Qdrant) on one LoCoMo conversation — 19 sessions / 419 turns in **17.7 min**, one extraction LLM call per session, 269k LLM tokens:
+Ingestion is serial within a sample and, for LLM-backed systems, is the dominant cost of a run. Measured with Mem0 (`gpt-5-mini` extraction, Qdrant; the published runs now extract with `claude-haiku-5-5`, which has not been timed) on one LoCoMo conversation — 19 sessions / 419 turns in **17.7 min**, one extraction LLM call per session, 269k LLM tokens:
 
 | Dataset | Corpus | Mem0 ingestion | `naive` ingestion |
 | --- | --- | --- | --- |
@@ -252,17 +220,15 @@ Ingestion is serial and, for LLM-backed systems, is the dominant cost of a run. 
 | LongMemEval `xs` | 151 histories, 293 sessions, 3,346 turns | ~3.5 h | seconds |
 | LongMemEval `xs-shared` | 20 histories, 343 sessions, 3,807 turns | ~4 h | seconds |
 
-The LoCoMo and `oracle` rows are measured end to end — `oracle` from the full 500-instance runs in `runs/longmemeval/oracle/`, where Mem0 sums 11.2–11.9 h of ingestion across its four k values. The `s` and `m` rows extrapolate LoCoMo's throughput (~13.6 source tokens/s, ~2.5 s/turn) by corpus size, and their instance counts come from published sizes rather than a downloaded corpus. Treat those two as orders of magnitude, not schedules. The `xs` rows are extrapolated too, but from measured rates on the same kind of sessions: their corpus sizes are measured from the cut, and Mem0's time per session is the same on LoCoMo and `oracle` (41 s and 45 s), giving 3.3–3.7 h for `xs` and 3.9–4.3 h for `xs-shared`.
+The LoCoMo and `oracle` rows are measured end to end — `oracle` from the full 500-instance runs formerly in `runs/longmemeval/oracle/` (withdrawn with the retrieval-only results in #242, which did not change ingestion; still in git history), where Mem0 sums 11.2–11.9 h of ingestion across its four k values. The `s` and `m` rows extrapolate LoCoMo's throughput (~13.6 source tokens/s, ~2.5 s/turn) by corpus size, and their instance counts come from published sizes rather than a downloaded corpus. Treat those two as orders of magnitude, not schedules. The `xs` rows are extrapolated too, from the measured `oracle` row: their corpus sizes are measured from the cut, and `oracle`'s evidence sessions are those same ones (13.1M characters), so scaling `oracle`'s Mem0 time by sessions or by characters gives 31–37 h for `xs` and 15–16 h for `xs-shared`.
 
-Which unit to scale by depends on the system, and the withdrawn retrieval-era runs (`gpt-5-mini` extraction) show it: Mem0 (41 → 45 s) and Graphiti (16 → 18 s) hold their time per *session* across LoCoMo and `oracle`, while fraise (3.2 → 3.5 s) and Letta (0.38 → 0.39 s) hold their time per *turn*. LongMemEval sessions are about half as long as LoCoMo's (median 12 turns against 20), so no cut matches LoCoMo on both: `xs-shared` lands near 1.25× LoCoMo's ingestion for session-bound systems and 0.65× for turn-bound ones, `xs` near 1.1× and 0.57×. Another extraction model moves the rates, not these ratios, since LoCoMo and the cuts scale by the same unit.
-
-Every figure above is *summed* ingestion — the total across all conversations, which is what the reports record and which does not shrink with `--workers`. Wall clock does: `--workers 3` measures ~2.3x on LoCoMo (2.99 h summed, 1.28 h elapsed), the parallel speedup being sublinear because conversations differ in length and the run waits on the longest. Summed across `oracle`, Graphiti measures 4.1 h, Fraise 10.6 h and Mem0 11.8 h, which at that speedup puts Fraise near 4.6 h and Mem0 near 5.1 h of wall clock against CI's six-hour ceiling. That thin headroom is what the [dataset tiers](README.md#dataset-tiers) rule protects: past roughly 40 s/session there is none left.
+Every figure above is *summed* ingestion — the total across all conversations, which is what the reports record and which does not shrink with `--workers`. Wall clock does: `--workers 3` measures ~2.3x on LoCoMo (2.99 h summed, 1.28 h elapsed), the parallel speedup being sublinear because conversations differ in length and the run waits on the longest. Summed across `oracle`, Graphiti measures 4.1 h, Fraise 10.6 h and Mem0 11.8 h, which at that speedup puts Fraise near 4.6 h and Mem0 near 5.1 h of wall clock against CI's six-hour ceiling: past roughly 40 s/session there is no headroom left.
 
 The practical consequence: **LoCoMo, LongMemEval `oracle`, `xs` and `xs-shared` are whole-dataset runs today; `s` and `m` are not.** For those, scope the run with `--limit` and `--turns` and report what you scoped, or expect a multi-day job. Each LongMemEval instance carries its own haystack, so its cost is per question — halving `--limit` halves the run.
 
 ### Persistent stores
 
-Each integration's database keeps its data in a named Docker volume (`qdrant-storage`, `neo4j-data`/`neo4j-logs`), so a store survives `docker compose ... down` and a crashed or interrupted run does not throw away the ingestion you already paid for. To start from an empty store:
+Each database-backed integration keeps its data in a named Docker volume (`qdrant-storage` for mem0, `neo4j-data`/`neo4j-logs` for graphiti, `memos-neo4j-data`/`memos-neo4j-logs`, and `cognee-pgdata`, `hindsight-pgdata`, `langmem-pgdata`), so a store survives `docker compose ... down` and a crashed or interrupted run does not throw away the ingestion you already paid for. To start from an empty store:
 
 ```bash
 docker compose -f benchmarks/mem0/docker-compose.yaml down -v   # -v drops the volume
