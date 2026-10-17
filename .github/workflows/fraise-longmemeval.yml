@@ -1,18 +1,18 @@
-name: Benchmark memos
+name: Benchmark fraise longmemeval
 
 on:
   push:
     # micro is always 0 under the major.minor release scheme; the
     # strict patterns keep a hand-pushed patch or prerelease tag from
     # starting paid benchmark runs
-    tags: ["v[0-9]+.[0-9]+.0", "memos/v[0-9]+.[0-9]+.0"]
+    tags: ["v[0-9]+.[0-9]+.0", "fraise/v[0-9]+.[0-9]+.0"]
   workflow_dispatch:
 
-# one memos benchmark run at a time; a second trigger queues rather than
+# one fraise benchmark run at a time; a second trigger queues rather than
 # interleaving runs/ artifacts. Other frameworks' workflows run in
 # parallel — publishing is serialized by the publish job's own group.
 concurrency:
-  group: benchmark-memos
+  group: benchmark-fraise-longmemeval
 
 permissions:
   contents: write
@@ -29,13 +29,11 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: a new integration earns its longmemeval jobs once it has a
-# green locomo run to stand on. The oracle cells are the long, expensive
-# half of the matrix, and there is no sense spending on them while the
-# cheap half is still unproven.
+# longmemeval xs only: 151 questions over their own evidence, sized to
+# ingest in about locomo's time; locomo runs from fraise-locomo.yml
 jobs:
-  locomo:
-    name: memos / locomo / k${{ matrix.k }}
+  xs:
+    name: fraise / longmemeval xs / k${{ matrix.k }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -57,21 +55,30 @@ jobs:
 
       # pulled on the runner; the compose stack volume-mounts .data/
       - name: Pull the dataset
-        run: uv run amb datasets pull locomo
+        run: uv run amb datasets pull longmemeval --variant xs
+
+      # the fraise image lives on ghcr; login makes the pull work whether
+      # the package is public or private to this owner
+      - name: Log in to ghcr
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run the benchmark
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          docker compose -f benchmarks/memos/docker-compose.yaml \
-            run --build --rm benchmark run --system memos \
-            --dataset locomo \
+          docker compose -f benchmarks/fraise/docker-compose.yaml \
+            run --build --rm benchmark run --system fraise \
+            --dataset longmemeval --variant xs \
             --llm "$LLM" --embedding "$EMBEDDING" \
             --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
             --workers 3 \
             --k ${{ matrix.k }}
-          docker compose -f benchmarks/memos/docker-compose.yaml down -v
+          docker compose -f benchmarks/fraise/docker-compose.yaml down -v
 
       # the run id + attempt make the name unique, so a later identical run
       # (or a job re-run) gets its own artifact instead of colliding with or
@@ -79,14 +86,14 @@ jobs:
       - name: Upload run data
         uses: actions/upload-artifact@v7
         with:
-          name: runs-memos-locomo-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: runs-fraise-longmemeval-xs-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: runs/
           if-no-files-found: error
           retention-days: 5
 
   publish:
     name: publish results to main
-    needs: [locomo]
+    needs: [xs]
     # always: every cell that finished uploaded its artifact, so whatever
     # completed still lands and the documents regenerate even when some failed
     if: always()
@@ -143,5 +150,5 @@ jobs:
       - name: Commit results to main
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "results: memos benchmark run for ${{ github.ref_name }}"
+          commit_message: "results: fraise longmemeval benchmark run for ${{ github.ref_name }}"
           file_pattern: "runs plots RESULTS.md"

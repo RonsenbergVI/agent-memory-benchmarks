@@ -1,4 +1,4 @@
-name: Benchmark everos
+name: Benchmark everos longmemeval
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 # interleaving runs/ artifacts. Other frameworks' workflows run in
 # parallel — publishing is serialized by the publish job's own group.
 concurrency:
-  group: benchmark-everos
+  group: benchmark-everos-longmemeval
 
 permissions:
   contents: write
@@ -29,13 +29,11 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: a new integration earns its longmemeval jobs once it has a
-# green locomo run to stand on. The oracle cells are the long, expensive
-# half of the matrix, and there is no sense spending on them while the
-# cheap half is still unproven.
+# longmemeval xs only: 151 questions over their own evidence, sized to
+# ingest in about locomo's time; locomo runs from everos-locomo.yml
 jobs:
-  locomo:
-    name: everos / locomo / k${{ matrix.k }}
+  xs:
+    name: everos / longmemeval xs / k${{ matrix.k }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -57,7 +55,7 @@ jobs:
 
       # pulled on the runner; the compose stack volume-mounts .data/
       - name: Pull the dataset
-        run: uv run amb datasets pull locomo
+        run: uv run amb datasets pull longmemeval --variant xs
 
       - name: Run the benchmark
         env:
@@ -66,7 +64,7 @@ jobs:
         run: |
           docker compose -f benchmarks/everos/docker-compose.yaml \
             run --build --rm benchmark run --system everos \
-            --dataset locomo \
+            --dataset longmemeval --variant xs \
             --llm "$LLM" --embedding "$EMBEDDING" \
             --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
             --workers 3 \
@@ -79,14 +77,14 @@ jobs:
       - name: Upload run data
         uses: actions/upload-artifact@v7
         with:
-          name: runs-everos-locomo-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: runs-everos-longmemeval-xs-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: runs/
           if-no-files-found: error
           retention-days: 5
 
   publish:
     name: publish results to main
-    needs: [locomo]
+    needs: [xs]
     # always: every cell that finished uploaded its artifact, so whatever
     # completed still lands and the documents regenerate even when some failed
     if: always()
@@ -143,5 +141,5 @@ jobs:
       - name: Commit results to main
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "results: everos benchmark run for ${{ github.ref_name }}"
+          commit_message: "results: everos longmemeval benchmark run for ${{ github.ref_name }}"
           file_pattern: "runs plots RESULTS.md"

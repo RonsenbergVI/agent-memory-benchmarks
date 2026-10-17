@@ -1,4 +1,4 @@
-name: Benchmark hindsight
+name: Benchmark hindsight locomo
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 # interleaving runs/ artifacts. Other frameworks' workflows run in
 # parallel — publishing is serialized by the publish job's own group.
 concurrency:
-  group: benchmark-hindsight
+  group: benchmark-hindsight-locomo
 
 permissions:
   contents: write
@@ -29,10 +29,7 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: a new integration earns its longmemeval jobs once it has a
-# green locomo run to stand on. The oracle cells are the long, expensive
-# half of the matrix, and there is no sense spending on them while the
-# cheap half is still unproven.
+# locomo only: longmemeval runs from hindsight-longmemeval.yml
 jobs:
   locomo:
     name: hindsight / locomo / k${{ matrix.k }}
@@ -147,5 +144,5 @@ jobs:
       - name: Commit results to main
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "results: hindsight benchmark run for ${{ github.ref_name }}"
+          commit_message: "results: hindsight locomo benchmark run for ${{ github.ref_name }}"
           file_pattern: "runs plots RESULTS.md"

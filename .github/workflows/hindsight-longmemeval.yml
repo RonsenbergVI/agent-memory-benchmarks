@@ -1,18 +1,18 @@
-name: Benchmark mem0
+name: Benchmark hindsight longmemeval
 
 on:
   push:
     # micro is always 0 under the major.minor release scheme; the
     # strict patterns keep a hand-pushed patch or prerelease tag from
     # starting paid benchmark runs
-    tags: ["v[0-9]+.[0-9]+.0", "mem0/v[0-9]+.[0-9]+.0"]
+    tags: ["v[0-9]+.[0-9]+.0", "hindsight/v[0-9]+.[0-9]+.0"]
   workflow_dispatch:
 
-# one mem0 benchmark run at a time; a second trigger queues rather than
+# one hindsight benchmark run at a time; a second trigger queues rather than
 # interleaving runs/ artifacts. Other frameworks' workflows run in
 # parallel — publishing is serialized by the publish job's own group.
 concurrency:
-  group: benchmark-mem0
+  group: benchmark-hindsight-longmemeval
 
 permissions:
   contents: write
@@ -29,14 +29,11 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: LongMemEval is paused, not dropped. The oracle variant
-# hands every system a small candidate set, so the field compresses into
-# 0.856-0.993 F1 — a full run per system for a nearly flat table. It
-# rejoins when a battery has room for a third dataset; the results it
-# already produced stay published.
+# longmemeval xs only: 151 questions over their own evidence, sized to
+# ingest in about locomo's time; locomo runs from hindsight-locomo.yml
 jobs:
-  locomo:
-    name: mem0 / locomo / k${{ matrix.k }}
+  xs:
+    name: hindsight / longmemeval xs / k${{ matrix.k }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -58,21 +55,25 @@ jobs:
 
       # pulled on the runner; the compose stack volume-mounts .data/
       - name: Pull the dataset
-        run: uv run amb datasets pull locomo
+        run: uv run amb datasets pull longmemeval --variant xs
 
       - name: Run the benchmark
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # the server's LLM key follows LLM's provider; empty keeps OpenAI's
+          HINDSIGHT_API_LLM_API_KEY: ${{ startsWith(env.LLM, 'anthropic:') && secrets.ANTHROPIC_API_KEY || '' }}
         run: |
-          docker compose -f benchmarks/mem0/docker-compose.yaml \
-            run --build --rm benchmark run --system mem0 \
-            --dataset locomo \
+          # extraction runs inside the server: compose configures it from --llm's halves
+          export HINDSIGHT_API_LLM_PROVIDER="${LLM%%:*}" HINDSIGHT_API_LLM_MODEL="${LLM#*:}"
+          docker compose -f benchmarks/hindsight/docker-compose.yaml \
+            run --build --rm benchmark run --system hindsight \
+            --dataset longmemeval --variant xs \
             --llm "$LLM" --embedding "$EMBEDDING" \
             --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
             --workers 3 \
             --k ${{ matrix.k }}
-          docker compose -f benchmarks/mem0/docker-compose.yaml down -v
+          docker compose -f benchmarks/hindsight/docker-compose.yaml down -v
 
       # the run id + attempt make the name unique, so a later identical run
       # (or a job re-run) gets its own artifact instead of colliding with or
@@ -80,14 +81,14 @@ jobs:
       - name: Upload run data
         uses: actions/upload-artifact@v7
         with:
-          name: runs-mem0-locomo-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: runs-hindsight-longmemeval-xs-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: runs/
           if-no-files-found: error
           retention-days: 5
 
   publish:
     name: publish results to main
-    needs: [locomo]
+    needs: [xs]
     # always: every cell that finished uploaded its artifact, so whatever
     # completed still lands and the documents regenerate even when some failed
     if: always()
@@ -144,5 +145,5 @@ jobs:
       - name: Commit results to main
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "results: mem0 benchmark run for ${{ github.ref_name }}"
+          commit_message: "results: hindsight longmemeval benchmark run for ${{ github.ref_name }}"
           file_pattern: "runs plots RESULTS.md"
