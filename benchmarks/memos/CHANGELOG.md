@@ -11,6 +11,11 @@
 
 * agent-only runs scored by judge accuracy, on Anthropic ([#242](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/242)) ([ab65ceb](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/ab65ceb6b395aab0ec32dc9f9f4cda67e73e11ca))
 
+
+### Maintenance
+
+* **main:** release memos 0.2.0 ([#246](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/246)) ([f7aaad4](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/f7aaad4291eabbcbda654d21d8e04dcd1a73bb02))
+
 ## 0.1.0 (2026-09-17)
 
 
