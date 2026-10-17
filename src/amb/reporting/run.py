@@ -27,18 +27,19 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from amb.base import Metric, Report
-from amb.constants import DEFAULT_RUNS_DIR
+from amb.constants import CI_SUFFIX, DEFAULT_RUNS_DIR, HEADLINE
 from amb.contracts import Run
 from amb.metrics import default_category_metrics, default_metrics
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
 
-# the summary table's columns: (summary key, column label, format)
+# the summary table's columns: (summary key, column label, format); an
+# interval column renders its `low–high` bounds
 SUMMARY_COLUMNS = (
-    ("retrieval_precision", "precision", "{:.3f}"),
+    ("judge_accuracy", "accuracy", "{:.3f}"),
+    ("judge_accuracy_ci", "95% CI", "{:.3f}"),
     ("retrieval_recall", "recall", "{:.3f}"),
-    ("retrieval_f1", "F1", "{:.3f}"),
     ("hits_per_query", "hits/q", "{:.2f}"),
     ("sessions_per_query", "sessions/q", "{:.2f}"),
     ("memory_tokens_total", "memory tokens", "{:,.0f}"),
@@ -109,7 +110,6 @@ class RunReport(Report):
             "system_version": self.run.system_version,
             "dataset": self.run.dataset,
             "variant": self.run.variant,
-            "mode": self.run.mode,
             "k": self.run.k,
             "model": self.run.model,
             "judge_model": self.run.judge_model,
@@ -195,7 +195,7 @@ class RunReport(Report):
     # -- persistence -----------------------------------------------------
 
     def run_dir(self, root: Path | None = None) -> Path:
-        """`<root>/<dataset>[/<variant>]/<system>/<mode>/<run_id>`.
+        """`<root>/<dataset>[/<variant>]/<system>/<run_id>`.
 
         The variant level appears only when the run named one; without it,
         variants (e.g. LongMemEval oracle/s/m — a different experiment each)
@@ -204,7 +204,7 @@ class RunReport(Report):
         parts = [self.run.dataset]
         if self.run.variant:
             parts.append(self.run.variant)
-        parts += [self.run.system, self.run.mode, self.run.run_id]
+        parts += [self.run.system, self.run.run_id]
         return (root or DEFAULT_RUNS_DIR).joinpath(*parts)
 
     def save(self, root: Path | None = None) -> Path:
@@ -239,7 +239,6 @@ class RunReport(Report):
                 system=summary["system"],
                 dataset=summary["dataset"],
                 variant=summary.get("variant"),
-                mode=summary.get("mode", "direct"),
                 k=summary.get("k", 10),
                 model=summary.get("model"),
                 judge_model=summary.get("judge_model"),
@@ -285,7 +284,6 @@ class ComparisonReport(Report):
         "variant",
         "system",
         "system_version",
-        "mode",
         "k",
         "ingestion_model",
         "embedding_model",
@@ -334,7 +332,7 @@ class ComparisonReport(Report):
         return cls(summaries)
 
     def latest(self) -> "ComparisonReport":
-        """Only the newest run per identity (dataset, system, mode, models)."""
+        """Only the newest run per identity (dataset, system, k, models, ...)."""
         newest: dict[tuple, dict] = {}
         for s in self.summaries:
             key = tuple(
@@ -365,14 +363,14 @@ class ComparisonReport(Report):
     def summary_table(
         self, k: int = 10, dataset: str | None = None, variant: str | None = None
     ) -> tuple[list[str], list[list[str]]]:
-        """Build the compact table: newest run per system at one k, best F1 first.
+        """Build the compact table: newest run per system at one k, most accurate first.
 
         `dataset` must scope to one dataset — ranking "newest per system"
         across several would mix unrelated exams. `variant` scopes further and
         is required whenever the dataset has more than one variant present.
 
         Returns:
-            The header labels and the formatted rows, ranked best F1 first.
+            The header labels and the formatted rows, most accurate first.
         """
         ranked = self._ranked_at_k(k, dataset, variant)
         header = ["system", "version", "last run"]
@@ -396,7 +394,7 @@ class ComparisonReport(Report):
         k: int,
         dataset: str | None = None,
         variant: str | None = None,
-        metric: str = "retrieval_f1",
+        metric: str = HEADLINE,
     ) -> list[dict]:
         """The newest run per system at one k, ranked best `metric` first.
 
@@ -426,11 +424,11 @@ class ComparisonReport(Report):
         k: int = 10,
         dataset: str | None = None,
         variant: str | None = None,
-        metric: str = "retrieval_f1",
+        metric: str = HEADLINE,
     ) -> tuple[list[str], list[list[str]]]:
         """Build the per-question-category table: a system per row, a type per column.
 
-        The headline number says which system retrieves best; this says what
+        The headline number says which system answers best; this says what
         it is good at. Columns are the categories the runs in scope actually
         report, so a dataset that labels its questions differently needs no
         change here. A system that has no run for a category leaves the cell
@@ -487,6 +485,11 @@ class ComparisonReport(Report):
         says "n/a" — a blank would read as a missing datum, not a property.
         """
         coverage = summary.get("usage_coverage", "full")
+        if key.endswith(CI_SUFFIX):
+            bounds = summary.get(key) or {}
+            if not bounds.get("n"):
+                return ""
+            return f"{fmt.format(bounds['low'])}–{fmt.format(bounds['high'])}"
         if key in summary:
             cell = fmt.format(summary[key])
             if key == "memory_tokens_total" and coverage == "partial":

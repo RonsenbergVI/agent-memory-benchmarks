@@ -20,7 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from datetime import UTC, datetime
+
 from pydantic import BaseModel, Field
+
+# the loaders' timestamp shapes: LoCoMo's, then LongMemEval's
+TIMESTAMP_FORMATS = ("%I:%M %p on %d %B, %Y", "%Y/%m/%d (%a) %H:%M", "%Y-%m-%d")
 
 
 class Turn(BaseModel):
@@ -38,6 +43,15 @@ class Session(BaseModel):
     session_id: str
     timestamp: str | None = None
     turns: list[Turn] = Field(default_factory=list)
+
+    def time(self) -> datetime | None:
+        """The session's in-world time (UTC), or None when absent or unparseable."""
+        for fmt in TIMESTAMP_FORMATS:
+            try:
+                return datetime.strptime(self.timestamp or "", fmt).replace(tzinfo=UTC)
+            except ValueError:
+                continue
+        return None
 
     def __str__(self) -> str:
         """Render the session as plain text for systems that ingest prose."""

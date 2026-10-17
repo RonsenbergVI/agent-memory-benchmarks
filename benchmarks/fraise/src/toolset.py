@@ -22,18 +22,18 @@
 
 """Fraise's native tool surface for `--mode agentic`.
 
-The agent drives fraise's own verbs, `remember` and `recall`; the adapter
-always routes to the conversation's own graph and adds the `conv-<id>`
-anchor, so conversation isolation is never left to the agent.
+The answering agent drives fraise's own `recall`; ingestion stays the
+adapter's tagged per-message `remember`. The adapter always routes to the
+conversation's own graph and adds the `conv-<id>` anchor, so conversation
+isolation is never left to the agent.
 """
 
 import re
 import time
 from typing import Any
 
-from amb.agent.toolset import IngestToolset, SearchToolset
+from amb.agent.toolset import SearchToolset
 from amb.base import Memory
-from amb.contracts import Session
 from src.memory import FraiseMemory
 
 
@@ -87,61 +87,3 @@ class FraiseSearchToolset(SearchToolset):
             k=self.k,
         )
         return self.record(hits, time.perf_counter() - t0)
-
-
-class FraiseIngestToolset(IngestToolset):
-    """Fraise's remember, exposed to the ingesting agent."""
-
-    def __init__(
-        self,
-        memory: Memory,
-        conversation_id: str,
-        session: Session,
-        **kwargs: Any,
-    ) -> None:
-        """Bind the toolset to one session and expose remember."""
-        super().__init__(memory, conversation_id, session, **kwargs)
-        self.add_function(self.remember, name="remember")
-
-    @property
-    def fraise(self) -> FraiseMemory:
-        """The bound system, typed to its concrete class."""
-        assert isinstance(self.memory, FraiseMemory)
-        return self.memory
-
-    def remember(
-        self,
-        fact: str,
-        source_turn_ids: list[str],
-        topics: list[str] | None = None,
-        entities: list[str] | None = None,
-    ) -> str:
-        """Store one fact in the memory database.
-
-        Args:
-            fact: One self-contained statement worth remembering, phrased so
-                a later search can find it.
-            source_turn_ids: The ids of the turns the fact came from, exactly
-                as shown in the transcript.
-            topics: Topic tags for later filtering (e.g. "travel", "health").
-            entities: People or things the fact is about (e.g. speaker names).
-
-        Returns:
-            Whether the fact was stored.
-        """
-        cited = [t for t in source_turn_ids if t in self.turn_ids()]
-        if not cited:
-            return "not stored: none of the cited turn ids exist in this session"
-        t0 = time.perf_counter()
-        self.fraise.store(
-            self.conversation_id,
-            fact,
-            session_id=self.session.session_id,
-            turn_ids=cited,
-            topics=[_slug(t) for t in topics or [] if _slug(t)],
-            entities=[e.replace("'", "’") for e in entities or []],
-        )
-        self.record_write(time.perf_counter() - t0)
-        if len(cited) < len(source_turn_ids):
-            return "stored, but unknown turn ids were dropped from the citation"
-        return "stored"

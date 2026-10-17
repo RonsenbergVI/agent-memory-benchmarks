@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import importlib
+
 import click
 import pytest
 from click.testing import CliRunner
@@ -113,6 +115,8 @@ def test_run_params_reach_callback_coerced(monkeypatch):
             "s",
             "--dataset",
             "d",
+            "--model",
+            "test",
             "--param",
             "reasoning=false",
             "--param",
@@ -130,7 +134,13 @@ def test_run_params_reach_callback_coerced(monkeypatch):
     )
     # --param k=5 configures the system; the run's own --k keeps its default
     assert received["k"] == 10
-    assert received["mode"] == "direct"
+    assert received["model"] == "test"
+
+
+def test_run_requires_a_question_agent_model():
+    result = CliRunner().invoke(cli, ["run", "--system", "s", "--dataset", "d"])
+    assert result.exit_code == 2
+    assert "--model" in result.output
 
 
 def test_run_requires_system_and_dataset():
@@ -192,3 +202,47 @@ def test_rejects_unknown_log_level():
     result = CliRunner().invoke(cli, ["--log-level", "verbose", "systems"])
     assert result.exit_code == 2
     assert "--log-level" in result.output
+
+
+def test_run_routes_llm_and_embedding_into_system_params(monkeypatch):
+    seen = {}
+
+    def fake_benchmark(params):
+        seen.update(params)
+        raise SystemExit(0)
+
+    # the package re-exports the command under the module's own name
+    module = importlib.import_module("amb.cli.commands.run")
+    monkeypatch.setattr(
+        module,
+        "get_benchmark",
+        lambda name: type("E", (), {"benchmark_class": lambda self: fake_benchmark})(),
+    )
+    CliRunner().invoke(
+        cli,
+        [
+            "run",
+            "--system",
+            "s",
+            "--dataset",
+            "d",
+            "--model",
+            "test",
+            "--llm",
+            "anthropic:claude-haiku-5-5",
+            "--embedding",
+            "none",
+        ],
+    )
+    assert seen == {"model": "anthropic:claude-haiku-5-5", "embedding_model": None}
+
+
+@pytest.mark.parametrize("key", ["model", "embedding_model"])
+def test_run_refuses_models_through_param(key):
+    result = CliRunner().invoke(
+        cli,
+        ["run", "--system", "s", "--dataset", "d", "--model", "test"]
+        + ["--param", f"{key}=x"],
+    )
+    assert result.exit_code == 1
+    assert "use --llm / --embedding" in result.output

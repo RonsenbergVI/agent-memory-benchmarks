@@ -26,7 +26,7 @@ from typing import ClassVar
 
 from amb.base import Benchmark
 from src.memory import EverOSMemory
-from src.toolset import EverOSIngestToolset, EverOSSearchToolset
+from src.toolset import EverOSSearchToolset
 
 
 class EverOSBenchmark(Benchmark):
@@ -41,4 +41,3 @@ class EverOSBenchmark(Benchmark):
     name: ClassVar[str] = "everos"
     system_class = EverOSMemory
     search_toolset_class = EverOSSearchToolset
-    ingest_toolset_class = EverOSIngestToolset

@@ -42,6 +42,8 @@ budget directly.
 """
 
 import os
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from typing import Any, ClassVar
 
 from amb.base import Memory
@@ -69,9 +71,14 @@ class HindsightMemory(Memory):
     # `retain` reports the extraction spend, the expensive half; `recall`
     # reports nothing — its query embedding and rerank stay inside the server
     usage_coverage: ClassVar[str] = "partial"
+    # the server's own providers; what it runs is compose's, checked below
+    llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
+    embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
 
     def __init__(
         self,
+        model: str | None = None,
+        embedding_model: str | None = None,
         base_url: str | None = None,
         max_tokens: int | str = DEFAULT_MAX_TOKENS,
         budget: str = DEFAULT_BUDGET,
@@ -79,7 +86,13 @@ class HindsightMemory(Memory):
         timeout: float | str = 300.0,
         **params: object,
     ) -> None:
-        """Point the adapter at a Hindsight server and pin how it recalls."""
+        """Point the adapter at a Hindsight server and pin how it recalls.
+
+        Raises:
+            ValueError: when --llm/--embedding name a model the server was
+                not started with — the server is configured by compose, and
+                a run must never record a model it did not use.
+        """
         super().__init__(**params)
         self.base_url = os.environ.get("HINDSIGHT_BASE_URL", DEFAULT_BASE_URL)
         if base_url:
@@ -93,8 +106,28 @@ class HindsightMemory(Memory):
         # models()/version() without calling setup() — populating there once
         # recorded no ingestion model at all in a run's identity. Compose
         # sets these alongside the ones it gives the server.
-        self.model = os.environ.get("HINDSIGHT_API_LLM_MODEL")
-        self.embedding_model = os.environ.get("HINDSIGHT_API_EMBEDDING_MODEL")
+        provider = os.environ.get("HINDSIGHT_API_LLM_PROVIDER", "openai")
+        llm = os.environ.get("HINDSIGHT_API_LLM_MODEL")
+        embedder = os.environ.get("HINDSIGHT_API_EMBEDDING_MODEL")
+        self.model = f"{provider}:{llm}" if llm else None
+        self.embedding_model = f"openai:{embedder}" if embedder else None
+        for kind, asked, served, var in (
+            ("llm", model, self.model, "HINDSIGHT_API_LLM_PROVIDER/MODEL"),
+            (
+                "embedding",
+                embedding_model,
+                self.embedding_model,
+                "HINDSIGHT_API_EMBEDDING_MODEL",
+            ),
+        ):
+            if asked is None:
+                continue
+            self.model_name(asked, kind)
+            if asked != served:
+                raise ValueError(
+                    f"hindsight's server runs {served or 'nothing'} as its "
+                    f"{kind}, not {asked}: set {var} for its compose stack"
+                )
         # document id -> session id. `retain` takes the document id, so
         # this is chosen rather than discovered, and a hit names it back.
         self._documents: dict[str, str] = {}
@@ -159,6 +192,17 @@ class HindsightMemory(Memory):
         from hindsight_client import Hindsight
 
         self.client = Hindsight(base_url=self.base_url, timeout=self.timeout)
+        self._thread = ThreadPoolExecutor(max_workers=1)
+
+    def _call(self, method: str, **kwargs: Any) -> Any:
+        """Run one client call on this instance's own thread.
+
+        The sync client runs each call on the calling thread's event loop
+        and its aiohttp session binds to the first one; agentic searches
+        arrive from pydantic-ai's worker threads ("Timeout context manager
+        should be used inside a task"), so every call goes through one.
+        """
+        return self._thread.submit(getattr(self.client, method), **kwargs).result()
 
     def _ensure_bank(self, conversation_id: str) -> str:
         """Create this conversation's bank if the server does not have it yet."""
@@ -166,7 +210,7 @@ class HindsightMemory(Memory):
         if self._conversation_id == conversation_id:
             return bank_id
         try:
-            self.client.create_bank(bank_id=bank_id)
+            self._call("create_bank", bank_id=bank_id)
         except Exception:  # noqa: BLE001 - an existing bank is the good case
             logger.bind(scope="hindsight").debug(
                 "bank {!r} already exists or could not be created", bank_id
@@ -181,6 +225,7 @@ class HindsightMemory(Memory):
         *,
         session_id: str,
         turn_ids: list[str] | None = None,
+        timestamp: datetime | None = None,
     ) -> str:
         """Retain one document in the conversation's bank.
 
@@ -197,9 +242,12 @@ class HindsightMemory(Memory):
         }
         if turn_ids is not None:
             metadata["turn_ids"] = ",".join(turn_ids)
-        response = self.client.retain(
+        response = self._call(
+            "retain",
             bank_id=bank_id,
             content=content,
+            # in-world time, or the server dates every memory to today
+            timestamp=timestamp,
             document_id=document_id,
             metadata=metadata,
         )
@@ -217,6 +265,7 @@ class HindsightMemory(Memory):
             "\n".join(f"{turn.speaker}: {turn.text}" for turn in session.turns),
             session_id=session.session_id,
             turn_ids=[turn.turn_id for turn in session.turns],
+            timestamp=session.time(),
         )
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
@@ -229,7 +278,8 @@ class HindsightMemory(Memory):
             return []
         bank_id = self._ensure_bank(conversation_id)
         try:
-            response = self.client.recall(
+            response = self._call(
+                "recall",
                 bank_id=bank_id,
                 query=query,
                 max_tokens=self.max_tokens,
@@ -317,14 +367,15 @@ class HindsightMemory(Memory):
         """
         if self._conversation_id is not None:
             try:
-                self.client.delete_bank(bank_id=self._bank_id(self._conversation_id))
+                self._call("delete_bank", bank_id=self._bank_id(self._conversation_id))
             except Exception:  # noqa: BLE001 - teardown must not fail a scored run
                 logger.bind(scope="hindsight").warning(
                     "could not delete bank {!r}", self._bank_id(self._conversation_id)
                 )
         self._documents.clear()
-        if client := getattr(self, "client", None):
-            client.close()
+        if getattr(self, "client", None):
+            self._call("close")
+            self._thread.shutdown()
 
     def stats(self) -> dict:
         """Report what this run stored, and how it recalled."""

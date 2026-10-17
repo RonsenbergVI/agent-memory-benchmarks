@@ -24,8 +24,9 @@ services:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${ANTHROPIC_API_KEY:+ANTHROPIC_API_KEY=}${ANTHROPIC_API_KEY:-_AMB_UNSET_ANTHROPIC=1}
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
-    command: run --system mem0 --dataset locomo
+    command: run --system mem0 --dataset locomo --model anthropic:claude-haiku-5-5
     volumes:
       - ../../.data:/amb/.data
       - ../../runs:/amb/runs

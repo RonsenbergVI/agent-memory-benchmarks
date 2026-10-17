@@ -27,7 +27,7 @@ from typing import ClassVar
 from amb.base import Benchmark
 from amb.callbacks import TiktokenUsageTracker
 from src.memory import HindsightMemory
-from src.toolset import HindsightIngestToolset, HindsightSearchToolset
+from src.toolset import HindsightSearchToolset
 
 
 class HindsightBenchmark(Benchmark):
@@ -40,4 +40,3 @@ class HindsightBenchmark(Benchmark):
     # opt-in tracker books what the server reports
     callback_classes = (TiktokenUsageTracker,)
     search_toolset_class = HindsightSearchToolset
-    ingest_toolset_class = HindsightIngestToolset

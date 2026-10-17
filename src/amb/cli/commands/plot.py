@@ -47,7 +47,7 @@ def plot() -> None:
     "y_metric",
     required=True,
     metavar="METRIC",
-    help="metric on the y axis, e.g. retrieval_recall",
+    help="metric on the y axis, e.g. judge_accuracy",
 )
 @click.option("--dataset", help="which dataset's runs to plot")
 @click.option(
@@ -155,14 +155,9 @@ def scatter(  # noqa: PLR0913 - one option per axis/filter, all independent
     "-m",
     required=True,
     metavar="METRIC",
-    help="metric on the y axis, e.g. retrieval_recall; x is always k",
+    help="metric on the y axis, e.g. judge_accuracy; x is always k",
 )
 @click.option("--dataset", help="which dataset's runs to plot")
-@click.option(
-    "--mode",
-    type=click.Choice(["direct", "agentic"]),
-    help="which mode's runs to plot, when both exist",
-)
 @click.option(
     "--dir",
     "directory",
@@ -184,7 +179,6 @@ def scatter(  # noqa: PLR0913 - one option per axis/filter, all independent
 def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
     metric: str,
     dataset: str | None,
-    mode: str | None,
     directory: Path,
     output: Path,
     title: str | None,
@@ -196,15 +190,13 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
     sweeps accumulate.
 
     Raises:
-        click.ClickException: if no runs, an unknown metric, mixed
-            datasets, or mixed modes.
+        click.ClickException: if no runs, an unknown metric, or mixed
+            datasets.
     """
     comparison = ComparisonReport.collect(directory).latest()
     summaries = comparison.summaries
     if dataset:
         summaries = [s for s in summaries if s.get("dataset") == dataset]
-    if mode:
-        summaries = [s for s in summaries if s.get("mode") == mode]
     if not summaries:
         raise click.ClickException(f"no runs to plot under {directory}/")
 
@@ -214,13 +206,6 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
         raise click.ClickException(
             f"runs span several datasets ({', '.join(sorted(map(str, datasets)))}); "
             "pass --dataset to pick one"
-        )
-    # direct and agentic runs are different subjects, not points on one line
-    modes = {s.get("mode") for s in summaries}
-    if len(modes) > 1:
-        raise click.ClickException(
-            f"runs span several modes ({', '.join(sorted(map(str, modes)))}); "
-            "pass --mode to pick one"
         )
 
     series = helpers.collect_series(summaries, metric)
@@ -232,11 +217,11 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
 
     written = plots.lines(
         series,
-        x_label="k (hits requested per query)",
+        x_label="k (hits each search may return)",
         y_label=metric,
         output=output,
         title=title or headline(f"{helpers.pretty(metric)} vs k"),
-        subtitle=f"{datasets.pop()} · {modes.pop()}",
+        subtitle=str(datasets.pop()),
         dark=dark,
     )
     click.echo(f"wrote {written} ({len(series)} systems)")
@@ -250,11 +235,6 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
     "--variant",
     help="which dataset variant to plot (default: every one present, each "
     "into its own directory)",
-)
-@click.option(
-    "--mode",
-    type=click.Choice(["direct", "agentic"]),
-    help="which mode's runs to plot, when both exist",
 )
 @click.option(
     "--k",
@@ -282,18 +262,15 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
 @click.option(
     "--metric",
     "metric_filter",
-    type=click.Choice(["precision", "recall", "f1"]),
+    type=click.Choice(["accuracy", "recall"]),
     multiple=True,
-    help="restrict to these retrieval metrics (default: all three, or just "
-    "recall when every run in scope reports precision exactly 1.0 — e.g. "
-    "LongMemEval's oracle variant, whose haystack ships only evidence). "
-    "Repeatable; overrides the auto-detection either way",
+    help="restrict to these scores (default: both — judge accuracy, the "
+    "headline, and retrieval recall). Repeatable",
 )
 @click.option("--dark", is_flag=True, help="render on the dark chart surface")
 def draw_all(  # noqa: PLR0913 - one option per filter, all independent
     dataset: str | None,
     variant: str | None,
-    mode: str | None,
     k: int | None,
     directory: Path,
     out: Path | None,
@@ -304,20 +281,16 @@ def draw_all(  # noqa: PLR0913 - one option per filter, all independent
 
     `amb report`'s documents declare the figures; this draws exactly those
     into `plots/<dataset>[/<variant>]/`, so charts and documents cannot
-    drift apart. Per metric: `session_<metric>_k<k>` bars and `k_<metric>`
+    drift apart. Per score: `<score>_k<k>` bars and `k_<score>`
     sweep lines; cross metric: `tokens_<metric>_k<k>`,
     `latency_<metric>_k<k>`, and `tokens_latency_k<k>` scatters. Single-k
     sets are written for every k the runs used, each k in the filename.
 
     Raises:
-        click.ClickException: if no runs, a group spans several modes, or
-            --out names one directory for several chart sets.
+        click.ClickException: if no runs, or --out names one directory for
+            several chart sets.
     """
     comparison = ComparisonReport.collect(directory).latest()
-    if mode:
-        comparison = ComparisonReport(
-            [s for s in comparison.summaries if s.get("mode") == mode]
-        )
     if not comparison.summaries:
         raise click.ClickException(f"no runs to plot under {directory}/")
     try:

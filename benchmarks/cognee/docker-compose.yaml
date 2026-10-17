@@ -68,8 +68,9 @@ services:
       - VECTOR_DB_PASSWORD=cognee
       - VECTOR_DB_NAME=cognee
       - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${ANTHROPIC_API_KEY:+ANTHROPIC_API_KEY=}${ANTHROPIC_API_KEY:-_AMB_UNSET_ANTHROPIC=1}
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
-    command: run --system cognee --dataset locomo
+    command: run --system cognee --dataset locomo --model anthropic:claude-haiku-5-5
     volumes:
       - ../../.data:/amb/.data
       - ../../runs:/amb/runs

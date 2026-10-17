@@ -22,18 +22,16 @@
 
 """Cognee's tool surface for `--mode agentic`.
 
-The agent drives cognee's own verbs: `remember` writes a fact into the
-conversation's dataset and builds the graph from it, `recall` searches
-that dataset. Conversation isolation stays forced — the dataset is the
-adapter's, never the agent's to choose.
+The answering agent drives cognee's own `recall` over the conversation's
+dataset; ingestion stays cognee's own `add` + `cognify`. The dataset is
+the adapter's, never the agent's to choose.
 """
 
 import time
 from typing import Any
 
-from amb.agent.toolset import IngestToolset, SearchToolset
+from amb.agent.toolset import SearchToolset
 from amb.base import Memory
-from amb.contracts import Session
 from src.memory import CogneeMemory
 
 
@@ -66,51 +64,3 @@ class CogneeSearchToolset(SearchToolset):
         t0 = time.perf_counter()
         hits = self.cognee.search(self.conversation_id, query, k=self.k)
         return self.record(hits, time.perf_counter() - t0)
-
-
-class CogneeIngestToolset(IngestToolset):
-    """Cognee's write path, exposed to the ingesting agent."""
-
-    def __init__(
-        self,
-        memory: Memory,
-        conversation_id: str,
-        session: Session,
-        **kwargs: Any,
-    ) -> None:
-        """Bind the toolset to one session and expose remember."""
-        super().__init__(memory, conversation_id, session, **kwargs)
-        self.add_function(self.remember, name="remember")
-
-    @property
-    def cognee(self) -> CogneeMemory:
-        """The bound system, typed to its concrete class."""
-        assert isinstance(self.memory, CogneeMemory)
-        return self.memory
-
-    def remember(self, fact: str, source_turn_ids: list[str]) -> str:
-        """Store one fact in the conversation's knowledge graph.
-
-        Args:
-            fact: One self-contained statement worth remembering, phrased
-                so a later search can find it.
-            source_turn_ids: The ids of the turns the fact came from,
-                exactly as shown in the transcript.
-
-        Returns:
-            Whether the fact was stored.
-        """
-        cited = [t for t in source_turn_ids if t in self.turn_ids()]
-        if not cited:
-            return "not stored: none of the cited turn ids exist in this session"
-        t0 = time.perf_counter()
-        self.cognee.store(
-            self.conversation_id,
-            fact,
-            session_id=self.session.session_id,
-            turn_ids=cited,
-        )
-        self.record_write(time.perf_counter() - t0)
-        if len(cited) < len(source_turn_ids):
-            return "stored, but unknown turn ids were dropped from the citation"
-        return "stored"

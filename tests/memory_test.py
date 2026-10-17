@@ -22,8 +22,11 @@
 
 """The naive BM25 baseline: ingest, rank, provenance, and its tool surface."""
 
-from amb.contracts import Session, Turn
-from amb.memory import NaiveBenchmark, NaiveIngestToolset, NaiveMemory
+import pytest
+
+from amb.contracts import Conversation, QAPair, Sample, Session, Turn
+from amb.memory import NaiveBenchmark, NaiveMemory
+from amb.runner import RunConfig, Runner
 
 
 def _session() -> Session:
@@ -76,21 +79,51 @@ def test_teardown_drops_everything() -> None:
     assert memory.stats()["stored_turns"] == 0
 
 
-def test_ingest_toolset_validates_citations() -> None:
-    """The write tool stores only memories citing real turn ids."""
-    benchmark = NaiveBenchmark()
-    memory = benchmark.create_system()
-    session = _session()
-    toolset = benchmark.create_ingest_toolset(memory, "c1", session)
-    assert isinstance(toolset, NaiveIngestToolset)
-    assert toolset.store_memory("User has a dog named Biscuit", ["t1"]) == "stored"
-    refused = toolset.store_memory("made up", ["nope"])
-    assert refused.startswith("not stored")
-    hits = memory.search("c1", "Biscuit", k=1)
-    assert hits
-    assert hits[0].turn_ids == ["t1"]
+def test_run_ingests_through_the_system_and_searches_through_tools() -> None:
+    """Ingestion is the system's own ingest_session; the agent only searches."""
+    sample = Sample(
+        sample_id="sample-1",
+        dataset="unit",
+        conversation=Conversation(conversation_id="c1", sessions=[_session()]),
+        qa=[
+            QAPair(
+                question_id="q1",
+                question="What is the dog called?",
+                answer="Biscuit",
+                evidence_turn_ids=["t1"],
+            )
+        ],
+    )
+    config = RunConfig(dataset="unit", model="test")
+    run = Runner(NaiveBenchmark(), config, samples=[sample]).run()
+    assert run.ingestion_records[0].system_stats["stored_turns"] == 3
+    row = run.question_records[0]
+    assert row.error is None
+    assert row.predicted_answer is not None
+    assert row.num_searches
+    assert row.num_searches >= 1
 
 
-def test_benchmark_supports_agentic_mode() -> None:
-    """The baseline declares both halves of its tool surface."""
-    assert NaiveBenchmark.supports_agentic()
+def test_model_ids_need_a_provider() -> None:
+    """A bare model name is ambiguous across providers, so it is refused."""
+    from amb.base import split_model
+
+    assert split_model("anthropic:claude-haiku-5-5") == (
+        "anthropic",
+        "claude-haiku-5-5",
+    )
+    with pytest.raises(ValueError, match="provider:name"):
+        split_model("gpt-5-mini")
+
+
+def test_model_name_refuses_an_unsupported_provider() -> None:
+    """A system never silently runs a provider it does not support natively."""
+
+    class OpenAIOnly(NaiveMemory):
+        llm_providers = ("openai",)
+
+    assert OpenAIOnly.model_name("openai:gpt-5-mini", "llm") == "gpt-5-mini"
+    with pytest.raises(ValueError, match="cannot run its llm on 'anthropic'"):
+        OpenAIOnly.model_name("anthropic:claude-haiku-5-5", "llm")
+    with pytest.raises(ValueError, match="cannot run without an llm"):
+        OpenAIOnly.model_name(None, "llm")

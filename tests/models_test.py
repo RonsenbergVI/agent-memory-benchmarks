@@ -37,7 +37,6 @@ def make_run() -> Run:
 
 def test_run_defaults():
     run = make_run()
-    assert run.mode == "direct"
     assert run.k == 10
     assert run.system_params == {}
     assert run.question_records == []
@@ -147,7 +146,6 @@ def test_add_ingestion_validates_and_stores_a_stats_dict():
     assert record.num_sessions == 4
     assert record.system_stats == {}
     assert record.token_usage is None
-    assert record.num_writes is None
     assert run.ingestion_records == [record]
 
 
@@ -178,7 +176,7 @@ def test_add_ingestion_invalid_stats_raise_and_do_not_land(stats):
 
 
 def test_run_round_trips_through_model_dump():
-    run = Run(run_id="r1", system="naive", dataset="locomo", k=5, mode="agentic")
+    run = Run(run_id="r1", system="naive", dataset="locomo", k=5)
     run.add_question({"sample_id": "s1", "question_id": "q1", "predicted_answer": "42"})
     run.add_ingestion({"sample_id": "s1", "ingest_s": 1.0, "num_turns": 2})
     rebuilt = Run.model_validate(run.model_dump())

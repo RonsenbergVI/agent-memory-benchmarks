@@ -41,7 +41,7 @@ def judge(run_dir: Path, model: str | None, force: bool) -> None:
     """Grade a saved run's answers with an LLM judge, updating it in place.
 
     RUN_DIR is a run's data directory
-    (runs/<dataset>[/<variant>]/<system>/<mode>/<run-id>). Judging needs no
+    (runs/<dataset>[/<variant>]/<system>/<run-id>). Judging needs no
     database and no re-run, so a run can be re-judged with another model at
     any time.
 
@@ -58,9 +58,8 @@ def judge(run_dir: Path, model: str | None, force: bool) -> None:
     judged = report.judge(judge_model, force=force)
     if not judged and not any(r.predicted_answer for r in report.run.question_records):
         raise click.ClickException(
-            "no predicted answers to grade: this run never generated answers "
-            "(direct mode without --model)"
+            "no predicted answers to grade: every question in this run errored"
         )
     # variant runs nest one level deeper, so the runs root is one more parent up
-    report.save(run_dir.parents[4 if report.run.variant else 3])
+    report.save(run_dir.parents[3 if report.run.variant else 2])
     click.echo(f"judged {judged} answers with {judge_model} -> {run_dir}")

@@ -30,6 +30,9 @@ ENTRY_POINT_GROUP: str = "amb.systems"
 # runs/ (CI artifact uploads) and plots/ (rendered charts) must never share a dir
 DEFAULT_RUNS_DIR: Path = Path("runs")
 DEFAULT_PLOT_DIR: Path = Path("plots")
+# every system's own extractor and embedder, unless --llm / --embedding say otherwise
+DEFAULT_LLM: str = "openai:gpt-5-mini"
+DEFAULT_EMBEDDING: str = "openai:text-embedding-3-small"
 
 
 class Dataset(StrEnum):
@@ -39,12 +42,9 @@ class Dataset(StrEnum):
     LONGMEMEVAL = "longmemeval"
 
 
-class RunType(StrEnum):
-    """The benchmark run type."""
-
-    DIRECT = "direct"
-    AGENTIC = "agentic"
-
+# set on the SDK clients of amb's own agents (answer, judge), so the usage
+# tracker never books the harness's spend as the memory system's
+HARNESS_CLIENT_ATTR = "_amb_harness"
 
 TOKEN_TRACKING_KEYS: tuple[str, ...] = (
     "llm_input_tokens",
@@ -106,24 +106,23 @@ MARKERS: tuple[str, ...] = ("o", "s", "^", "D", "v", "P")
 # Identity fields that make two sets of runs different experiments, not repeats.
 GROUP_BY = ("dataset", "variant")
 
-# Must be uniform inside a group: a direct and an agentic run are different
-# subjects, so a group spanning both is refused, not blended. Promote "mode"
-# into GROUP_BY (not here) the day both are worth publishing side by side.
-GUARD = ("mode",)
+# Must be uniform inside a group without splitting it; such a group is refused.
+GUARD: tuple[str, ...] = ()
 
-# The retrieval metrics a chart set can cover: (filename stem, summary key).
-RETRIEVAL_METRICS = (
-    ("precision", "retrieval_precision"),
+# What a chart set covers, headline first: (filename stem, summary key). Each
+# question is a binary verdict, so judge accuracy is the result; recall is the
+# diagnostic — whether the agent found the evidence at all.
+SCORE_METRICS = (
+    ("accuracy", "judge_accuracy"),
     ("recall", "retrieval_recall"),
-    ("f1", "retrieval_f1"),
 )
+HEADLINE = "judge_accuracy"
+# where a binary metric's 95% interval lives: `<metric>_ci.low` / `.high`
+CI_SUFFIX = "_ci"
 
-# The two cost axes every retrieval metric is traded off against.
+# The two cost axes every score is traded off against.
 TOKENS = "memory_tokens_total"
 LATENCY = "search_latency.p50_s"
-
-# Headline (README) chart order: F1 first — the summary table's ranking metric.
-SUMMARY_ORDER = ("f1", "recall", "precision")
 
 
 RESULTS_INTRO = (
@@ -135,21 +134,24 @@ RESULTS_INTRO = (
 
 RESULTS_TABLE_INTRO = (
     "Latest run per system x dataset x models. Each row's full per-question "
-    "output lives in `runs/<dataset>/<system>/<mode>/<run-id>/` — or with "
+    "output lives in `runs/<dataset>/<system>/<run-id>/` — or with "
     "an extra `<variant>` level "
-    "(`runs/<dataset>/<variant>/<system>/<mode>/<run-id>/`) for a dataset "
+    "(`runs/<dataset>/<variant>/<system>/<run-id>/`) for a dataset "
     "run with `--variant`, e.g. LongMemEval's oracle/s/m, since those are "
     "different experiments sharing one dataset name, not different runs of "
     "the same one."
 )
 
 RESULTS_PLOTS_INTRO = (
-    "Every metric is session-level — one exam, every system on it. Written "
-    "by `amb plot all` into `plots/<dataset>/`, one directory per dataset "
-    "(or `plots/<dataset>/<variant>/` for a dataset whose variants are "
-    "separate experiments). Each dataset's section opens with its "
-    "retrieval-vs-k sweep lines — the same overview the "
-    "[README](README.md#results) shows — followed by the detail per k."
+    "Every question is a binary verdict — the judge marks the agent's answer "
+    "correct or not — so the headline is judge accuracy, drawn with its 95% "
+    "Wilson interval; session-level retrieval recall says whether the agent "
+    "found the evidence at all. Written by `amb plot all` into "
+    "`plots/<dataset>/`, one directory per dataset (or "
+    "`plots/<dataset>/<variant>/` for a dataset whose variants are separate "
+    "experiments). Each section opens with its sweeps over k — the same "
+    "overview the [README](README.md#results) shows — followed by the detail "
+    "per k."
 )
 
 RESULTS_OUTRO = (

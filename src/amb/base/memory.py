@@ -21,10 +21,27 @@
 # SOFTWARE.
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from amb.contracts.conversation import Session
 from amb.contracts.memory import MemoryHit
+
+# what --llm / --embedding configure; nothing else may set them
+MODEL_PARAMS = ("model", "embedding_model")
+
+
+def split_model(spec: str) -> tuple[str, str]:
+    """Split a `provider:name` model id into its two halves.
+
+    Raises:
+        ValueError: when the id carries no provider.
+    """
+    provider, sep, name = spec.partition(":")
+    if not sep or not provider or not name:
+        raise ValueError(
+            f"model id {spec!r} must be provider:name, e.g. openai:gpt-5-mini"
+        )
+    return provider, name
 
 
 class Memory(ABC):
@@ -43,10 +60,51 @@ class Memory(ABC):
     # "partial" (real but short of the truth), "none" (invisible spend whose
     # zero would read as "free"). Reporting renders the three differently.
     usage_coverage: ClassVar[str] = "full"
+    # providers the system's own LLM / embedder runs on natively; empty: none
+    llm_providers: ClassVar[tuple[str, ...]] = ()
+    embedding_providers: ClassVar[tuple[str, ...]] = ()
+    # the halves (`llm`, `embedding`) the system can run without, via `none`
+    optional_models: ClassVar[tuple[str, ...]] = ()
 
     def __init__(self, **params: object) -> None:
-        """Keep any `--param` overrides the CLI passed through."""
+        """Keep any `--param` overrides the CLI passed through.
+
+        Raises:
+            ValueError: when --llm/--embedding reach a system that consumes
+                neither, rather than being silently ignored.
+        """
+        unused = [key for key in MODEL_PARAMS if key in params]
+        if unused:
+            raise ValueError(f"{self.name} calls no LLM or embedder it could set")
         self.params = params
+
+    @classmethod
+    def model_name(
+        cls, spec: str | None, kind: Literal["llm", "embedding"]
+    ) -> str | None:
+        """The SDK-facing name in a `provider:name` id this system can run.
+
+        Raises:
+            ValueError: when the system cannot run that provider natively —
+                a model is never swapped for another or shimmed — or cannot
+                run without one (`none`).
+        """
+        if spec is None:
+            if kind not in cls.optional_models:
+                raise ValueError(f"{cls.name} cannot run without an {kind}")
+            return None
+        provider, name = split_model(spec)
+        supported = cls.llm_providers if kind == "llm" else cls.embedding_providers
+        if provider not in supported:
+            raise ValueError(
+                f"{cls.name} cannot run its {kind} on {provider!r} natively "
+                f"(supports: {', '.join(supported) or 'none'})"
+            )
+        return name
+
+    def coverage(self) -> str:
+        """How much of this instance's spend the run accounts for (`usage_coverage`)."""
+        return self.usage_coverage
 
     def models(self) -> dict[str, str | None]:
         """The models this system calls internally; recorded in every run.

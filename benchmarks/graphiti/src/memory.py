@@ -23,11 +23,10 @@
 """Graphiti (getzep/graphiti) — temporal knowledge graph memory on Neo4j.
 
 Needs a running Neo4j (docker-compose.yaml here) and OPENAI_API_KEY.
-Each conversation is isolated in its own graphiti group_id. Ingestion
-models are pinned to gpt-5-mini / text-embedding-3-small so every system
-in the comparison ingests with the same models; override with
-``--param model=...`` / ``--param embedding_model=...``, or ``none`` to
-fall back to graphiti-core's own default.
+Each conversation is isolated in its own graphiti group_id. Extraction
+runs on ``--llm`` (openai or anthropic, graphiti-core's own clients) and
+embeddings on ``--embedding`` (openai), defaulting to the comparison's
+shared pair.
 """
 
 import asyncio
@@ -36,11 +35,9 @@ from collections.abc import Coroutine
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
-from amb.base import Memory
+from amb.base import Memory, split_model
+from amb.constants import DEFAULT_EMBEDDING, DEFAULT_LLM
 from amb.contracts import MemoryHit, Session
-
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 
 # gpt-5-mini's hidden reasoning tokens share max_output_tokens with the
 # visible JSON: graphiti-core's 16384 default was exhausted on an
@@ -48,6 +45,29 @@ DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 # truncated the same way, run died. 4x is headroom (unused budget costs
 # nothing); same lesson as fraise's EXTRACTION_MAX_COMPLETION_TOKENS.
 LLM_MAX_TOKENS = 65536
+# the anthropic SDK refuses a non-streaming request this large could take >10 min
+ANTHROPIC_MAX_TOKENS = 16000
+
+
+class _AnthropicMessages:
+    """The one Anthropic call graphiti-core makes, minus `temperature`.
+
+    graphiti-core 0.29 sends it on every `messages.create`; anthropic 1.x
+    dropped the parameter (a TypeError before any request) and Haiku 5.5
+    rejects any but the default. Re-check on a graphiti-core bump.
+    """
+
+    def __init__(self) -> None:
+        """Hold the real client; the key comes from ANTHROPIC_API_KEY."""
+        import anthropic
+
+        self._client = anthropic.AsyncAnthropic()
+        self.messages = self
+
+    async def create(self, **kwargs: Any) -> Any:
+        """Forward the request without the sampling parameter."""
+        kwargs.pop("temperature", None)
+        return await self._client.messages.create(**kwargs)
 
 
 class GraphitiMemory(Memory):
@@ -56,14 +76,16 @@ class GraphitiMemory(Memory):
     name: ClassVar[str] = "graphiti"
     description: ClassVar[str] = "Graphiti — temporal knowledge graph (Neo4j)"
     sdk_dist: ClassVar[str | None] = "graphiti-core"
+    llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
+    embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
 
     def __init__(
         self,
         neo4j_uri: str | None = None,
         neo4j_user: str | None = None,
         neo4j_password: str | None = None,
-        model: str | None = DEFAULT_INGESTION_MODEL,
-        embedding_model: str | None = DEFAULT_EMBEDDING_MODEL,
+        model: str = DEFAULT_LLM,
+        embedding_model: str = DEFAULT_EMBEDDING,
         **params: object,
     ) -> None:
         """Pin the Neo4j connection and the models graphiti ingests with."""
@@ -78,6 +100,8 @@ class GraphitiMemory(Memory):
         )
         self.model = model
         self.embedding_model = embedding_model
+        self.model_name(model, "llm")
+        self.model_name(embedding_model, "embedding")
         # episode uuid -> session_id: edges cite episodes = our provenance channel
         self._episodes: dict[str, str] = {}
 
@@ -96,27 +120,29 @@ class GraphitiMemory(Memory):
         self._await(self.client.build_indices_and_constraints())
 
     def _model_clients(self) -> dict:
-        """Return llm_client/embedder overrides for Graphiti().
+        """Return the llm_client/embedder for Graphiti(), by provider."""
+        from graphiti_core.embedder import OpenAIEmbedder, OpenAIEmbedderConfig
+        from graphiti_core.llm_client import LLMConfig
 
-        An explicitly unset model (``--param model=none``) omits its
-        override, so graphiti-core keeps its own default.
-        """
-        clients = {}
-        if self.model:
-            from graphiti_core.llm_client import LLMConfig, OpenAIClient
+        provider, name = split_model(self.model)
+        config = LLMConfig(model=name, small_model=name)
+        if provider == "anthropic":
+            from graphiti_core.llm_client.anthropic_client import AnthropicClient
+
+            # given a config, AnthropicClient reads max_tokens from it
+            config.max_tokens = ANTHROPIC_MAX_TOKENS
+            llm_client = AnthropicClient(config=config, client=_AnthropicMessages())
+        else:
+            from graphiti_core.llm_client import OpenAIClient
 
             # max_tokens goes on the client; LLMConfig's is ignored
-            clients["llm_client"] = OpenAIClient(
-                config=LLMConfig(model=self.model, small_model=self.model),
-                max_tokens=LLM_MAX_TOKENS,
+            llm_client = OpenAIClient(config=config, max_tokens=LLM_MAX_TOKENS)
+        embedder = OpenAIEmbedder(
+            config=OpenAIEmbedderConfig(
+                embedding_model=split_model(self.embedding_model)[1]
             )
-        if self.embedding_model:
-            from graphiti_core.embedder import OpenAIEmbedder, OpenAIEmbedderConfig
-
-            clients["embedder"] = OpenAIEmbedder(
-                config=OpenAIEmbedderConfig(embedding_model=self.embedding_model)
-            )
-        return clients
+        )
+        return {"llm_client": llm_client, "embedder": embedder}
 
     def _await[T](self, coro: Coroutine[Any, Any, T]) -> T:
         return self._loop.run_until_complete(coro)
@@ -144,35 +170,6 @@ class GraphitiMemory(Memory):
                 ),
                 source=EpisodeType.message,
                 source_description="benchmark conversation session",
-                reference_time=self._reference_time(session),
-                group_id=conversation_id,
-            )
-        )
-        episode = getattr(result, "episode", result)
-        uuid = getattr(episode, "uuid", None)
-        if uuid is not None:
-            self._episodes[str(uuid)] = session.session_id
-
-    def store(
-        self,
-        conversation_id: str,
-        content: str,
-        *,
-        session: Session,
-    ) -> None:
-        """Add one agent-authored memory as its own episode (agentic mode).
-
-        Same provenance channel as ingest_session, one episode per memory
-        instead of per session.
-        """
-        from graphiti_core.nodes import EpisodeType
-
-        result = self._await(
-            self.client.add_episode(
-                name=f"{conversation_id}:{session.session_id}",
-                episode_body=content,
-                source=EpisodeType.text,
-                source_description="agent-authored memory",
                 reference_time=self._reference_time(session),
                 group_id=conversation_id,
             )

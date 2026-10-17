@@ -27,17 +27,20 @@ from pathlib import Path
 from amb.reporting.chart import Chart
 
 
-def _summary(system: str, f1: float) -> dict:
+def _summary(system: str, accuracy: float) -> dict:
     return {
         "run_id": "20260820T000000Z",
         "system": system,
         "system_version": "1.0",
         "dataset": "locomo",
-        "mode": "direct",
         "k": 10,
-        "retrieval_precision": 0.4,
+        "judge_accuracy": accuracy,
+        "judge_accuracy_ci": {
+            "low": accuracy - 0.05,
+            "high": accuracy + 0.05,
+            "n": 300,
+        },
         "retrieval_recall": 0.9,
-        "retrieval_f1": f1,
         "memory_tokens_total": 1000.0,
         "search_latency": {"p50_s": 0.1},
     }
@@ -47,19 +50,19 @@ def _table_chart(tmp_path: Path, summaries: list[dict], k: int = 10) -> Chart:
     return Chart(
         kind="table",
         stem=f"summary_k{k}",
-        y="retrieval_f1",
+        y="judge_accuracy",
         k=k,
         out_dir=tmp_path,
         summaries=summaries,
         title=f"Summary at k={k}",
-        subtitle="locomo · direct",
+        subtitle="locomo",
     )
 
 
 def test_table_chart_ranks_and_renders(tmp_path: Path) -> None:
     chart = _table_chart(tmp_path, [_summary("aaa", 0.5), _summary("bbb", 0.6)])
     assert chart.has_data()
-    # rows come ranked best F1 first, so the image argues the same order
+    # rows come ranked most accurate first, so the image argues the same order
     # as the markdown table it replaces
     assert [row[0] for row in chart.data()] == ["bbb", "aaa"]
     path = chart.draw()
@@ -124,8 +127,8 @@ def test_lines_draws_thirty_two_systems(tmp_path: Path) -> None:
     assert lines(series, "k", "F1", tmp_path / "thirtytwo.png").stat().st_size > 0
 
 
-def _swept(system: str, k: int, hits: float, f1: float) -> dict:
-    return {**_summary(system, f1), "k": k, "hits_per_query": hits}
+def _swept(system: str, k: int, hits: float, accuracy: float) -> dict:
+    return {**_summary(system, accuracy), "k": k, "hits_per_query": hits}
 
 
 def test_spend_sweep_places_each_k_at_the_hits_it_returned(tmp_path: Path) -> None:
@@ -141,7 +144,7 @@ def test_spend_sweep_places_each_k_at_the_hits_it_returned(tmp_path: Path) -> No
             _swept("bbb", 10, 10.0, 0.28),
         ],
     )
-    chart = spend_sweep(group, "f1", "retrieval_f1")
+    chart = spend_sweep(group, "accuracy", "judge_accuracy")
     lines = {line.label: line for line in chart.data()}
     assert lines["aaa"].xs == [1.83, 5.57]
     assert lines["bbb"].xs == [3.0, 10.0]
@@ -164,3 +167,25 @@ def test_spend_sweep_is_dropped_for_runs_scored_before_it(tmp_path: Path) -> Non
     section = GroupSummary(group, ComparisonReport(summaries), k=10)
     assert section.spends == []
     assert not any(c.stem.startswith("hits_") for c in section.charts())
+
+
+def test_table_prints_the_accuracy_interval(tmp_path: Path) -> None:
+    chart = _table_chart(tmp_path, [_summary("aaa", 0.5)])
+    header, rows = chart._table()
+    assert rows[0][header.index("95% CI")] == "0.450–0.550"
+
+
+def test_accuracy_bars_draw_with_their_interval(tmp_path: Path) -> None:
+    chart = Chart(
+        kind="bars",
+        stem="accuracy_k10",
+        y="judge_accuracy",
+        k=10,
+        out_dir=tmp_path,
+        summaries=[_summary("aaa", 0.5), _summary("bbb", 0.62)],
+        ci="judge_accuracy_ci",
+    )
+    assert chart.intervals()["bbb"] == (0.57, 0.67)
+    path = chart.draw()
+    assert path is not None
+    assert path.stat().st_size > 0

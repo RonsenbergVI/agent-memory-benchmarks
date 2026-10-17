@@ -33,6 +33,10 @@ jobs:
 
       - name: Redraw from the committed runs
         run: |
+          # results were reset for agentic runs: nothing to redraw until one lands
+          if [ -z "$(find runs -name summary.json 2>/dev/null | head -1)" ]; then
+            echo "no runs committed yet"; exit 0
+          fi
           uv run amb plot all
           uv run amb plot all --dark
           uv run amb report --latest --k "$SUMMARY_K" \

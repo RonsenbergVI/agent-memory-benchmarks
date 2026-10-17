@@ -32,7 +32,7 @@ import pytest
 from amb.callbacks.openai import OpenAIUsageTracker
 from amb.callbacks.tiktoken import TiktokenUsageTracker
 from amb.callbacks.time import TimingTracker
-from amb.constants import TOKEN_TRACKING_KEYS, RunType
+from amb.constants import TOKEN_TRACKING_KEYS
 from amb.contracts import (
     Conversation,
     IngestionRecord,
@@ -40,7 +40,6 @@ from amb.contracts import (
     QAPair,
     Run,
     Sample,
-    Session,
 )
 from amb.runner import RunConfig
 
@@ -85,41 +84,10 @@ def test_ingest_end_without_begin_charges_zero(fake_memory_class):
     stats: dict = {}
     tracker.on_ingest_end(sample, memory, stats)
     assert stats["ingest_s"] == 0.0
-    assert "write_s" not in stats
 
 
-def test_agent_writes_accumulate_into_write_s(fake_memory_class):
+def test_question_row_counts_searches_and_their_time(fake_memory_class):
     tracker = TimingTracker()
-    sample = _sample()
-    memory = fake_memory_class()
-    session = Session(session_id="s1")
-    tracker.on_sample_begin(sample, memory)
-    tracker.on_ingest_begin(sample, memory)
-    tracker.on_write(sample, session, 0.5)
-    tracker.on_write(sample, session, 0.25)
-    stats: dict = {}
-    tracker.on_ingest_end(sample, memory, stats)
-    assert stats["write_s"] == 0.75
-
-
-def test_direct_question_row_books_search_time_only(fake_memory_class):
-    tracker = TimingTracker()
-    sample = _sample()
-    tracker.on_sample_begin(sample, fake_memory_class())
-    qa = _qa()
-    tracker.on_question_begin(sample, qa)
-    tracker.on_search(sample, qa, [], 0.25)
-    tracker.on_search(sample, qa, [], 0.5)
-    row: dict = {}
-    tracker.on_question_end(sample, qa, row)
-    assert row["search_s"] == 0.75
-    assert "num_searches" not in row
-    assert "answer_s" not in row
-
-
-def test_agentic_run_counts_searches_per_question(fake_memory_class):
-    tracker = TimingTracker()
-    tracker.on_run_begin(RunConfig(dataset="locomo", mode=RunType.AGENTIC), _run())
     sample = _sample()
     tracker.on_sample_begin(sample, fake_memory_class())
     qa = _qa()
@@ -135,7 +103,6 @@ def test_agentic_run_counts_searches_per_question(fake_memory_class):
 
 def test_question_begin_resets_the_accumulators(fake_memory_class):
     tracker = TimingTracker()
-    tracker.on_run_begin(RunConfig(dataset="locomo", mode=RunType.AGENTIC), _run())
     sample = _sample()
     tracker.on_sample_begin(sample, fake_memory_class())
     qa = _qa()
@@ -558,7 +525,7 @@ def test_run_begin_patches_the_sdk_and_run_end_restores_it():
     from openai.resources.chat import completions
 
     tracker = OpenAIUsageTracker()
-    config = RunConfig(dataset="locomo")
+    config = RunConfig(dataset="locomo", model="test")
     original = completions.Completions.create
     tracker.on_run_begin(config, _run())
     try:
@@ -621,3 +588,43 @@ def test_async_sdk_targets_are_declared_not_detected():
     assert targets[("Completions", "create")] is False
     assert targets[("AsyncEmbeddings", "create")] is True
     assert targets[("Embeddings", "create")] is False
+
+
+def test_anthropic_usage_adds_cache_reads_and_writes_to_input(fake_memory_class):
+    tracker = OpenAIUsageTracker()
+    tracker.on_sample_begin(_sample(), fake_memory_class())
+    usage = SimpleNamespace(
+        input_tokens=10,
+        output_tokens=4,
+        cache_creation_input_tokens=3,
+        cache_read_input_tokens=2,
+    )
+    tracker._record("llm", SimpleNamespace(usage=usage))
+    assert tracker.counters["llm_input_tokens"] == 15
+    assert tracker.counters["llm_output_tokens"] == 4
+
+
+def test_harness_clients_are_never_booked(fake_memory_class):
+    """amb's own agent shares the SDK; its spend is the row's, not the system's."""
+    from amb.constants import HARNESS_CLIENT_ATTR
+
+    tracker = OpenAIUsageTracker()
+    tracker.on_sample_begin(_sample(), fake_memory_class())
+    wrapped = tracker._wrap(lambda resource: _chat_response(12, 5), "llm", False)
+    harness = SimpleNamespace(_client=SimpleNamespace(**{HARNESS_CLIENT_ATTR: True}))
+    wrapped(harness)
+    assert tracker.counters["llm_calls"] == 0
+    wrapped(SimpleNamespace(_client=SimpleNamespace()))
+    assert tracker.counters["llm_calls"] == 1
+
+
+def test_harness_model_marks_its_sdk_client():
+    from pydantic_ai.models.anthropic import AnthropicModel
+    from pydantic_ai.providers.anthropic import AnthropicProvider
+
+    from amb.agent.agent import harness_model
+    from amb.constants import HARNESS_CLIENT_ATTR
+
+    model = AnthropicModel("claude-haiku-5-5", provider=AnthropicProvider(api_key="x"))
+    assert harness_model(model) is model
+    assert getattr(model.client, HARNESS_CLIENT_ATTR) is True

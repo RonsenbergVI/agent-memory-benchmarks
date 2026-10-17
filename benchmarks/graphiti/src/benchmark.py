@@ -26,7 +26,7 @@ from typing import ClassVar
 
 from amb.base import Benchmark
 from src.memory import GraphitiMemory
-from src.toolset import GraphitiIngestToolset, GraphitiSearchToolset
+from src.toolset import GraphitiSearchToolset
 
 
 class GraphitiBenchmark(Benchmark):
@@ -39,4 +39,3 @@ class GraphitiBenchmark(Benchmark):
     name: ClassVar[str] = "graphiti"
     system_class = GraphitiMemory
     search_toolset_class = GraphitiSearchToolset
-    ingest_toolset_class = GraphitiIngestToolset

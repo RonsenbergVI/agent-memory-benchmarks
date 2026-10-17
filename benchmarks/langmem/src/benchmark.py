@@ -26,7 +26,7 @@ from typing import ClassVar
 
 from amb.base import Benchmark
 from src.memory import LangMemMemory
-from src.toolset import LangMemIngestToolset, LangMemSearchToolset
+from src.toolset import LangMemSearchToolset
 
 
 class LangMemBenchmark(Benchmark):
@@ -42,4 +42,3 @@ class LangMemBenchmark(Benchmark):
     name: ClassVar[str] = "langmem"
     system_class = LangMemMemory
     search_toolset_class = LangMemSearchToolset
-    ingest_toolset_class = LangMemIngestToolset

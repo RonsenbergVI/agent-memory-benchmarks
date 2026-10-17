@@ -72,12 +72,11 @@ import threading
 from pathlib import Path
 from typing import Any, ClassVar
 
-from amb.base import Memory
+from amb.base import Memory, split_model
+from amb.constants import DEFAULT_EMBEDDING, DEFAULT_LLM
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 DEFAULT_EMBEDDING_DIMENSIONS = 1536
 # EverOS's own default retrieval: "hybrid" is vector + keyword. "agentic"
 # adds an LLM planning pass, which is query understanding rather than
@@ -133,17 +132,90 @@ def _await(coro: Any, timeout: float = 1800) -> Any:
     return asyncio.run_coroutine_threadsafe(coro, _loop()).result(timeout)
 
 
+# everalgo's openai_compat leaves max_tokens unset; the Messages API needs one
+ANTHROPIC_MAX_TOKENS = 16000
+
+
+def _anthropic_client(model: str) -> Any:
+    """Everalgo's `LLMClient` protocol, answered by a Claude model.
+
+    EverOS ships only its openai_compat provider, and the protocol is
+    structural by design ("no subclassing needed"), so this stands in for
+    it. Every extraction call is text in, JSON-in-text out; `temperature`
+    is dropped (Haiku 5.5 rejects any but the default, the same 400 the
+    reasoning accommodation exists for), and structured or multimodal
+    requests raise rather than being silently reshaped.
+    """
+    import anthropic
+    from everalgo.llm.types import ChatMessage, ChatResponse, Usage
+
+    finish = {"end_turn": "stop", "max_tokens": "length", "refusal": "content_filter"}
+
+    class AnthropicLLMClient:
+        """Claude through the Messages API, behind everalgo's LLM protocol."""
+
+        def __init__(self, model: str) -> None:
+            """Bind the model; the key comes from ANTHROPIC_API_KEY."""
+            self._client = anthropic.AsyncAnthropic()
+            self._model = model
+
+        async def chat(
+            self,
+            messages: list[ChatMessage],
+            *,
+            model: str | None = None,
+            temperature: float | None = None,
+            max_tokens: int | None = None,
+            response_format: Any = None,
+            **extra: Any,
+        ) -> ChatResponse:
+            """One completion, as everalgo's response type.
+
+            Raises:
+                NotImplementedError: for structured or multimodal requests.
+            """
+            if response_format is not None or any(
+                not isinstance(m.content, str) for m in messages
+            ):
+                raise NotImplementedError("structured/multimodal chat on anthropic")
+            system = "\n\n".join(str(m.content) for m in messages if m.role == "system")
+            response = await self._client.messages.create(
+                model=model or self._model,
+                max_tokens=max_tokens or ANTHROPIC_MAX_TOKENS,
+                messages=[
+                    {"role": m.role, "content": m.content}
+                    for m in messages
+                    if m.role != "system"
+                ],
+                **({"system": system} if system else {}),
+            )
+            return ChatResponse(
+                content="".join(b.text for b in response.content if b.type == "text"),
+                model=response.model,
+                usage=Usage(
+                    prompt_tokens=response.usage.input_tokens,
+                    completion_tokens=response.usage.output_tokens,
+                ),
+                finish_reason=finish.get(response.stop_reason or "", "stop"),
+            )
+
+    return AnthropicLLMClient(model)
+
+
 class EverOSMemory(Memory):
     """EverOS: Markdown-native local memory with an extraction pipeline."""
 
     name: ClassVar[str] = "everos"
     description: ClassVar[str] = "EverOS — local-first Markdown-native memory"
     sdk_dist: ClassVar[str | None] = "everos"
+    # anthropic through `_anthropic_client`: everalgo ships only openai_compat
+    llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
+    embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
 
     def __init__(
         self,
-        model: str | None = DEFAULT_INGESTION_MODEL,
-        embedding_model: str | None = DEFAULT_EMBEDDING_MODEL,
+        model: str = DEFAULT_LLM,
+        embedding_model: str = DEFAULT_EMBEDDING,
         embedding_dimensions: int | str = DEFAULT_EMBEDDING_DIMENSIONS,
         search_method: str = DEFAULT_SEARCH_METHOD,
         reasoning: bool | str | None = None,
@@ -154,6 +226,8 @@ class EverOSMemory(Memory):
         self.root = Path(os.environ.get("EVEROS_ROOT", DEFAULT_ROOT))
         self.model = model
         self.embedding_model = embedding_model
+        self._llm = self.model_name(model, "llm")
+        self._embedder = self.model_name(embedding_model, "embedding")
         # --param values arrive as strings
         self.embedding_dimensions = int(embedding_dimensions)
         self.search_method = search_method
@@ -162,7 +236,7 @@ class EverOSMemory(Memory):
         if isinstance(reasoning, str):
             reasoning = reasoning.strip().lower() not in ("false", "0", "no")
         self.reasoning = (
-            self._is_reasoning_model(self.model) if reasoning is None else reasoning
+            self._is_reasoning_model(self._llm) if reasoning is None else reasoning
         )
         # the conversation this instance was built for; teardown needs it
         # and the base contract does not pass it
@@ -237,12 +311,12 @@ class EverOSMemory(Memory):
         os.environ.setdefault("EVEROS_ROOT", str(self.root.absolute()))
         key = os.environ.get("OPENAI_API_KEY", "")
         base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        if self.model:
-            os.environ.setdefault("EVEROS_LLM__MODEL", self.model)
+        if self._llm:
+            os.environ.setdefault("EVEROS_LLM__MODEL", self._llm)
             os.environ.setdefault("EVEROS_LLM__API_KEY", key)
             os.environ.setdefault("EVEROS_LLM__BASE_URL", base_url)
-        if self.embedding_model:
-            os.environ.setdefault("EVEROS_EMBEDDING__MODEL", self.embedding_model)
+        if self._embedder:
+            os.environ.setdefault("EVEROS_EMBEDDING__MODEL", self._embedder)
             os.environ.setdefault("EVEROS_EMBEDDING__API_KEY", key)
             os.environ.setdefault("EVEROS_EMBEDDING__BASE_URL", base_url)
             os.environ.setdefault(
@@ -255,7 +329,25 @@ class EverOSMemory(Memory):
         self.root.mkdir(parents=True, exist_ok=True)
         self._scaffold_config()
         self._pin_temperature()
+        self._install_anthropic()
         self._start_runtime()
+
+    def _install_anthropic(self) -> None:
+        """Put the Claude client in EverOS's process-wide LLM slots.
+
+        Extraction reads `get_llm_client()` and multi-round search
+        `get_decider_llm_client()`; both return their module's cached
+        client first, so filling the cache before the runtime starts is
+        the whole substitution — nothing of EverOS is patched.
+        """
+        if not self._llm or split_model(self.model)[0] != "anthropic":
+            return
+        from everos.component.llm import client
+
+        with _RUNTIME_LOCK:
+            if client._llm_client is None:
+                client._llm_client = _anthropic_client(self._llm)
+                client._decider_client = client._llm_client
 
     def _scaffold_config(self) -> None:
         """Put EverOS's own default config files in the memory root.
