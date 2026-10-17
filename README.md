@@ -7,14 +7,22 @@
 [![License](https://img.shields.io/github/license/RonsenbergVI/agent-memory-benchmarks)](LICENSE)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue)](pyproject.toml)
 
-[![Benchmark cognee](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee.yml)
-[![Benchmark everos](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos.yml)
-[![Benchmark fraise](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise.yml)
-[![Benchmark graphiti](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti.yml)
-[![Benchmark hindsight](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml)
-[![Benchmark langmem](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem.yml)
-[![Benchmark mem0](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml)
-[![Benchmark memos](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos.yml)
+[![Benchmark cognee locomo](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee-locomo.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee-locomo.yml)
+[![Benchmark cognee longmemeval](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee-longmemeval.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/cognee-longmemeval.yml)
+[![Benchmark everos locomo](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos-locomo.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos-locomo.yml)
+[![Benchmark everos longmemeval](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos-longmemeval.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/everos-longmemeval.yml)
+[![Benchmark fraise locomo](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise-locomo.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise-locomo.yml)
+[![Benchmark fraise longmemeval](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise-longmemeval.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/fraise-longmemeval.yml)
+[![Benchmark graphiti locomo](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti-locomo.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti-locomo.yml)
+[![Benchmark graphiti longmemeval](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti-longmemeval.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti-longmemeval.yml)
+[![Benchmark hindsight locomo](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight-locomo.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight-locomo.yml)
+[![Benchmark hindsight longmemeval](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight-longmemeval.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight-longmemeval.yml)
+[![Benchmark langmem locomo](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem-locomo.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem-locomo.yml)
+[![Benchmark langmem longmemeval](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem-longmemeval.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem-longmemeval.yml)
+[![Benchmark mem0 locomo](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0-locomo.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0-locomo.yml)
+[![Benchmark mem0 longmemeval](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0-longmemeval.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0-longmemeval.yml)
+[![Benchmark memos locomo](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos-locomo.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos-locomo.yml)
+[![Benchmark memos longmemeval](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos-longmemeval.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos-longmemeval.yml)
 
 **[Results](#results) · [Quickstart](#quickstart) · [Why this exists](#why-this-exists) · [Methodology](#methodology) · [Projects in scope](#projects-in-scope) · [Contributing](#contributing)**
 
@@ -78,6 +86,65 @@ Every image below is generated by the release CI into [plots/](plots/) — a gua
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="plots/locomo/k_accuracy_temporal_dark.png">
   <img alt="Judge accuracy vs k for temporal questions" src="plots/locomo/k_accuracy_temporal.png">
+</picture>
+
+### longmemeval
+
+LongMemEval's question types at about LoCoMo's ingest time: the `xs` cut asks 151 questions from LongMemEval `s`, each over its own evidence sessions. How the cut is made is in [METHODOLOGY.md](METHODOLOGY.md#longmemeval). These charts appear once the `<system>-longmemeval` workflows run.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/summary_k10_dark.png">
+  <img alt="Cross-system summary at k=10: judge accuracy with its 95% interval" src="plots/longmemeval/xs/summary_k10.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/accuracy_k10_dark.png">
+  <img alt="Judge accuracy by system at k=10, with 95% Wilson intervals" src="plots/longmemeval/xs/accuracy_k10.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/categories_k10_dark.png">
+  <img alt="Judge accuracy by question category at k=10" src="plots/longmemeval/xs/categories_k10.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/k_accuracy_dark.png">
+  <img alt="Judge accuracy vs k" src="plots/longmemeval/xs/k_accuracy.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/k_recall_dark.png">
+  <img alt="Retrieval recall vs k" src="plots/longmemeval/xs/k_recall.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/k_accuracy_knowledge-update_dark.png">
+  <img alt="Judge accuracy vs k for knowledge-update questions" src="plots/longmemeval/xs/k_accuracy_knowledge-update.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/k_accuracy_multi-session_dark.png">
+  <img alt="Judge accuracy vs k for multi-session questions" src="plots/longmemeval/xs/k_accuracy_multi-session.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/k_accuracy_single-session-assistant_dark.png">
+  <img alt="Judge accuracy vs k for single-session-assistant questions" src="plots/longmemeval/xs/k_accuracy_single-session-assistant.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/k_accuracy_single-session-preference_dark.png">
+  <img alt="Judge accuracy vs k for single-session-preference questions" src="plots/longmemeval/xs/k_accuracy_single-session-preference.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/k_accuracy_single-session-user_dark.png">
+  <img alt="Judge accuracy vs k for single-session-user questions" src="plots/longmemeval/xs/k_accuracy_single-session-user.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="plots/longmemeval/xs/k_accuracy_temporal-reasoning_dark.png">
+  <img alt="Judge accuracy vs k for temporal-reasoning questions" src="plots/longmemeval/xs/k_accuracy_temporal-reasoning.png">
 </picture>
 
 ## Quickstart

@@ -46,7 +46,7 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
 
 5. **`benchmarks/<name>/Dockerfile` + `docker-compose.yaml`** — copy an existing pair. The Dockerfile is `uv sync --package <name>` from the repo root; compose adds whatever server/database the system needs, volume-mounts `../../.data:/amb/.data` and `../../runs:/amb/runs`, and passes keys via `env_file: ../../.env` — never bake keys into the image.
 
-6. **`.github/workflows/<name>.yml`** — copy `fraise.yml` and swap the framework name and compose path (drop the ghcr login if the image isn't on ghcr). One job per dataset; matrices hold plain values only. Trigger on `tags: ["v[0-9]+.[0-9]+.0", "<name>/v[0-9]+.[0-9]+.0"]`: a harness release reruns every system, the package's own tag only this one. Add the workflow's status badge to the `Benchmark <name>` block at the top of README.md — copy a sibling line, keep the list alphabetical.
+6. **`.github/workflows/<name>-<dataset>.yml`** — one per dataset: copy `fraise-locomo.yml` and swap the framework name and compose path (drop the ghcr login if the image isn't on ghcr). One dataset per workflow; matrices hold plain values only. Trigger on `tags: ["v[0-9]+.[0-9]+.0", "<name>/v[0-9]+.[0-9]+.0"]`: a harness release reruns every system, the package's own tag only this one. Do the same for LongMemEval from `fraise-longmemeval.yml`. Add each workflow's status badge to the `Benchmark <name> <dataset>` block at the top of README.md — copy a sibling line, keep the list alphabetical.
 
 7. **Repo plumbing** — two configs track packages by name and must learn the new one. Dependabot needs nothing: its root `uv` entry is workspace-aware — it bumps member dependencies and regenerates `uv.lock` in the same PR — so per-member entries are never added (they would change the manifest without the lock and fail `uv sync --locked`).
 
@@ -77,7 +77,7 @@ A dataset is a loader in core — one module, one enum value, one registry entry
    - `load(variant, limit)` — normalize the raw payload into `Sample`s: a `Conversation` of `Session`s of `Turn`s, plus `QAPair`s carrying the gold answer and the evidence labels (`evidence_session_ids`, and `evidence_turn_ids` where the dataset has them) that retrieval is scored against. `limit` caps the number of samples for smoke runs. Set `QAPair.category` — categories are free-form strings and every summary gets a per-category breakdown automatically.
 3. **`src/amb/datasets/__init__.py`** — add the loader to the `LOADERS` dict. That's the whole registration: `amb datasets list` shows it, `amb datasets pull <name>` caches it, and every system can run it via `amb run --dataset <name>`.
 4. **`tests/datasets/<name>_test.py`** — pin the schema mapping with a small raw-payload fixture (no network), like the existing dataset tests.
-5. **Workflows** — each framework workflow gets a new job for the dataset (one job per dataset, plain-value matrix), mirroring the existing jobs in `fraise.yml`.
+5. **Workflows** — one workflow per framework for the dataset, `<framework>-<dataset>.yml`, never a job added to an existing workflow: a workflow runs one system on one dataset. Copy each framework's `<framework>-longmemeval.yml`, give it its own concurrency group, and add its badge to README.md.
 
 Variants are identity: a dataset run with `--variant` lands under `runs/<dataset>/<variant>/...` and is grouped as its own experiment in every table and chart — use variants for differently-shaped haystacks, not for scope (that's what `--limit`/`--turns`/`--questions` are for).
 
