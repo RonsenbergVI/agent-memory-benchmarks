@@ -191,15 +191,15 @@ Projects must be permissively licensed (MIT, Apache 2.0, BSD) or use a credible 
 
 ## Datasets
 
-**Running:** LoCoMo · LongMemEval *(coming)* · ConvoMem *(planned)*
+**Running:** LoCoMo · LongMemEval (`xs`) · ConvoMem *(planned)*
 
 ## Status
 
-Pre-alpha. Methodology is being defined and the test harness is in development. First results land here on the first tagged release and regenerate on every one after (see [RESULTS.md](RESULTS.md) for the full detail). Expected timeline:
+The methodology is settled and the first results are pending. Every run is agentic: each system ingests through its own extractor, amb's question agent searches it through the system's own tools, and a judge grades each answer, with judge accuracy and its 95% interval as the headline (see [METHODOLOGY.md](METHODOLOGY.md)). The earlier retrieval-only results were withdrawn with that change, so nothing is published yet.
 
-- Methodology v0.1 finalized: TBD
-- Test harness v0.1 (first 3 systems running end-to-end): TBD
-- First public results report: TBD
+- **Methodology:** agent-only runs scored by judge accuracy — done.
+- **Harness:** all eight systems integrated, on LoCoMo and LongMemEval `xs`. EverOS, Hindsight and MemOS have completed a live end-to-end run; Mem0, Graphiti, LangMem, Cognee and Fraise have had their extraction checked live, and their first full run is the release run.
+- **First results:** each system's next release runs its benchmark workflows and publishes here and in [RESULTS.md](RESULTS.md).
 
 ## Projects in scope
 
