@@ -26,9 +26,10 @@ Long-term interactive memory for chat assistants, distributed on HuggingFace.
 
 Each instance is one question over its own haystack of chat sessions. Variants:
 `s` (~115k-token haystacks, default), `m` (~500 sessions), `oracle` (evidence
-sessions only), and two cuts of `s` made at load time: `xs` (each question's
-evidence plus a few of its own fillers) and `xs-shared` (questions dealt into
-a few synthetic users who each hold one long history).
+sessions only), and two cuts of `s` made at load time, sized to ingest in about
+LoCoMo's time: `xs` (a subset of questions, each over its own evidence) and
+`xs-shared` (the same questions dealt into a few synthetic users who each hold
+one history).
 """
 
 import json
@@ -52,9 +53,11 @@ DEFAULT_REPO = "xiaowu0162/longmemeval-cleaned"
 
 # variants cut at load time from a published file
 CUTS = {"xs": "s", "xs-shared": "s"}
-XS_FILLERS = 4
+# every question costs its evidence sessions to ingest, so size is set by count
+CUT_QUESTIONS = 150
+XS_FILLERS = 0
 SHARED_USERS = 10
-SHARED_FILLERS = 20
+SHARED_FILLERS = 5
 
 
 class LongMemEvalLoader(DatasetLoader):
@@ -111,15 +114,21 @@ class LongMemEvalLoader(DatasetLoader):
         """
         variant = self.resolve_variant(variant)
         raw = json.loads(self.pull(variant).read_text())
-        if variant == "xs-shared":
-            return self._shared([_parse(item) for item in raw])[:limit]
+        if variant in CUTS:
+            parsed = _subset([_parse(item) for item in raw], CUT_QUESTIONS)
+            if variant == "xs-shared":
+                return self._shared(parsed)[:limit]
+            return [
+                self._sample(
+                    qa.question_id,
+                    _cut(sessions, qa.evidence_session_ids, XS_FILLERS, qa.question_id),
+                    [qa],
+                )
+                for sessions, qa in parsed[:limit]
+            ]
         samples = []
         for item in raw[:limit]:
             sessions, qa = _parse(item)
-            if variant == "xs":
-                sessions = _cut(
-                    sessions, qa.evidence_session_ids, XS_FILLERS, qa.question_id
-                )
             samples.append(self._sample(qa.question_id, sessions, [qa]))
         return samples
 
@@ -185,6 +194,22 @@ class LongMemEvalLoader(DatasetLoader):
             ),
             qa=qa,
         )
+
+
+def _subset(
+    parsed: list[tuple[list[Session], QAPair]], n: int
+) -> list[tuple[list[Session], QAPair]]:
+    """Draw about `n` questions, stratified by type and abstention, in file order."""
+    strata: dict[tuple[str | None, bool], list[int]] = {}
+    for i, (_, qa) in enumerate(parsed):
+        key = (qa.category, qa.question_id.endswith("_abs"))
+        strata.setdefault(key, []).append(i)
+    chosen: set[int] = set()
+    for key in sorted(strata, key=str):
+        members = strata[key]
+        quota = min(len(members), round(n * len(members) / len(parsed)))
+        chosen.update(random.Random(str(key)).sample(members, quota))
+    return [p for i, p in enumerate(parsed) if i in chosen]
 
 
 def _cut(
