@@ -4,7 +4,7 @@
 # Dockerfile (`uv sync --package memos-benchmark`), the release-please
 # extra-files jsonpath and uv.lock all key off.
 name = "memos-benchmark"
-version = "0.1.0"
+version = "0.2.0"
 description = "MemOS benchmark."
 readme = "README.md"
 authors = [
