@@ -5,7 +5,7 @@ on:
     # micro is always 0 under the major.minor release scheme; the
     # strict patterns keep a hand-pushed patch or prerelease tag from
     # starting paid benchmark runs
-    tags: ["v[0-9]+.[0-9]+.0", "hindsight/v[0-9]+.[0-9]+.0"]
+    tags: ["hindsight/v[0-9]+.[0-9]+.0"]
   workflow_dispatch:
 
 # one hindsight benchmark run at a time; a second trigger queues rather than
