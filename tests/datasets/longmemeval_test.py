@@ -73,7 +73,7 @@ def _patch_hub(monkeypatch, files, calls):
 def test_loader_metadata(tmp_path):
     loader = LongMemEvalLoader(cache_dir=tmp_path)
     assert loader.name is Dataset.LONGMEMEVAL
-    assert loader.variants == ("s", "m", "oracle")
+    assert loader.variants == ("s", "m", "oracle", "xs", "xs-shared")
     assert loader.default_variant == "s"
     assert loader.repo == DEFAULT_REPO
     assert loader.cache_dir == tmp_path / "longmemeval"
@@ -84,7 +84,7 @@ def test_resolve_variant_defaults_to_s(tmp_path):
     assert LongMemEvalLoader(cache_dir=tmp_path).resolve_variant(None) == "s"
 
 
-@pytest.mark.parametrize("variant", ["s", "m", "oracle"])
+@pytest.mark.parametrize("variant", ["s", "m", "oracle", "xs", "xs-shared"])
 def test_resolve_variant_accepts_each_published_variant(tmp_path, variant):
     loader = LongMemEvalLoader(cache_dir=tmp_path)
     assert loader.resolve_variant(variant) == variant
@@ -245,7 +245,7 @@ def test_load_forwards_variant_to_pull(tmp_path, longmemeval_rich_record):
     loader = _loader_for(tmp_path, [longmemeval_rich_record])
     loader.load()
     loader.load("oracle")
-    assert loader.pulled_variants == [None, "oracle"]
+    assert loader.pulled_variants == ["s", "oracle"]
 
 
 def test_pull_matches_variant_token_and_downloads_first_sorted(tmp_path, monkeypatch):
@@ -296,3 +296,159 @@ def test_pull_rejects_unknown_variant_before_touching_the_hub(tmp_path, monkeypa
     loader = LongMemEvalLoader(cache_dir=tmp_path)
     with pytest.raises(ValueError, match="unknown variant 'nope'"):
         loader.pull("nope")
+
+
+@pytest.mark.parametrize("variant", ["xs", "xs-shared"])
+def test_pull_cuts_download_the_s_file(tmp_path, monkeypatch, variant):
+    calls = []
+    files = ["longmemeval_m.json", "longmemeval_oracle.json", "longmemeval_s.json"]
+    _patch_hub(monkeypatch, files, calls)
+    result = LongMemEvalLoader(cache_dir=tmp_path).pull(variant)
+    assert result == Path("/hub-cache/longmemeval_s.json")
+
+
+def _record(qid, evidence, fillers, question=None):
+    """A record whose haystack interleaves evidence and filler sessions by date.
+
+    Session ids carry their day, so `fillers=[(3, "f3")]` is session "f3" dated
+    2023/05/03; evidence sessions open with a has_answer turn.
+    """
+    sessions = sorted(
+        [(day, sid, True) for day, sid in evidence]
+        + [(day, sid, False) for day, sid in fillers],
+        reverse=True,
+    )
+    return {
+        "question_id": qid,
+        "question": question or f"question {qid}?",
+        "answer": f"answer {qid}",
+        "question_type": "multi-session",
+        "question_date": "2023/06/30 (Fri) 12:00",
+        "answer_session_ids": [sid for _, sid in evidence],
+        "haystack_session_ids": [sid for _, sid, _ in sessions],
+        "haystack_dates": [f"2023/05/{day:02d} (Mon) 10:00" for day, _, _ in sessions],
+        "haystack_sessions": [
+            [
+                {"role": "user", "content": sid, "has_answer": answer},
+                {"role": "assistant", "content": "ok"},
+            ]
+            for _, sid, answer in sessions
+        ],
+    }
+
+
+def _session_ids(sample):
+    return [s.session_id for s in sample.conversation.sessions]
+
+
+def _fillers(prefix, n, first_day=1):
+    return [(first_day + i, f"{prefix}{i}") for i in range(n)]
+
+
+def test_xs_keeps_evidence_plus_four_fillers_in_date_order(tmp_path):
+    record = _record("q", [(5, "ev_a"), (20, "ev_b")], _fillers("f", 9, first_day=6))
+    (sample,) = _loader_for(tmp_path, [record]).load("xs")
+    ids = _session_ids(sample)
+    assert len(ids) == 6
+    assert {"ev_a", "ev_b"} <= set(ids)
+    dates = [s.timestamp or "" for s in sample.conversation.sessions]
+    assert dates == sorted(dates)
+
+
+def test_xs_labels_survive_the_cut(tmp_path):
+    record = _record("q", [(5, "ev_a"), (20, "ev_b")], _fillers("f", 9, first_day=6))
+    (sample,) = _loader_for(tmp_path, [record]).load("xs")
+    (qa,) = sample.qa
+    assert qa.evidence_session_ids == ["ev_a", "ev_b"]
+    assert sorted(qa.evidence_turn_ids) == ["ev_a:0", "ev_b:0"]
+
+
+def test_xs_fillers_are_seeded_by_question_id(tmp_path):
+    fillers = _fillers("f", 20, first_day=6)
+    records = [_record("q1", [(5, "ev")], fillers), _record("q2", [(5, "ev")], fillers)]
+    loader = _loader_for(tmp_path, records)
+    first = [_session_ids(s) for s in loader.load("xs")]
+    assert first == [_session_ids(s) for s in loader.load("xs")]
+    assert first[0] != first[1]
+
+
+def test_xs_keeps_every_filler_when_the_haystack_has_fewer_than_four(tmp_path):
+    record = _record("q", [(5, "ev")], _fillers("f", 2, first_day=6))
+    (sample,) = _loader_for(tmp_path, [record]).load("xs")
+    assert _session_ids(sample) == ["ev", "f0", "f1"]
+
+
+def _shared_records(n, wordings=None):
+    return [
+        _record(
+            f"q{i}",
+            [(1 + i % 28, f"ev{i}")],
+            _fillers(f"f{i}_", 30),
+            question=(wordings or {}).get(i),
+        )
+        for i in range(n)
+    ]
+
+
+def test_xs_shared_deals_questions_round_robin_into_ten_users(tmp_path):
+    samples = _loader_for(tmp_path, _shared_records(25)).load("xs-shared")
+    assert [s.sample_id for s in samples] == [f"user_{n}" for n in range(10)]
+    assert [q.question_id for q in samples[0].qa] == ["q0", "q10", "q20"]
+    assert [len(s.qa) for s in samples] == [3] * 5 + [2] * 5
+    assert samples[0].conversation.conversation_id == "user_0"
+
+
+def test_xs_shared_history_is_evidence_plus_twenty_fillers(tmp_path):
+    samples = _loader_for(tmp_path, _shared_records(25)).load("xs-shared")
+    ids = _session_ids(samples[0])
+    assert {"ev0", "ev10", "ev20"} <= set(ids)
+    assert len(ids) == 23
+    dates = [s.timestamp or "" for s in samples[0].conversation.sessions]
+    assert dates == sorted(dates)
+
+
+def test_xs_shared_keeps_each_questions_own_labels(tmp_path):
+    samples = _loader_for(tmp_path, _shared_records(25)).load("xs-shared")
+    qa = samples[0].qa[1]
+    assert qa.evidence_session_ids == ["ev10"]
+    assert qa.evidence_turn_ids == ["ev10:0"]
+
+
+def test_xs_shared_deduplicates_sessions_across_questions(tmp_path):
+    shared = _fillers("common", 30)
+    records = [_record(f"q{i}", [(1, f"ev{i}")], shared) for i in range(20)]
+    samples = _loader_for(tmp_path, records).load("xs-shared")
+    ids = _session_ids(samples[0])
+    assert len(ids) == len(set(ids)) == 22
+
+
+def test_xs_shared_never_puts_one_wording_twice_on_a_user(tmp_path):
+    records = _shared_records(12, {0: "same?", 10: "same?"})
+    samples = _loader_for(tmp_path, records).load("xs-shared")
+    assert [q.question_id for q in samples[0].qa] == ["q0"]
+    assert [q.question_id for q in samples[1].qa] == ["q1", "q10"]
+    assert [q.question_id for q in samples[2].qa] == ["q2", "q11"]
+
+
+def test_xs_shared_refuses_a_wording_asked_more_than_ten_times(tmp_path):
+    records = _shared_records(11, dict.fromkeys(range(11), "same?"))
+    loader = _loader_for(tmp_path, records)
+    with pytest.raises(ValueError, match="share the wording 'same\\?'"):
+        loader.load("xs-shared")
+
+
+def test_xs_shared_abstention_questions_keep_their_own_xs_history(tmp_path):
+    records = _shared_records(3)
+    records.insert(1, _record("q9_abs", [(3, "ev_abs")], _fillers("fa", 9, 6)))
+    samples = _loader_for(tmp_path, records).load("xs-shared")
+    assert [s.sample_id for s in samples] == ["user_0", "user_1", "user_2", "q9_abs"]
+    alone = samples[-1]
+    assert [q.question_id for q in alone.qa] == ["q9_abs"]
+    assert len(_session_ids(alone)) == 5
+    assert all("ev_abs" not in _session_ids(s) for s in samples[:-1])
+
+
+def test_xs_shared_limit_counts_histories(tmp_path):
+    samples = _loader_for(tmp_path, _shared_records(25)).load("xs-shared", limit=2)
+    assert [s.sample_id for s in samples] == ["user_0", "user_1"]
+    assert len(samples[0].qa) == 3
