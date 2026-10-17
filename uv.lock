@@ -2022,7 +2022,7 @@ requires-dist = [
 
 [[package]]
 name = "hindsight-client"
-version = "0.10.2"
+version = "0.10.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -2033,9 +2033,9 @@ dependencies = [
     { name = "urllib3" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/e9/d2880efde91a89980a3ecaf70c0a59742cfcddf8282855b8f6d6636328dd/hindsight_client-0.10.2.tar.gz", hash = "sha256:0d1cb80a4cc0aff9b4b74219c39af302eb65af47c8aa4f113114a22bcd416b4f", size = 200987, upload-time = "2026-09-29T09:41:52.904Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/68/0c/d62e8c076b35d3e6f21352a13b34c47d79203864409511a433ef023555fd/hindsight_client-0.10.3.tar.gz", hash = "sha256:dfd8b9a912cc09d36675f6ab4ab02aa8dc7aa10ae09183794ec5bd083be19540", size = 207178, upload-time = "2026-10-08T15:26:00.779Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/08/fef2d8ce6bad91a6ea3dd9c9f02812457fdc2e9f9e08fdb3f03fbd6aad97/hindsight_client-0.10.2-py3-none-any.whl", hash = "sha256:6843e625d813333a42ca4bff38e8cab39b58ec6ed5a33d7eb596f71e16c7ef64", size = 447714, upload-time = "2026-09-29T09:41:51.337Z" },
+    { url = "https://files.pythonhosted.org/packages/54/31/5157bd9f73dca7ef2516470ff85818e03d6167f031cfcc96ff1c263ebc12/hindsight_client-0.10.3-py3-none-any.whl", hash = "sha256:b4d0d1bbc29dcd4ef25a4a23a08a48046d5337b704bdafabb02d0010d299a068", size = 450135, upload-time = "2026-10-08T15:25:59.349Z" },
 ]
 
 [[package]]
