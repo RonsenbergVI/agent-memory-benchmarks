@@ -1,18 +1,18 @@
-name: Benchmark graphiti
+name: Benchmark cognee locomo
 
 on:
   push:
     # micro is always 0 under the major.minor release scheme; the
     # strict patterns keep a hand-pushed patch or prerelease tag from
     # starting paid benchmark runs
-    tags: ["v[0-9]+.[0-9]+.0", "graphiti/v[0-9]+.[0-9]+.0"]
+    tags: ["v[0-9]+.[0-9]+.0", "cognee/v[0-9]+.[0-9]+.0"]
   workflow_dispatch:
 
-# one graphiti benchmark run at a time; a second trigger queues rather than
+# one cognee benchmark run at a time; a second trigger queues rather than
 # interleaving runs/ artifacts. Other frameworks' workflows run in
 # parallel — publishing is serialized by the publish job's own group.
 concurrency:
-  group: benchmark-graphiti
+  group: benchmark-cognee-locomo
 
 permissions:
   contents: write
@@ -29,10 +29,10 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: longmemeval runs from graphiti-longmemeval.yml
+# locomo only: longmemeval runs from cognee-longmemeval.yml
 jobs:
   locomo:
-    name: graphiti / locomo / k${{ matrix.k }}
+    name: cognee / locomo / k${{ matrix.k }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -61,14 +61,14 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          docker compose -f benchmarks/graphiti/docker-compose.yaml \
-            run --build --rm benchmark run --system graphiti \
+          docker compose -f benchmarks/cognee/docker-compose.yaml \
+            run --build --rm benchmark run --system cognee \
             --dataset locomo \
             --llm "$LLM" --embedding "$EMBEDDING" \
             --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
             --workers 3 \
             --k ${{ matrix.k }}
-          docker compose -f benchmarks/graphiti/docker-compose.yaml down -v
+          docker compose -f benchmarks/cognee/docker-compose.yaml down -v
 
       # the run id + attempt make the name unique, so a later identical run
       # (or a job re-run) gets its own artifact instead of colliding with or
@@ -76,7 +76,7 @@ jobs:
       - name: Upload run data
         uses: actions/upload-artifact@v7
         with:
-          name: runs-graphiti-locomo-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: runs-cognee-locomo-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: runs/
           if-no-files-found: error
           retention-days: 5
@@ -140,5 +140,5 @@ jobs:
       - name: Commit results to main
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "results: graphiti benchmark run for ${{ github.ref_name }}"
+          commit_message: "results: cognee locomo benchmark run for ${{ github.ref_name }}"
           file_pattern: "runs plots RESULTS.md"

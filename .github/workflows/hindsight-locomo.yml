@@ -1,18 +1,18 @@
-name: Benchmark fraise
+name: Benchmark hindsight locomo
 
 on:
   push:
     # micro is always 0 under the major.minor release scheme; the
     # strict patterns keep a hand-pushed patch or prerelease tag from
     # starting paid benchmark runs
-    tags: ["v[0-9]+.[0-9]+.0", "fraise/v[0-9]+.[0-9]+.0"]
+    tags: ["v[0-9]+.[0-9]+.0", "hindsight/v[0-9]+.[0-9]+.0"]
   workflow_dispatch:
 
-# one fraise benchmark run at a time; a second trigger queues rather than
+# one hindsight benchmark run at a time; a second trigger queues rather than
 # interleaving runs/ artifacts. Other frameworks' workflows run in
 # parallel — publishing is serialized by the publish job's own group.
 concurrency:
-  group: benchmark-fraise
+  group: benchmark-hindsight-locomo
 
 permissions:
   contents: write
@@ -29,10 +29,10 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: longmemeval runs from fraise-longmemeval.yml
+# locomo only: longmemeval runs from hindsight-longmemeval.yml
 jobs:
   locomo:
-    name: fraise / locomo / k${{ matrix.k }}
+    name: hindsight / locomo / k${{ matrix.k }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -56,28 +56,23 @@ jobs:
       - name: Pull the dataset
         run: uv run amb datasets pull locomo
 
-      # the fraise image lives on ghcr; login makes the pull work whether
-      # the package is public or private to this owner
-      - name: Log in to ghcr
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Run the benchmark
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # the server's LLM key follows LLM's provider; empty keeps OpenAI's
+          HINDSIGHT_API_LLM_API_KEY: ${{ startsWith(env.LLM, 'anthropic:') && secrets.ANTHROPIC_API_KEY || '' }}
         run: |
-          docker compose -f benchmarks/fraise/docker-compose.yaml \
-            run --build --rm benchmark run --system fraise \
+          # extraction runs inside the server: compose configures it from --llm's halves
+          export HINDSIGHT_API_LLM_PROVIDER="${LLM%%:*}" HINDSIGHT_API_LLM_MODEL="${LLM#*:}"
+          docker compose -f benchmarks/hindsight/docker-compose.yaml \
+            run --build --rm benchmark run --system hindsight \
             --dataset locomo \
             --llm "$LLM" --embedding "$EMBEDDING" \
             --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
             --workers 3 \
             --k ${{ matrix.k }}
-          docker compose -f benchmarks/fraise/docker-compose.yaml down -v
+          docker compose -f benchmarks/hindsight/docker-compose.yaml down -v
 
       # the run id + attempt make the name unique, so a later identical run
       # (or a job re-run) gets its own artifact instead of colliding with or
@@ -85,7 +80,7 @@ jobs:
       - name: Upload run data
         uses: actions/upload-artifact@v7
         with:
-          name: runs-fraise-locomo-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: runs-hindsight-locomo-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: runs/
           if-no-files-found: error
           retention-days: 5
@@ -149,5 +144,5 @@ jobs:
       - name: Commit results to main
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "results: fraise benchmark run for ${{ github.ref_name }}"
+          commit_message: "results: hindsight locomo benchmark run for ${{ github.ref_name }}"
           file_pattern: "runs plots RESULTS.md"

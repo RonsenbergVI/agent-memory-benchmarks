@@ -30,7 +30,7 @@ env:
   EMBEDDING: openai:text-embedding-3-small
 
 # longmemeval xs only: 151 questions over their own evidence, sized to
-# ingest in about locomo's time; locomo runs from cognee.yml
+# ingest in about locomo's time; locomo runs from cognee-locomo.yml
 jobs:
   xs:
     name: cognee / longmemeval xs / k${{ matrix.k }}

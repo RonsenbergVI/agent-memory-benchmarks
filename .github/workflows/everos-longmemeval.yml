@@ -30,7 +30,7 @@ env:
   EMBEDDING: openai:text-embedding-3-small
 
 # longmemeval xs only: 151 questions over their own evidence, sized to
-# ingest in about locomo's time; locomo runs from everos.yml
+# ingest in about locomo's time; locomo runs from everos-locomo.yml
 jobs:
   xs:
     name: everos / longmemeval xs / k${{ matrix.k }}
