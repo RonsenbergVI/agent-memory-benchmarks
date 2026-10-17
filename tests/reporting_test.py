@@ -59,15 +59,17 @@ def test_summary_markdown_explains_only_the_cost_marks_it_used():
     assert notes(["130,112", "8,154", ""]) == ""
 
 
-def _categorised(system: str, version: str, k: int, f1: float, cats: dict) -> dict:
+def _categorised(
+    system: str, version: str, k: int, accuracy: float, cats: dict
+) -> dict:
     return {
         "run_id": f"20260901T000000Z-{system}",
         "system": system,
         "system_version": version,
         "dataset": "locomo",
         "k": k,
-        "retrieval_f1": f1,
-        "by_category": {c: {"retrieval_f1": v} for c, v in cats.items()},
+        "judge_accuracy": accuracy,
+        "by_category": {c: {"judge_accuracy": v} for c, v in cats.items()},
     }
 
 
@@ -153,3 +155,31 @@ def test_summary_table_shows_what_each_system_spent_of_k():
     # a run scored before the metrics existed is blank, not 0.00
     assert rows[1][hits] == ""
     assert rows[1][sessions] == ""
+
+
+def test_variants_get_their_own_sections_and_plot_directories():
+    """Different variants are different experiments, never blended."""
+    from pathlib import Path
+
+    from amb.reporting.report import group_runs
+
+    groups = group_runs(
+        [
+            {"dataset": "longmemeval", "variant": "oracle", "system": "mem0"},
+            {"dataset": "longmemeval", "variant": "s", "system": "mem0"},
+        ]
+    )
+    assert [g.plot_dir for g in groups] == [
+        Path("plots/longmemeval/oracle"),
+        Path("plots/longmemeval/s"),
+    ]
+
+
+def test_charted_scores_are_accuracy_then_recall():
+    from amb.reporting.report import RunGroup
+
+    group = RunGroup(key=(("dataset", "locomo"),), summaries=[])
+    assert group.metrics() == (
+        ("accuracy", "judge_accuracy"),
+        ("recall", "retrieval_recall"),
+    )

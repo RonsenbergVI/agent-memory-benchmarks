@@ -62,11 +62,6 @@ class IngestionRecord(BaseModel):
     questions_dropped: int | None = None
     reused: bool | None = None
     token_usage: dict | None = None
-    # agentic mode: what the ingesting agent did and spent
-    num_writes: int | None = None
-    write_s: float | None = None
-    agent_input_tokens: int | None = None
-    agent_output_tokens: int | None = None
 
 
 class Run(BaseModel):
@@ -82,7 +77,6 @@ class Run(BaseModel):
     usage_coverage: str = "full"
     system_params: dict = Field(default_factory=dict)
     variant: str | None = None
-    mode: str = "direct"  # "direct" (harness-driven) or "agentic" (model-driven)
     k: int = 10
     model: str | None = None
     judge_model: str | None = None

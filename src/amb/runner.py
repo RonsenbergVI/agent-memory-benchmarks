@@ -33,9 +33,10 @@ from loguru import logger
 from pydantic import BaseModel
 from tqdm import tqdm
 
+from amb.agent import answer_with_memory
 from amb.base import Benchmark, Callback, Callbacks, Memory
 from amb.callbacks import TimingTracker
-from amb.constants import DEFAULT_DATA_DIR, DEFAULT_RUNS_DIR, RunType
+from amb.constants import DEFAULT_DATA_DIR, DEFAULT_RUNS_DIR
 from amb.contracts import IngestionRecord, QAPair, Run, Sample, Session
 
 
@@ -46,11 +47,11 @@ class RunConfig(BaseModel):
     """
 
     dataset: str
+    # the question agent (pydantic-ai id): it searches the system's own tools
+    # and answers. `test` runs pydantic-ai's offline model, for smoke runs
+    model: str
     variant: str | None = None
-    # direct: the harness drives ingest and search; agentic: a model drives
-    # both through the system's own tools
-    mode: RunType = RunType.DIRECT
-    k: int = 10
+    k: int = 10  # hits each search may return
     limit: int | None = None  # max conversations
     sample_seed: int | None = None  # random-sample `limit` conversations
     workers: int = 1  # samples run in parallel; sessions stay ordered
@@ -58,8 +59,6 @@ class RunConfig(BaseModel):
     reuse: bool = False  # skip ingestion, search what the store holds
     max_turns: int | None = None  # turn budget ingested per conversation
     max_questions: int | None = None  # max questions per conversation
-    # answer model (pydantic-ai id): answers are generated iff set; agentic needs it
-    model: str | None = None
     judge: bool = False  # judge right after the run (an evaluation step, not run loop)
     judge_model: str | None = None  # judge model, pydantic-ai id
     data_dir: Path = DEFAULT_DATA_DIR  # dataset cache
@@ -191,24 +190,8 @@ class Runner:
         """Run every sample and return the raw observations.
 
         Computes no scores and writes no files — that is the report's job.
-
-        Raises:
-            ValueError: in agentic mode without toolsets or a model; there
-                is no fallback to defaults or direct behavior.
         """
         cfg = self.config
-        if cfg.mode == "agentic":
-            if not self.benchmark.supports_agentic():
-                raise ValueError(
-                    f"{self.name} does not support agentic mode: its Benchmark "
-                    "must set search_toolset_class and ingest_toolset_class "
-                    "to the system's own tool surface"
-                )
-            if not cfg.model:
-                raise ValueError(
-                    "agentic mode needs --model: an agentic run never falls "
-                    "back to a default model or to direct behavior"
-                )
         # probe reports what will be measured: system version, internal models
         probe = self.benchmark.create_system()
         internal = probe.models()
@@ -219,19 +202,17 @@ class Runner:
             system=self.name,
             dataset=cfg.dataset,
             variant=cfg.variant,
-            mode=cfg.mode,
             k=cfg.k,
             ingestion_model=internal.get("ingestion_model"),
             embedding_model=internal.get("embedding_model"),
-            usage_coverage=type(probe).usage_coverage,
+            usage_coverage=probe.coverage(),
             # the two model params are lifted into their own fields above
             system_params={
                 key: value
                 for key, value in self.benchmark.params.items()
                 if key not in ("model", "embedding_model")
             },
-            # str() lets tests pass a pydantic-ai Model instance through the config
-            model=None if cfg.model is None else str(cfg.model),
+            model=cfg.model,
             max_turns=cfg.max_turns,
             sample_seed=cfg.sample_seed,
             workers=cfg.workers,
@@ -330,17 +311,14 @@ class Runner:
         # must start or TimingTracker.on_ingest_end overwrites ingest_s with 0.0
         self.callbacks.on_ingest_begin(sample, system)
         t0 = time.perf_counter()
-        agent_stats: dict = {}
-        if self.config.mode == "agentic":
-            agent_stats = self._agent_ingestion(system, sample, sessions)
-        else:
-            for session in tqdm(
-                sessions,
-                desc=f"ingest {sample.sample_id}",
-                unit="session",
-                leave=False,
-            ):
-                system.ingest_session(sample.conversation.conversation_id, session)
+        # the system's own extractor decides what is stored
+        for session in tqdm(
+            sessions,
+            desc=f"ingest {sample.sample_id}",
+            unit="session",
+            leave=False,
+        ):
+            system.ingest_session(sample.conversation.conversation_id, session)
         stats = {
             "sample_id": sample.sample_id,
             "ingest_s": time.perf_counter() - t0,
@@ -348,7 +326,6 @@ class Runner:
             "num_sessions": len(sessions),
             "num_turns": sum(len(s.turns) for s in sessions),
             "system_stats": system.stats(),
-            **agent_stats,
         }
         dropped = len(sample.qa) - len(self.answerable_questions(sample, sessions))
         if dropped:
@@ -363,39 +340,6 @@ class Runner:
         )
         self.callbacks.on_ingest_end(sample, system, stats)
         return data.add_ingestion(stats)
-
-    def _agent_ingestion(
-        self, system: Memory, sample: Sample, sessions: list[Session]
-    ) -> dict:
-        """Agentic ingestion: a model writes each session via the system's tools.
-
-        Returns the agent's extra stats: write counts and its own token spend.
-        """
-        # imported lazily so retrieval-only runs need no LLM deps/keys
-        from amb.agent import ingest_with_agent
-
-        totals = {
-            "num_writes": 0,
-            "write_s": 0.0,
-            "agent_input_tokens": 0,
-            "agent_output_tokens": 0,
-        }
-        assert self.config.model is not None  # guaranteed by run()
-        for session in tqdm(
-            sessions,
-            desc=f"ingest {sample.sample_id}",
-            unit="session",
-            leave=False,
-        ):
-            toolset = self.benchmark.create_ingest_toolset(
-                system, sample.conversation.conversation_id, session
-            )
-            generation = ingest_with_agent(session, toolset, model=self.config.model)
-            totals["num_writes"] += toolset.num_writes
-            totals["write_s"] += toolset.write_s
-            totals["agent_input_tokens"] += generation.input_tokens
-            totals["agent_output_tokens"] += generation.output_tokens
-        return totals
 
     def conversation(self, system: Memory, sample: Sample, data: Run) -> None:
         """Ask every benchmark question against the ingested memory.
@@ -430,40 +374,21 @@ class Runner:
             "gold_answer": qa.answer,
         }
         try:
-            generation = None
-            if cfg.mode == "agentic":
-                # imported lazily so model-free runs need no LLM deps/keys
-                from amb.agent import answer_with_memory
-
-                toolset = self.benchmark.create_search_toolset(
-                    system, sample.conversation.conversation_id, k=cfg.k
-                )
-                # agent searches report through the same hooks as harness-driven ones
-                toolset.observe(self.callbacks, sample, qa)
-                assert cfg.model is not None  # guaranteed by run()
-                t0 = time.perf_counter()
-                generation = answer_with_memory(
-                    qa.question,
-                    toolset,
-                    cfg.model,
-                    question_date=qa.question_date,
-                )
-                row["answer_s"] = time.perf_counter() - t0
-                # retrieval is scored on everything the agent chose to look at
-                hits = toolset.retrieved
-                row["search_s"] = toolset.search_s
-                row["num_searches"] = toolset.num_searches
-                row["num_hits"] = len(hits)
-            else:
-                self.callbacks.on_search_begin(sample, qa)
-                t0 = time.perf_counter()
-                hits = system.search(
-                    sample.conversation.conversation_id, qa.question, k=cfg.k
-                )
-                elapsed = time.perf_counter() - t0
-                row["search_s"] = elapsed
-                row["num_hits"] = len(hits)
-                self.callbacks.on_search(sample, qa, hits, elapsed)
+            toolset = self.benchmark.create_search_toolset(
+                system, sample.conversation.conversation_id, k=cfg.k
+            )
+            # every search the agent runs reports through the callback hooks
+            toolset.observe(self.callbacks, sample, qa)
+            t0 = time.perf_counter()
+            generation = answer_with_memory(
+                qa.question, toolset, cfg.model, question_date=qa.question_date
+            )
+            row["answer_s"] = time.perf_counter() - t0
+            # retrieval is scored on everything the agent chose to look at
+            hits = toolset.retrieved
+            row["search_s"] = toolset.search_s
+            row["num_searches"] = toolset.num_searches
+            row["num_hits"] = len(hits)
 
             # session ids are the comparable headline; turn ids the stricter
             # bonus for systems that store verbatim turns
@@ -491,20 +416,9 @@ class Runner:
                     qa.question_id,
                 )
 
-            if cfg.mode != "agentic" and cfg.model:
-                # the qa phase's second half: answer from the retrieved context
-                from amb.agent import answer_question
-
-                t0 = time.perf_counter()
-                generation = answer_question(
-                    qa.question, hits, cfg.model, question_date=qa.question_date
-                )
-                row["answer_s"] = time.perf_counter() - t0
-
-            if generation is not None:
-                row["predicted_answer"] = generation.text
-                row["input_tokens"] = generation.input_tokens
-                row["output_tokens"] = generation.output_tokens
+            row["predicted_answer"] = generation.text
+            row["input_tokens"] = generation.input_tokens
+            row["output_tokens"] = generation.output_tokens
         except Exception as exc:
             row["error"] = f"{type(exc).__name__}: {exc}"
             traceback.print_exc()

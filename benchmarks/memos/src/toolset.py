@@ -22,19 +22,17 @@
 
 """MemOS's tool surface for `--mode agentic`.
 
-The agent drives MemOS's own two verbs: `add_memory` hands it a
-statement and its MemReader extracts from it, `search_memory` searches
-what it extracted. The user and the MemCube stay the adapter's, never
-the agent's to choose, so conversation isolation cannot be argued away
-by a tool call.
+The answering agent drives MemOS's own `search_memory` over what its
+MemReader extracted; ingestion stays MemOS's own `add`. The user and the
+MemCube are the adapter's, never the agent's to choose, so conversation
+isolation cannot be argued away by a tool call.
 """
 
 import time
 from typing import Any
 
-from amb.agent.toolset import IngestToolset, SearchToolset
+from amb.agent.toolset import SearchToolset
 from amb.base import Memory
-from amb.contracts import Session
 from src.memory import MemOSMemory
 
 
@@ -67,51 +65,3 @@ class MemOSSearchToolset(SearchToolset):
         t0 = time.perf_counter()
         hits = self.memos.search(self.conversation_id, query, k=self.k)
         return self.record(hits, time.perf_counter() - t0)
-
-
-class MemOSIngestToolset(IngestToolset):
-    """MemOS's write path, exposed to the ingesting agent."""
-
-    def __init__(
-        self,
-        memory: Memory,
-        conversation_id: str,
-        session: Session,
-        **kwargs: Any,
-    ) -> None:
-        """Bind the toolset to one session and expose the write."""
-        super().__init__(memory, conversation_id, session, **kwargs)
-        self.add_function(self.add_memory, name="add_memory")
-
-    @property
-    def memos(self) -> MemOSMemory:
-        """The bound system, typed to its concrete class."""
-        assert isinstance(self.memory, MemOSMemory)
-        return self.memory
-
-    def add_memory(self, content: str, source_turn_ids: list[str]) -> str:
-        """Hand one statement to MemOS to remember.
-
-        Args:
-            content: What is worth remembering, phrased so MemOS's own
-                reader has something to work with — a statement, not a
-                keyword.
-            source_turn_ids: The ids of the turns it came from, exactly
-                as shown in the transcript.
-
-        Returns:
-            Whether the content was stored.
-        """
-        cited = [t for t in source_turn_ids if t in self.turn_ids()]
-        if not cited:
-            return "not stored: none of the cited turn ids exist in this session"
-        t0 = time.perf_counter()
-        self.memos.store(
-            self.conversation_id,
-            content,
-            session_id=self.session.session_id,
-        )
-        self.record_write(time.perf_counter() - t0)
-        if len(cited) < len(source_turn_ids):
-            return "stored, but unknown turn ids were dropped"
-        return "stored"

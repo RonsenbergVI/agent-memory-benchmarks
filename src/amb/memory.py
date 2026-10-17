@@ -29,11 +29,10 @@ services, no persistence — also serves as the reference plugin implementation.
 import math
 import re
 import sys
-import time
 from collections import Counter, defaultdict
-from typing import Any, ClassVar
+from typing import ClassVar
 
-from amb.agent.toolset import IngestToolset, MemoryToolset
+from amb.agent.toolset import MemoryToolset
 from amb.base import Benchmark, Memory
 from amb.contracts import MemoryHit, Session
 
@@ -72,18 +71,6 @@ class NaiveMemory(Memory):
                     Counter(_tokens(f"{turn.speaker} {turn.text}")),
                 )
             )
-
-    def store(
-        self,
-        conversation_id: str,
-        content: str,
-        turn_ids: list[str],
-        session_id: str,
-    ) -> None:
-        """Index one agent-authored memory with its provenance (agentic mode)."""
-        self._docs[conversation_id].append(
-            (list(turn_ids), session_id, content, Counter(_tokens(content)))
-        )
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return the k best-scoring turns for the query, BM25-ranked."""
@@ -134,53 +121,10 @@ class NaiveMemory(Memory):
         return {"stored_turns": turns, "approx_bytes": sys.getsizeof(self._docs)}
 
 
-class NaiveIngestToolset(IngestToolset):
-    """The naive store's write surface: index one memory at a time."""
-
-    def __init__(
-        self,
-        memory: Memory,
-        conversation_id: str,
-        session: Session,
-        **kwargs: Any,
-    ) -> None:
-        """Bind the toolset to one session and expose the write tool."""
-        super().__init__(memory, conversation_id, session, **kwargs)
-        self.add_function(self.store_memory, name="store_memory")
-
-    @property
-    def naive(self) -> NaiveMemory:
-        """The bound system, typed to its concrete class."""
-        assert isinstance(self.memory, NaiveMemory)
-        return self.memory
-
-    def store_memory(self, content: str, source_turn_ids: list[str]) -> str:
-        """Store one memory about this session for later retrieval.
-
-        Args:
-            content: The fact to remember, phrased so a search can find it.
-            source_turn_ids: The ids of the turns the fact came from, exactly
-                as shown in the transcript.
-
-        Returns:
-            Whether the memory was stored.
-        """
-        cited = [t for t in source_turn_ids if t in self.turn_ids()]
-        if not cited:
-            return "not stored: none of the cited turn ids exist in this session"
-        t0 = time.perf_counter()
-        self.naive.store(self.conversation_id, content, cited, self.session.session_id)
-        self.record_write(time.perf_counter() - t0)
-        if len(cited) < len(source_turn_ids):
-            return "stored, but unknown turn ids were dropped from the citation"
-        return "stored"
-
-
 class NaiveBenchmark(Benchmark):
     """The benchmark object the `naive` entry point resolves to."""
 
     name: ClassVar[str] = "naive"
     system_class = NaiveMemory
-    # the baseline's surface is exactly the generic pair: one search, one write tool
+    # the baseline's surface is exactly the generic one: a single search tool
     search_toolset_class = MemoryToolset
-    ingest_toolset_class = NaiveIngestToolset

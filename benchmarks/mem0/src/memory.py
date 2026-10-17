@@ -23,22 +23,23 @@
 """Mem0 (mem0ai/mem0) — vector store + LLM fact extraction.
 
 Vectors go to the Qdrant server named by QDRANT_HOST/QDRANT_PORT (compose
-sets them); without those, mem0's embedded local store. Extraction and
-embeddings use OpenAI (needs OPENAI_API_KEY); models come from
-``--param model=... embedding_model=...`` with the defaults below, and
-``--param config=...`` (a full Memory.from_config dict) bypasses it all.
+sets them); without those, mem0's embedded local store. Extraction runs on
+``--llm`` (openai or anthropic, mem0's own providers), embeddings on
+``--embedding`` (openai); ``--param config=...`` (a full
+Memory.from_config dict) bypasses it all.
 """
 
 import os
 import threading
 from typing import Any, ClassVar
 
-from amb.base import Memory
+from amb.base import Memory, split_model
+from amb.constants import DEFAULT_EMBEDDING, DEFAULT_LLM
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+# mem0's 2000 leaves an adaptive-thinking model little room for the answer
+ANTHROPIC_MAX_TOKENS = 16000
 
 # mem0's Qdrant store does check-then-create on a shared collection;
 # concurrent worker setups race that gap and the losers die on 409 Conflict.
@@ -51,23 +52,27 @@ class Mem0Memory(Memory):
     name: ClassVar[str] = "mem0"
     description: ClassVar[str] = "Mem0 — vector + LLM extraction memory"
     sdk_dist: ClassVar[str | None] = "mem0ai"
+    llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
+    embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
 
     def __init__(
         self,
         config: dict | None = None,
-        model: str | None = None,
-        embedding_model: str | None = None,
+        model: str = DEFAULT_LLM,
+        embedding_model: str = DEFAULT_EMBEDDING,
         reasoning: bool = True,
         **params: object,
     ) -> None:
         """Pin the extraction and embedding models mem0 will use."""
         super().__init__(**params)
         self._config = config
-        self.model = model or DEFAULT_INGESTION_MODEL
-        self.embedding_model = embedding_model or DEFAULT_EMBEDDING_MODEL
-        # mem0's name-based reasoning detection misses gpt-5-mini, so it sends
-        # temperature/top_p and the model 400s; the explicit flag omits them
-        # (safe for non-reasoning models too — False restores sampling args).
+        self.model = model
+        self.embedding_model = embedding_model
+        self.model_name(self.model, "llm")
+        self.model_name(self.embedding_model, "embedding")
+        # mem0's name-based detection misses both gpt-5-mini and Haiku 5.5, so
+        # it sends sampling args those models 400 on; the explicit flag omits
+        # them (False restores sampling args for a model that takes them)
         self.reasoning = reasoning
         self._conversations: set[str] = set()
 
@@ -77,17 +82,18 @@ class Mem0Memory(Memory):
 
         config: dict[str, Any] | None = self._config
         if config is None:
+            provider, name = split_model(self.model)
+            llm: dict[str, Any] = {"model": name}
+            if provider == "anthropic":
+                llm["enable_sampling_parameters"] = not self.reasoning
+                llm["max_tokens"] = ANTHROPIC_MAX_TOKENS
+            else:
+                llm["is_reasoning_model"] = self.reasoning
             config = {
-                "llm": {
-                    "provider": "openai",
-                    "config": {
-                        "model": self.model,
-                        "is_reasoning_model": self.reasoning,
-                    },
-                },
+                "llm": {"provider": provider, "config": llm},
                 "embedder": {
                     "provider": "openai",
-                    "config": {"model": self.embedding_model},
+                    "config": {"model": split_model(self.embedding_model)[1]},
                 },
             }
             # vector-store location is infrastructure: the environment sets it
@@ -131,32 +137,6 @@ class Mem0Memory(Memory):
         )
         self._conversations.add(conversation_id)
 
-    def store(
-        self,
-        conversation_id: str,
-        content: str,
-        *,
-        session_id: str,
-        turn_ids: list[str],
-        timestamp: str | None = None,
-    ) -> None:
-        """Store one agent-authored memory verbatim (agentic mode).
-
-        `infer=False` skips mem0's own extraction — the agent is the
-        extractor, so the fact lands as written, provenance in metadata.
-        """
-        self.memory.add(
-            content,
-            user_id=conversation_id,
-            infer=False,
-            metadata={
-                "session_id": session_id,
-                "turn_ids": list(turn_ids),
-                "timestamp": timestamp,
-            },
-        )
-        self._conversations.add(conversation_id)
-
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return mem0's k best memories for the query."""
         # mem0 2.0 API: result count is `top_k` — `limit` is silently
@@ -178,14 +158,11 @@ class Mem0Memory(Memory):
         for r in results:
             metadata = r.get("metadata") or {}
             session_id = metadata.get("session_id")
-            # turn ids exist only on agentic-mode memories; mem0's own
-            # extraction spans a session
-            turn_ids = metadata.get("turn_ids") or []
+            # session-level only: mem0's own extraction spans a session
             hits.append(
                 MemoryHit(
                     content=r.get("memory", ""),
                     score=r.get("score"),
-                    turn_ids=[str(t) for t in turn_ids],
                     session_ids=[str(session_id)] if session_id is not None else [],
                     metadata=metadata,
                 )

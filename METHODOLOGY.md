@@ -73,19 +73,22 @@ The repo is a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspa
 - **`src/amb`** — the evaluation library only: the normalized conversation schema, dataset loaders (LoCoMo, LongMemEval), metrics, the pydantic-ai answer agent + LLM judge, the `Runner` that executes a benchmark, the `amb` CLI, and a `naive` BM25 baseline. It knows nothing about specific memory systems.
 - **`benchmarks/<provider>/`** — one workspace package per integration (like `dbt-postgres` against `dbt-core`). Each implements the base classes from `amb.base`: a `Memory` subclass (`memory.py`) and its specialized `Benchmark` subclass (`benchmark.py`), registered under the `amb.systems` entry-point group so `amb run` invokes the integration's own object. Each also ships its own `pyproject.toml`, a standalone uv `Dockerfile`, and a `docker-compose.yaml` wiring any backing database (Neo4j for Graphiti, the Fraise server, ...) to the benchmark runner.
 
-**A benchmark declares, the runner executes, callbacks measure.** A `Benchmark` says *what* is under test (which `MemorySystem`, its `--param`s, the tool surface it exposes in agentic mode, the callbacks that meter it) and never sees a `RunConfig` — the same split HuggingFace draws between a model and its `Trainer`. `amb.runner.Runner` owns the protocol: sample selection, the turn budget, parallelism, direct vs agentic. It records nothing itself; every phase is bracketed by a hook, and everything a run reports about itself — latencies from `TimingTracker`, token spend from `OpenAIUsageTracker` — is produced by an observer attached to those hooks. So a new axis of measurement is a new callback, never an edit to the loop, and `Runner.core_callback_classes` attaches the ones no run may be missing before any the benchmark declares:
+**A benchmark declares, the runner executes, callbacks measure.** A `Benchmark` says *what* is under test (which `MemorySystem`, its `--param`s, the search tools it exposes to the agent, the callbacks that meter it) and never sees a `RunConfig` — the same split HuggingFace draws between a model and its `Trainer`. `amb.runner.Runner` owns the protocol: sample selection, the turn budget, parallelism, direct vs agentic. It records nothing itself; every phase is bracketed by a hook, and everything a run reports about itself — latencies from `TimingTracker`, token spend from `OpenAIUsageTracker` — is produced by an observer attached to those hooks. So a new axis of measurement is a new callback, never an edit to the loop, and `Runner.core_callback_classes` attaches the ones no run may be missing before any the benchmark declares:
 
 ```python
 data = Runner(FraiseBenchmark(params={"model": "gpt-5-mini"}),
               RunConfig(dataset="locomo", k=10)).run()
 ```
 
-Every experiment is the same pipeline — **ingest → qa → evaluation** — and `--mode` picks who drives the memory calls:
+Every experiment is the same pipeline — **ingest → qa → evaluation** — measured the way an agent uses memory:
 
-- **`direct`** (default): the harness ingests via the adapter and searches each question verbatim. With `--model`, the qa phase also answers from the retrieved context; without one it stops at retrieval (free, no LLM).
-- **`agentic`**: a model drives both sides through the system's *own* tools — it decides what to `remember`/`add`/insert at ingestion and how to search at question time. `--model` is mandatory; an agentic run never falls back to a default model or to direct behavior.
+- **Ingest:** each session goes through the adapter's `ingest_session`, i.e. the system's **own extractor** (mem0's fact extraction, graphiti's entity extraction, hindsight's server-side retain, ...), on the model set with `--llm`.
+- **QA:** amb's question agent (`--model`, required) searches through the system's *own* search tools (mem0's `search_memory`, hindsight's `recall`, fraise's `recall`, ... or the generic `search_memory`) as many times as it likes, then answers. Retrieval is recorded on everything it chose to look at.
+- **Evaluation:** the judge (`--judge-model`) gives each answer one binary verdict, correct or not. **Judge accuracy is the headline**, reported with its 95% Wilson interval — a few hundred verdicts per run leave a few points of noise, so systems inside each other's interval are not ranked as different. Session-level retrieval recall is the diagnostic beside it: whether the agent found the evidence at all. LoCoMo's adversarial questions are unanswerable; the judge counts a correct abstention ("I don't know") as correct there, so the verdict stays binary.
 
-`Runner.run()` does: setup -> ingest sessions (timed) -> per question: search (timed) -> record retrieval against evidence labels -> optionally answer with an LLM -> teardown. Judging is an **evaluation** step, not part of the run: `amb judge <run-dir>` (or `amb run --judge` as a convenience) grades saved predictions, and can re-grade them with a different judge without re-running the system. Every run automatically writes its JSON report (`summary.json`, per-question `results.jsonl`, `ingest.json`) to `runs/<dataset>/<system>/<mode>/<run-id>/` in the repo (`runs/<dataset>/<variant>/<system>/<mode>/<run-id>/` when the run named a `--variant` — a different dataset variant is a different experiment, not a different run of the same one, so it gets its own path level) — the Docker environments volume-mount `runs/` so containerized runs land there too. `ComparisonReport` aggregates saved runs into the final cross-system comparison (`amb report`), and `amb.reporting` turns that comparison into the published documents: [RESULTS.md](RESULTS.md) and the [README's results section](README.md#results) are generated, never hand-edited. Each report is a list of sections, and **a section declares the charts it shows and links exactly those** — so `amb plot all` draws precisely the figures the documents reference, and a new dataset, variant, or model generation adds a section (and its own `plots/` directory) by appearing in `runs/`, with no code change.
+There is no retrieval-only mode: earlier releases scored a harness-driven search on retrieval F1, and those results were withdrawn — they measured a search engine, not memory in an agent.
+
+`Runner.run()` does: setup -> ingest sessions (timed) -> per question: the agent searches (each search timed) and answers -> record retrieval against evidence labels -> teardown. Judging is an **evaluation** step, not part of the run: `amb judge <run-dir>` (or `amb run --judge` as a convenience) grades saved predictions, and can re-grade them with a different judge without re-running the system. Every run automatically writes its JSON report (`summary.json`, per-question `results.jsonl`, `ingest.json`) to `runs/<dataset>/<system>/<run-id>/` in the repo (`runs/<dataset>/<variant>/<system>/<run-id>/` when the run named a `--variant` — a different dataset variant is a different experiment, not a different run of the same one, so it gets its own path level) — the Docker environments volume-mount `runs/` so containerized runs land there too. `ComparisonReport` aggregates saved runs into the final cross-system comparison (`amb report`), and `amb.reporting` turns that comparison into the published documents: [RESULTS.md](RESULTS.md) and the [README's results section](README.md#results) are generated, never hand-edited. Each report is a list of sections, and **a section declares the charts it shows and links exactly those** — so `amb plot all` draws precisely the figures the documents reference, and a new dataset, variant, or model generation adds a section (and its own `plots/` directory) by appearing in `runs/`, with no code change.
 
 ## Datasets
 
@@ -157,31 +160,45 @@ The gap between `xs` and `xs-shared` is the cost of retrieving from a shared his
 A run uses two independent sets of models, and they are worth keeping straight because they measure different things:
 
 - **Ingestion models** — what the *memory system* calls internally to extract and embed facts. This is the system under test, and it dominates run cost.
-- **Answering models** — what the *harness* calls to answer benchmark questions and (with `--judge`) grade them. This is the evaluator, and it should stay fixed while you compare memory systems.
+- **Answering models** — what the *harness* calls to answer benchmark questions and (with `--judge`) grade them: amb's question agent and judge. This is the evaluator, and it should stay fixed while you compare memory systems. The published runs use `anthropic:claude-haiku-5-5` for both (needs `ANTHROPIC_API_KEY`).
 
 Every model is chosen on the command line — there are no model environment variables, so a run is fully described by its command:
 
 | Flag | Controls | Default |
 | --- | --- | --- |
-| `--param model=...` | memory system's extraction LLM | mem0 `gpt-5-mini`; graphiti keeps its own; fraise/naive none |
-| `--param embedding_model=...` | memory system's embedding model | mem0 `text-embedding-3-small`; graphiti keeps its own; fraise/naive none |
-| `--model` | harness answer agent | none — direct runs skip answering without it; agentic runs refuse to start |
+| `--llm` | memory system's own LLM (extraction) | `openai:gpt-5-mini`; naive has none |
+| `--embedding` | memory system's own embedding model | `openai:text-embedding-3-small`; naive has none |
+| `--model` | amb's question agent | required — `test` (pydantic-ai's offline model) for smoke runs |
 | `--judge-model` | judge (`amb judge` / `--judge`) | follows `--model` |
 
 ```bash
 uv run amb run --system mem0 --dataset locomo --judge \
-  --param model=gpt-4.1-mini --param embedding_model=text-embedding-3-small \
-  --model openai:gpt-5-mini --judge-model openai:gpt-5-mini
+  --llm anthropic:claude-haiku-5-5 --embedding openai:text-embedding-3-small \
+  --model anthropic:claude-haiku-5-5 --judge-model anthropic:claude-haiku-5-5
 ```
 
-Note the id formats differ: answering models are pydantic-ai ids (`openai:gpt-5-mini`), while ingestion models are raw provider ids (`gpt-5-mini`) because each memory SDK talks to its provider directly. Every run records the system's effective `ingestion_model`/`embedding_model` and any other `--param` overrides in its summary — they are part of the run's comparison identity, so a variant (fraise with an embedder, mem0 on a different extractor) is a new row, never a replacement.
+Every model id has one format, `provider:name` — the pydantic-ai one. `--llm` and `--embedding` are the same flags for every system; each adapter translates the id into its own SDK's form (cognee's `anthropic/...` litellm name, hindsight's server provider/model pair, ...), and a system refuses to start on a provider it cannot run **natively** rather than shimming it or falling back to another model. `--param model=` / `--param embedding_model=` are rejected, so the models have exactly one source. `none` runs a system without that half where it supports it (fraise: no tagger / no embedder). What each system can run today:
+
+| System | `--llm` providers | How anthropic runs | `--embedding` |
+| --- | --- | --- | --- |
+| mem0, graphiti, langmem | openai, anthropic | the SDK's own anthropic provider | openai |
+| cognee | openai, anthropic | its own litellm path | openai |
+| hindsight | openai, anthropic | the server's own provider, configured by compose | openai |
+| fraise | openai, anthropic | `src/extractor.py`: fraise's `Extractor` interface with the SDK's own prompt and schema (the SDK ships only OpenAI's) | openai |
+| memos | openai, anthropic | an `AnthropicLLM` behind MemOS's LLM interface, in the `openai` backend's slot (as the reasoning accommodation already was) | openai |
+| everos | openai, anthropic | a client satisfying everalgo's structural `LLMClient` protocol, in EverOS's process-wide LLM slots | openai |
+| naive | — | — | — |
+
+Embeddings stay on OpenAI everywhere: Anthropic has no embedding model. fraise, memos and everos have no anthropic provider of their own, so for those three the provider call is adapter code plugged into the system's own extension point — their prompts, parsing and pipelines are unchanged, but it is a seam the other five do not have. In-process anthropic spend is counted by the same tracker as openai's (`messages.create`/`parse`, cache tokens included); amb's own question agent and judge mark their SDK clients so their tokens land on the row, never in a system's cost.
+
+Hindsight extracts inside its server, so its compose stack is configured from the same id (`HINDSIGHT_API_LLM_PROVIDER` / `HINDSIGHT_API_LLM_MODEL`, plus `HINDSIGHT_API_LLM_API_KEY` for anthropic — the workflow derives all three from `LLM`), and the adapter refuses an `--llm` the server is not running. Every run records the system's effective `ingestion_model`/`embedding_model` and any other `--param` overrides in its summary — they are part of the run's comparison identity, so a variant (fraise with an embedder, mem0 on a different extractor) is a new row, never a replacement.
 
 `--param` is the general channel for memory-system settings, and its values are coerced (`true`/`false` to booleans, numbers to numbers). Mem0 also takes `--param reasoning=false`, which restores its normal sampling arguments; it defaults to true because mem0's own reasoning-model detection misses `gpt-5-mini` and sends a `temperature` the model rejects with a 400.
 
 **Run parameters are CLI-only; infrastructure is environment-only.** Nothing is settable both ways, so a benchmark's behaviour never depends on ambient state — the command fully describes the run, and the same command means the same thing on any machine.
 
 - **CLI** — everything that changes what a run measures: models, `--limit` / `--turns` / `--questions`, `--data-dir`, `--report-dir`, and dataset sources.
-- **Environment** — only where things live and how to authenticate: `OPENAI_API_KEY`, `HF_TOKEN`, and the database endpoints (`QDRANT_HOST` / `QDRANT_PORT`, `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD`, `FRAISE_BASE_URL`). The compose files set the endpoints; locally they default to localhost.
+- **Environment** — only where things live and how to authenticate: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `HF_TOKEN`, and the database endpoints (`QDRANT_HOST` / `QDRANT_PORT`, `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD`, `FRAISE_BASE_URL`). The compose files set the endpoints; locally they default to localhost.
 
 `src/amb` reads no environment variables at all; only the `benchmarks/*` adapters do, and only for their endpoints, each with a localhost default. One repo-root `.env` can hold every integration's variables at once — the compose files pass it through, and unrelated variables are ignored.
 

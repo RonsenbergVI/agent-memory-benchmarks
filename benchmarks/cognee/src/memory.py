@@ -31,10 +31,10 @@ The providers are chosen entirely by environment variable, so an
 embedded run is still a compose file away.
 
 Ingestion is cognee's own: ``add`` stages a session's turns and
-``cognify`` builds the graph from them, extracting with the model pinned
-below (gpt-5-mini by default, the same model every other system in the
-comparison ingests with) and embedding with text-embedding-3-small
-rather than cognee's own 3072-dimension default.
+``cognify`` builds the graph from them, extracting on ``--llm`` (openai
+or anthropic, through cognee's litellm path) and embedding on
+``--embedding`` (openai) — by default the comparison's shared pair,
+rather than cognee's own 3072-dimension embedder.
 
 Each conversation is a cognee *dataset*. With backend access control on
 — the default for this backend pair — a dataset owns its own graph and
@@ -60,13 +60,11 @@ import threading
 from contextvars import ContextVar
 from typing import Any, ClassVar
 
-from amb.base import Memory
-from amb.constants import TOKEN_TRACKING_KEYS
+from amb.base import Memory, split_model
+from amb.constants import DEFAULT_EMBEDDING, DEFAULT_LLM, TOKEN_TRACKING_KEYS
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 # text-embedding-3-small's native width, and the same width every other
 # system in the comparison embeds at
 DEFAULT_EMBEDDING_DIMENSIONS = 1536
@@ -183,11 +181,14 @@ class CogneeMemory(Memory):
     name: ClassVar[str] = "cognee"
     description: ClassVar[str] = "Cognee — embedded knowledge-graph memory"
     sdk_dist: ClassVar[str | None] = "cognee"
+    # both through litellm, whose callback books the spend whatever the provider
+    llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
+    embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
 
     def __init__(
         self,
-        model: str | None = DEFAULT_INGESTION_MODEL,
-        embedding_model: str | None = DEFAULT_EMBEDDING_MODEL,
+        model: str = DEFAULT_LLM,
+        embedding_model: str = DEFAULT_EMBEDDING,
         embedding_dimensions: int | str = DEFAULT_EMBEDDING_DIMENSIONS,
         search_type: str = DEFAULT_SEARCH_TYPE,
         **params: object,
@@ -196,6 +197,8 @@ class CogneeMemory(Memory):
         super().__init__(**params)
         self.model = model
         self.embedding_model = embedding_model
+        self.model_name(model, "llm")
+        self.model_name(embedding_model, "embedding")
         # --param values arrive as strings
         self.embedding_dimensions = int(embedding_dimensions)
         self.search_type = search_type
@@ -258,17 +261,24 @@ class CogneeMemory(Memory):
         """
         import cognee
 
-        if self.model:
-            cognee.config.set_llm_provider("openai")
-            cognee.config.set_llm_model(f"openai/{self.model}")
-        if self.embedding_model:
-            cognee.config.set_embedding_provider("openai")
-            cognee.config.set_embedding_model(f"openai/{self.embedding_model}")
-            # the dimension does not follow the model: cognee keeps the
-            # 3072 of its own text-embedding-3-large default, which
-            # text-embedding-3-small rejects outright (400, "must be less
-            # than or equal to 1536")
-            cognee.config.set_embedding_dimensions(self.embedding_dimensions)
+        provider, name = split_model(self.model)
+        cognee.config.set_llm_provider(provider)
+        cognee.config.set_llm_model(f"{provider}/{name}")
+        cognee.config.set_embedding_provider("openai")
+        cognee.config.set_embedding_model(
+            f"openai/{split_model(self.embedding_model)[1]}"
+        )
+        # the embedder falls back to the LLM's key, which is no longer
+        # OpenAI's once extraction moves provider: both are pinned explicitly
+        if key := os.environ.get(f"{provider.upper()}_API_KEY"):
+            cognee.config.set_llm_api_key(key)
+        if key := os.environ.get("OPENAI_API_KEY"):
+            cognee.config.set_embedding_api_key(key)
+        # the dimension does not follow the model: cognee keeps the
+        # 3072 of its own text-embedding-3-large default, which
+        # text-embedding-3-small rejects outright (400, "must be less
+        # than or equal to 1536")
+        cognee.config.set_embedding_dimensions(self.embedding_dimensions)
 
     def setup(self) -> None:
         """Import cognee, pin its models, and warm the shared state once."""

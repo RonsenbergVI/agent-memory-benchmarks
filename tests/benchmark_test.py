@@ -28,7 +28,7 @@ from amb.base.benchmark import Benchmark
 from amb.base.callback import Callback, Callbacks
 from amb.base.memory import Memory
 from amb.callbacks import OpenAIUsageTracker
-from amb.contracts import Conversation, Sample, Session
+from amb.contracts import Conversation, Sample
 
 
 class FakeSearchToolset:
@@ -36,13 +36,6 @@ class FakeSearchToolset:
         self.memory = memory
         self.conversation_id = conversation_id
         self.k = k
-
-
-class FakeIngestToolset:
-    def __init__(self, memory: Memory, conversation_id: str, session: Session) -> None:
-        self.memory = memory
-        self.conversation_id = conversation_id
-        self.session = session
 
 
 class TrackerA(Callback):
@@ -55,20 +48,11 @@ class TrackerB(Callback):
 
 class FakeBenchmark(Benchmark):
     name = "fakebench"
-    default_params = {"model": "m-default", "k": 5}
-
-
-class SearchOnlyBenchmark(FakeBenchmark):
-    search_toolset_class = FakeSearchToolset
-
-
-class IngestOnlyBenchmark(FakeBenchmark):
-    ingest_toolset_class = FakeIngestToolset
+    default_params = {"depth": "d-default", "k": 5}
 
 
 class AgenticBenchmark(FakeBenchmark):
     search_toolset_class = FakeSearchToolset
-    ingest_toolset_class = FakeIngestToolset
 
 
 class OrderedBenchmark(FakeBenchmark):
@@ -108,7 +92,6 @@ def test_declared_class_defaults() -> None:
     assert Benchmark.name == "unnamed"
     assert Benchmark.default_params == {}
     assert Benchmark.search_toolset_class is None
-    assert Benchmark.ingest_toolset_class is None
 
 
 def test_create_system_applies_overrides_on_top_of_defaults(fake_memory_class) -> None:
@@ -119,7 +102,7 @@ def test_create_system_applies_overrides_on_top_of_defaults(fake_memory_class) -
 
     system = SystemBenchmark({"k": 7}).create_system()
     assert type(system) is fake_memory_class
-    assert system.params == {"model": "m-default", "k": 7}
+    assert system.params == {"depth": "d-default", "k": 7}
 
 
 def test_create_system_uses_defaults_when_no_overrides(fake_memory_class) -> None:
@@ -129,7 +112,7 @@ def test_create_system_uses_defaults_when_no_overrides(fake_memory_class) -> Non
         system_class = fake_memory_class
 
     system = SystemBenchmark().create_system()
-    assert system.params == {"model": "m-default", "k": 5}
+    assert system.params == {"depth": "d-default", "k": 5}
 
 
 def test_create_system_leaves_default_params_untouched(fake_memory_class) -> None:
@@ -138,8 +121,8 @@ def test_create_system_leaves_default_params_untouched(fake_memory_class) -> Non
     class SystemBenchmark(FakeBenchmark):
         system_class = fake_memory_class
 
-    SystemBenchmark({"model": "override"}).create_system()
-    assert FakeBenchmark.default_params == {"model": "m-default", "k": 5}
+    SystemBenchmark({"depth": "override"}).create_system()
+    assert FakeBenchmark.default_params == {"depth": "d-default", "k": 5}
 
 
 def test_create_callbacks_instantiates_declared_classes_in_order() -> None:
@@ -164,22 +147,6 @@ def test_every_benchmark_gets_the_usage_tracker_by_default() -> None:
     callbacks = Benchmark().create_callbacks().callbacks
     assert len(callbacks) == 1
     assert type(callbacks[0]) is OpenAIUsageTracker
-
-
-@pytest.mark.parametrize(
-    "benchmark_class, expected",
-    [
-        (FakeBenchmark, False),
-        (SearchOnlyBenchmark, False),
-        (IngestOnlyBenchmark, False),
-        (AgenticBenchmark, True),
-    ],
-)
-def test_supports_agentic_requires_both_toolset_halves(
-    benchmark_class, expected
-) -> None:
-    """Agentic mode needs both the search and the ingest surface."""
-    assert benchmark_class.supports_agentic() is expected
 
 
 def test_create_search_toolset_binds_system_conversation_and_k(
@@ -210,38 +177,18 @@ def test_create_search_toolset_defaults_k_to_ten(fake_memory_class) -> None:
     assert toolset.k == 10
 
 
-def test_create_ingest_toolset_binds_system_conversation_and_session(
+def test_a_system_without_native_tools_gets_the_generic_search(
     fake_memory_class,
 ) -> None:
-    """The factory passes the system, conversation id, and session through."""
-
-    class SystemAgenticBenchmark(AgenticBenchmark):
-        system_class = fake_memory_class
-
-    benchmark = SystemAgenticBenchmark()
-    system = benchmark.create_system()
-    session = Session(session_id="s1")
-    toolset = benchmark.create_ingest_toolset(system, "conv-1", session)
-    assert type(toolset) is FakeIngestToolset
-    assert toolset.memory is system
-    assert toolset.conversation_id == "conv-1"
-    assert toolset.session is session
-
-
-def test_toolset_factories_assert_when_the_surface_is_missing(
-    fake_memory_class,
-) -> None:
-    """Calling a factory on a benchmark without that surface trips its assert."""
+    """No declared surface means the generic `search_memory` tool, never none."""
+    from amb.agent.toolset import MemoryToolset
 
     class SystemBenchmark(FakeBenchmark):
         system_class = fake_memory_class
 
     benchmark = SystemBenchmark()
-    system = benchmark.create_system()
-    with pytest.raises(AssertionError):
-        benchmark.create_search_toolset(system, "conv-1")
-    with pytest.raises(AssertionError):
-        benchmark.create_ingest_toolset(system, "conv-1", Session(session_id="s1"))
+    toolset = benchmark.create_search_toolset(benchmark.create_system(), "conv-1")
+    assert type(toolset) is MemoryToolset
 
 
 def test_for_system_wraps_a_bare_memory(fake_memory_class) -> None:
@@ -262,12 +209,10 @@ def test_for_system_wrapper_builds_the_memory_with_no_params(
     assert system.params == {}
 
 
-def test_for_system_wrapper_lacks_the_agentic_surface(fake_memory_class) -> None:
+def test_for_system_wrapper_declares_no_native_surface(fake_memory_class) -> None:
     """The wrapper sets only name and system_class — no toolsets, no extras."""
     wrapper = Benchmark.for_system(fake_memory_class)
     assert wrapper.search_toolset_class is None
-    assert wrapper.ingest_toolset_class is None
-    assert wrapper.supports_agentic() is False
     assert wrapper.default_params == {}
     assert wrapper.callback_classes == (OpenAIUsageTracker,)
 
@@ -282,7 +227,7 @@ def test_for_system_derives_from_the_class_it_is_called_on(fake_memory_class) ->
     assert issubclass(wrapper, AgenticBenchmark)
     assert wrapper.name == "other"
     assert wrapper.system_class is OtherMemory
-    assert wrapper.supports_agentic() is True
+    assert wrapper.search_toolset_class is FakeSearchToolset
 
 
 def test_sample_hooks_default_to_no_ops(fake_memory_class) -> None:
@@ -296,3 +241,9 @@ def test_sample_hooks_default_to_no_ops(fake_memory_class) -> None:
     sample = _sample()
     assert benchmark.before_sample(system, sample) is None
     assert benchmark.after_sample(system, sample) is None
+
+
+def test_a_system_with_no_models_refuses_llm_and_embedding(fake_memory_class) -> None:
+    """--llm/--embedding reaching a system that consumes neither is an error."""
+    with pytest.raises(ValueError, match="calls no LLM or embedder"):
+        fake_memory_class(model="openai:gpt-5-mini")

@@ -27,7 +27,7 @@ from typing import ClassVar
 from amb.base import Benchmark
 from amb.callbacks import TiktokenUsageTracker
 from src.memory import CogneeMemory
-from src.toolset import CogneeIngestToolset, CogneeSearchToolset
+from src.toolset import CogneeSearchToolset
 
 
 class CogneeBenchmark(Benchmark):
@@ -44,5 +44,4 @@ class CogneeBenchmark(Benchmark):
     name: ClassVar[str] = "cognee"
     system_class = CogneeMemory
     search_toolset_class = CogneeSearchToolset
-    ingest_toolset_class = CogneeIngestToolset
     callback_classes = (TiktokenUsageTracker,)

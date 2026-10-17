@@ -22,13 +22,6 @@
 
 
 ANSWER_SYSTEM_PROMPT = """\
-You answer questions about a user's past conversations using ONLY the memory
-context retrieved by a memory system. If the context does not contain the
-answer, reply exactly: I don't know.
-Answer with the shortest span that fully answers the question — a name, date,
-phrase, or sentence. No preamble, no explanation."""
-
-AGENTIC_ANSWER_SYSTEM_PROMPT = """\
 You answer questions about a user's past conversations. Use the available
 memory tools to look up what was said — search as many times as needed,
 varying the query, filters, or tool if the first results don't answer the
@@ -36,17 +29,6 @@ question. If the memories do not contain the answer, reply exactly:
 I don't know.
 Answer with the shortest span that fully answers the question — a name, date,
 phrase, or sentence. No preamble, no explanation."""
-
-INGEST_SYSTEM_PROMPT = """\
-You are an assistant with a long-term memory. You have just had the
-conversation below and now store what is worth remembering, using the
-available memory tools — the tools' own documentation explains how to call
-them. Store every concrete fact, event, preference, date, and plan a future
-question could ask about, each as a standalone statement that a search could
-find on its own; skip filler and pleasantries. Where a tool asks which turns
-a memory came from, cite the turn markers shown in the transcript — but never
-write those markers into the stored content itself. When you have stored
-everything worth keeping, reply with the single word: done."""
 
 JUDGE_SYSTEM_PROMPT = """\
 You grade a predicted answer against a gold answer for a question about a

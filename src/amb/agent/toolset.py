@@ -26,7 +26,7 @@ from typing import Any
 from pydantic_ai.toolsets import FunctionToolset
 
 from amb.base import Callbacks, Memory
-from amb.contracts import MemoryHit, QAPair, Sample, Session
+from amb.contracts import MemoryHit, QAPair, Sample
 
 
 class SearchToolset(FunctionToolset):
@@ -55,8 +55,8 @@ class SearchToolset(FunctionToolset):
     def observe(self, callbacks: Callbacks, sample: Sample, qa: QAPair) -> None:
         """Bind the run's callbacks, so each search the agent runs is seen.
 
-        In agentic mode the agent's searches are the harness's only view of
-        retrieval, so they report through the same hooks as harness-driven ones.
+        The agent's searches are the harness's only view of retrieval, so
+        each one reports through the run's callback hooks.
         """
         self.callbacks = callbacks
         self.sample = sample
@@ -99,50 +99,3 @@ class MemoryToolset(SearchToolset):
         t0 = time.perf_counter()
         hits = self.memory.search(self.conversation_id, query, k=self.k)
         return self.record(hits, time.perf_counter() - t0)
-
-
-class IngestToolset(FunctionToolset):
-    """One session's write surface, exposed to the ingesting agent as tools.
-
-    Ships no tools of its own — integrations subclass it, add their native
-    write tools with `add_function`, and report every write through
-    `record_write`. Created fresh per session.
-
-    Tools must look like real-time usage: conversation and session ids never
-    appear in a tool signature — the toolset is bound to the session, and
-    adapters attribute provenance themselves. Turn markers are the one
-    citation handle tools may ask for.
-    """
-
-    def __init__(
-        self,
-        memory: Memory,
-        conversation_id: str,
-        session: Session,
-        **kwargs: Any,
-    ) -> None:
-        """Bind the toolset to one session of one conversation."""
-        super().__init__(**kwargs)
-        self.memory = memory
-        self.conversation_id = conversation_id
-        self.session = session
-        self.num_writes = 0
-        self.write_s = 0.0
-        self.callbacks = Callbacks()
-        self.sample: Sample | None = None
-
-    def observe(self, callbacks: Callbacks, sample: Sample) -> None:
-        """Bind the run's callbacks, so each write the agent makes is seen."""
-        self.callbacks = callbacks
-        self.sample = sample
-
-    def record_write(self, seconds: float) -> None:
-        """Book one write's timing."""
-        self.write_s += seconds
-        self.num_writes += 1
-        if self.sample is not None:  # unbound means no observers
-            self.callbacks.on_write(self.sample, self.session, seconds)
-
-    def turn_ids(self) -> set[str]:
-        """The session's valid turn markers, for validating agent citations."""
-        return {turn.turn_id for turn in self.session.turns}

@@ -21,15 +21,21 @@ env:
   # the k the README summary table compares at; the chart sets cover every
   # k the runs actually used, so this narrows the headline only
   SUMMARY_K: 10
+  # amb's own agents, the same for every system: the question agent searches
+  # through the system's native tools and answers, the judge grades it
+  ANSWER_MODEL: anthropic:claude-haiku-5-5
+  JUDGE_MODEL: anthropic:claude-haiku-5-5
+  # the system's own LLM and embedder, one id each for every system
+  LLM: anthropic:claude-haiku-5-5
+  EMBEDDING: openai:text-embedding-3-small
 
 # locomo only: a new integration earns its longmemeval jobs once it has a
 # green locomo run to stand on. The oracle cells are the long, expensive
 # half of the matrix, and there is no sense spending on them while the
-# cheap half is still unproven. Agentic mode gets its own jobs here later
-# (with the driving-model env).
+# cheap half is still unproven.
 jobs:
   locomo:
-    name: everos / locomo / direct / k${{ matrix.k }}
+    name: everos / locomo / k${{ matrix.k }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -56,10 +62,13 @@ jobs:
       - name: Run the benchmark
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           docker compose -f benchmarks/everos/docker-compose.yaml \
             run --build --rm benchmark run --system everos \
-            --dataset locomo --mode direct \
+            --dataset locomo \
+            --llm "$LLM" --embedding "$EMBEDDING" \
+            --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
             --workers 3 \
             --k ${{ matrix.k }}
           docker compose -f benchmarks/everos/docker-compose.yaml down -v
@@ -70,7 +79,7 @@ jobs:
       - name: Upload run data
         uses: actions/upload-artifact@v7
         with:
-          name: runs-everos-locomo-direct-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: runs-everos-locomo-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: runs/
           if-no-files-found: error
           retention-days: 5

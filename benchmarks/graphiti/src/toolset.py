@@ -22,18 +22,17 @@
 
 """Graphiti's native tool surface for `--mode agentic`.
 
-The agent writes episodes and searches the resulting graph. The
-conversation's ``group_id`` scope is set by the adapter — never by the
-model. Provenance is session-level via the adapter's episode->session map.
+The answering agent searches the graph graphiti extracted from each
+session's episode. The conversation's ``group_id`` scope is set by the
+adapter — never by the model. Provenance is session-level via the
+adapter's episode->session map.
 """
 
 import time
 from typing import Any
 
-from amb.agent.toolset import IngestToolset, SearchToolset
+from amb.agent.toolset import SearchToolset
 from amb.base import Memory
-from amb.contracts import Session
-from src.memory import GraphitiMemory
 
 
 class GraphitiSearchToolset(SearchToolset):
@@ -58,42 +57,3 @@ class GraphitiSearchToolset(SearchToolset):
         t0 = time.perf_counter()
         hits = self.memory.search(self.conversation_id, query, k=self.k)
         return self.record(hits, time.perf_counter() - t0)
-
-
-class GraphitiIngestToolset(IngestToolset):
-    """Graphiti's episode writer, exposed to the ingesting agent."""
-
-    def __init__(
-        self,
-        memory: Memory,
-        conversation_id: str,
-        session: Session,
-        **kwargs: Any,
-    ) -> None:
-        """Bind the toolset to one session and expose the episode tool."""
-        super().__init__(memory, conversation_id, session, **kwargs)
-        self.add_function(self.add_episode, name="add_episode")
-
-    @property
-    def graphiti(self) -> GraphitiMemory:
-        """The bound system, typed to its concrete class."""
-        assert isinstance(self.memory, GraphitiMemory)
-        return self.memory
-
-    def add_episode(self, content: str) -> str:
-        """Add one episode to the knowledge graph.
-
-        The graph extracts entities and relations from the episode, so
-        richer, self-contained content produces a better graph.
-
-        Args:
-            content: The information to remember — one or a few related
-                facts, written out fully.
-
-        Returns:
-            Whether the episode was added.
-        """
-        t0 = time.perf_counter()
-        self.graphiti.store(self.conversation_id, content, session=self.session)
-        self.record_write(time.perf_counter() - t0)
-        return "added"

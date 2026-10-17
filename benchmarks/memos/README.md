@@ -23,7 +23,7 @@ The configuration is MemOS's own `get_default_config` / `get_default_cube_config
 ```bash
 docker compose -p memos-smoke -f benchmarks/memos/docker-compose.yaml \
   run --build --rm benchmark run --system memos \
-  --dataset locomo --limit 1 --turns 40 --questions 5
+  --dataset locomo --model anthropic:claude-haiku-5-5 --limit 1 --turns 40 --questions 5
 docker compose -p memos-smoke -f benchmarks/memos/docker-compose.yaml down -v
 ```
 

@@ -31,11 +31,12 @@ __all__ = [
     "Report",
     "Scorer",
     "Section",
+    "split_model",
 ]
 
 from amb.base.benchmark import Benchmark
 from amb.base.callback import Callback, Callbacks
 from amb.base.dataset import DatasetLoader
-from amb.base.memory import Memory
+from amb.base.memory import Memory, split_model
 from amb.base.metric import Metric, Scorer
 from amb.base.reporting import Renderer, Report, Section

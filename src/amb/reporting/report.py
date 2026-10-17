@@ -40,7 +40,7 @@ from amb.constants import (
     RESULTS_OUTRO,
     RESULTS_PLOTS_INTRO,
     RESULTS_TABLE_INTRO,
-    RETRIEVAL_METRICS,
+    SCORE_METRICS,
     SUMMARY_MARKS,
 )
 from amb.contracts import Block, Heading, Paragraph
@@ -69,17 +69,6 @@ def splice(path: Path, marks: tuple[str, str], block: str, template: str) -> Non
         path.write_text(text.rstrip() + "\n\n" + template.format(block=body))
         return
     path.write_text(template.format(block=body))
-
-
-def precision_pinned(summaries: list[dict]) -> bool:
-    """Whether every summary in scope reports precision exactly 1.0.
-
-    True on evidence-only haystacks (e.g. LongMemEval's oracle): no hit can
-    be a false positive, so precision carries no information and F1 = 2R/(1+R)
-    is a pure function of recall — both drop out of the chart set.
-    """
-    scores = [s["retrieval_precision"] for s in summaries if "retrieval_precision" in s]
-    return bool(scores) and all(p == 1.0 for p in scores)
 
 
 @dataclass
@@ -123,12 +112,6 @@ class RunGroup:
         parts = [slug(value) for _, value in self.key if value]
         return DEFAULT_PLOT_DIR.joinpath(*parts)
 
-    @property
-    def mode(self) -> str:
-        """The experiment kind these runs share (guarded to be uniform)."""
-        modes = {str(s.get("mode", "")) for s in self.summaries}
-        return modes.pop() if len(modes) == 1 else ""
-
     def ks(self) -> list[int]:
         """Every retrieval budget these runs used, ascending."""
         return sorted({s["k"] for s in self.summaries if isinstance(s.get("k"), int)})
@@ -142,17 +125,12 @@ class RunGroup:
         return sorted({c for s in self.summaries for c in (s.get("by_category") or {})})
 
     def metrics(self, only: Sequence[str] = ()) -> tuple[tuple[str, str], ...]:
-        """The retrieval metrics worth charting for this group.
+        """The scores worth charting for this group, headline first.
 
-        `only` (filename stems) overrides; otherwise all metrics, or recall
-        alone when precision is structurally pinned at 1.0.
+        `only` (filename stems, e.g. `accuracy`) narrows the set.
         """
-        selected = tuple(only) or (
-            ("recall",)
-            if precision_pinned(self.summaries)
-            else tuple(stem for stem, _ in RETRIEVAL_METRICS)
-        )
-        return tuple((stem, key) for stem, key in RETRIEVAL_METRICS if stem in selected)
+        selected = tuple(only) or tuple(stem for stem, _ in SCORE_METRICS)
+        return tuple((stem, key) for stem, key in SCORE_METRICS if stem in selected)
 
 
 def group_runs(

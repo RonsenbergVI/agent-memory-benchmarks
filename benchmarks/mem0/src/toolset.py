@@ -22,18 +22,16 @@
 
 """Mem0's native tool surface for `--mode agentic`.
 
-The agent is the extractor: `add_memory` stores verbatim (``infer=False``),
-`search_memory` retrieves; the adapter always sets the ``user_id`` scope,
-so conversation isolation is never left to the agent.
+The answering agent drives `search_memory`; ingestion stays mem0's own
+LLM extraction. The adapter always sets the ``user_id`` scope, so
+conversation isolation is never left to the agent.
 """
 
 import time
 from typing import Any
 
-from amb.agent.toolset import IngestToolset, SearchToolset
+from amb.agent.toolset import SearchToolset
 from amb.base import Memory
-from amb.contracts import Session
-from src.memory import Mem0Memory
 
 
 class Mem0SearchToolset(SearchToolset):
@@ -58,52 +56,3 @@ class Mem0SearchToolset(SearchToolset):
         t0 = time.perf_counter()
         hits = self.memory.search(self.conversation_id, query, k=self.k)
         return self.record(hits, time.perf_counter() - t0)
-
-
-class Mem0IngestToolset(IngestToolset):
-    """Mem0's write surface, exposed to the ingesting agent."""
-
-    def __init__(
-        self,
-        memory: Memory,
-        conversation_id: str,
-        session: Session,
-        **kwargs: Any,
-    ) -> None:
-        """Bind the toolset to one session and expose the write tool."""
-        super().__init__(memory, conversation_id, session, **kwargs)
-        self.add_function(self.add_memory, name="add_memory")
-
-    @property
-    def mem0(self) -> Mem0Memory:
-        """The bound system, typed to its concrete class."""
-        assert isinstance(self.memory, Mem0Memory)
-        return self.memory
-
-    def add_memory(self, fact: str, source_turn_ids: list[str]) -> str:
-        """Store one memory, exactly as written.
-
-        Args:
-            fact: One self-contained statement worth remembering, phrased so
-                a later semantic search can find it.
-            source_turn_ids: The ids of the turns the fact came from, exactly
-                as shown in the transcript.
-
-        Returns:
-            Whether the memory was stored.
-        """
-        cited = [t for t in source_turn_ids if t in self.turn_ids()]
-        if not cited:
-            return "not stored: none of the cited turn ids exist in this session"
-        t0 = time.perf_counter()
-        self.mem0.store(
-            self.conversation_id,
-            fact,
-            session_id=self.session.session_id,
-            turn_ids=cited,
-            timestamp=self.session.timestamp,
-        )
-        self.record_write(time.perf_counter() - t0)
-        if len(cited) < len(source_turn_ids):
-            return "stored, but unknown turn ids were dropped from the citation"
-        return "stored"

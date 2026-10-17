@@ -55,16 +55,10 @@ class Callback(ABC):
     def on_session_begin(
         self, sample: Sample, session: Session, system: Memory
     ) -> None:
-        """Before one session is stored, in either mode."""
+        """Before one session is stored."""
 
     def on_session_end(self, sample: Sample, session: Session, system: Memory) -> None:
-        """After one session is stored, in either mode."""
-
-    def on_write(self, sample: Sample, session: Session, seconds: float) -> None:
-        """After one agent-driven write, with what it cost (agentic mode).
-
-        Fired by IngestToolset.record_write.
-        """
+        """After one session is stored."""
 
     def on_ingest_end(self, sample: Sample, system: Memory, stats: dict) -> None:
         """After a sample's ingestion; may enrich the ingest stats dict."""
@@ -81,12 +75,6 @@ class Callback(ABC):
     def on_question_begin(self, sample: Sample, qa: QAPair) -> None:
         """Before one question is asked."""
 
-    def on_search_begin(self, sample: Sample, qa: QAPair) -> None:
-        """Before a harness-driven search (direct mode only).
-
-        Agentic searches happen inside the toolset and report via `on_search`.
-        """
-
     def on_search(
         self,
         sample: Sample,
@@ -94,15 +82,13 @@ class Callback(ABC):
         hits: list[MemoryHit],
         seconds: float,
     ) -> None:
-        """After one search, with what it returned and what it cost.
+        """After one search the agent ran, with what it returned and cost.
 
-        The one event both modes share: the Runner fires it in direct mode,
-        SearchToolset.record per agent-driven search — whoever owns the
-        boundary times it.
+        Fired by SearchToolset.record, which owns the boundary and times it.
         """
 
     def on_answer_begin(self, sample: Sample, qa: QAPair) -> None:
-        """Before an answer is generated (direct with a model, or agentic)."""
+        """Before an answer is generated."""
 
     def on_answer_end(self, sample: Sample, qa: QAPair) -> None:
         """After an answer is generated."""

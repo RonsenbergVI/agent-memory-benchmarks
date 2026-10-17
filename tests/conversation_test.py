@@ -131,3 +131,18 @@ def test_num_turns_counts_duplicate_turn_ids_individually():
         ],
     )
     assert conversation.num_turns == 2
+
+
+def test_session_time_parses_both_datasets_formats():
+    from datetime import UTC, datetime
+
+    from amb.contracts import Session
+
+    assert Session(
+        session_id="s", timestamp="1:56 pm on 8 May, 2023"
+    ).time() == datetime(2023, 5, 8, 13, 56, tzinfo=UTC)
+    assert Session(
+        session_id="s", timestamp="2023/05/20 (Sat) 02:21"
+    ).time() == datetime(2023, 5, 20, 2, 21, tzinfo=UTC)
+    assert Session(session_id="s", timestamp="sometime").time() is None
+    assert Session(session_id="s").time() is None

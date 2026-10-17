@@ -32,7 +32,7 @@ test:  ## Run the test suite
 	uv run pytest -q
 
 smoke:  ## Fastest end-to-end check: naive baseline, no API calls
-	uv run amb run --system naive --dataset locomo --limit 1 --turns 40 --questions 5
+	uv run amb run --system naive --dataset locomo --model test --limit 1 --turns 40 --questions 5
 
 report:  ## Aggregate run reports into a comparison table
 	uv run amb report --latest

@@ -22,27 +22,22 @@
 
 import threading
 import time
-from typing import TYPE_CHECKING
 
 from amb.base.callback import Callback
 from amb.base.memory import Memory
-from amb.contracts import IngestionRecord, MemoryHit, QAPair, Run, Sample, Session
-
-if TYPE_CHECKING:
-    from amb.runner import RunConfig
+from amb.contracts import IngestionRecord, MemoryHit, QAPair, Sample
 
 
 class TimingTracker(Callback):
     """Times every phase of a run — the harness's own core measurement.
 
-    Writes `ingest_s`/`write_s` on sample stats, `conversation_s` on its
-    record, and `search_s`/`answer_s` (plus `num_searches` in agentic
-    mode) on every question row. Attached by
+    Writes `ingest_s` on sample stats, `conversation_s` on its
+    record, and `search_s`/`answer_s`/`num_searches` on every question row. Attached by
     `Runner.core_callback_classes`, so a run cannot be missing latencies.
 
-    State is keyed by sample, not thread: agentic-mode searches and writes
-    arrive from pydantic-ai's own worker thread, so thread-local marks
-    would lose exactly the events this mode exists to measure. A run never
+    State is keyed by sample, not thread: the agent's searches arrive from
+    pydantic-ai's own worker thread, so thread-local marks would lose
+    exactly the events a run exists to measure. A run never
     has two samples of the same id in flight.
     """
 
@@ -50,11 +45,6 @@ class TimingTracker(Callback):
         """Start with no sample being timed."""
         self._samples: dict[str, dict] = {}
         self._lock = threading.Lock()
-        self._agentic = False
-
-    def on_run_begin(self, config: "RunConfig", run: Run) -> None:
-        """Note the mode: agentic search counts are results, direct's are fixed at 1."""
-        self._agentic = config.mode == "agentic"
 
     def _state(self, sample: Sample) -> dict:
         """This sample's clocks and accumulators, created on first use."""
@@ -83,17 +73,9 @@ class TimingTracker(Callback):
         """Start the ingestion clock."""
         self._mark(sample, "ingest")
 
-    def on_write(self, sample: Sample, session: Session, seconds: float) -> None:
-        """Accumulate the sample's agent-driven write time."""
-        state = self._state(sample)
-        state["write_s"] = state.get("write_s", 0.0) + seconds
-
     def on_ingest_end(self, sample: Sample, system: Memory, stats: dict) -> None:
         """Book ingestion's time; a run that ingested nothing charges zero."""
         stats["ingest_s"] = self._elapsed(sample, "ingest") or 0.0
-        state = self._state(sample)
-        if "write_s" in state:
-            stats["write_s"] = state["write_s"]
 
     def on_conversation_begin(self, sample: Sample) -> None:
         """Start the question-phase clock."""
@@ -131,8 +113,7 @@ class TimingTracker(Callback):
         """Book the question's latencies on its row."""
         state = self._state(sample)
         row["search_s"] = state.get("search_s", 0.0)
-        if self._agentic:
-            row["num_searches"] = state.get("num_searches", 0)
+        row["num_searches"] = state.get("num_searches", 0)
         answer_s = state.pop("answer_s", None)
         if answer_s is not None:
             row["answer_s"] = answer_s

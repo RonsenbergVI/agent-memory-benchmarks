@@ -22,22 +22,17 @@
 
 """EverOS's tool surface for `--mode agentic`.
 
-The agent drives EverOS's own verbs: `remember` hands it a message and
-its pipeline extracts from it, `recall` searches what it extracted. The
-project and app stay the adapter's, never the agent's to choose, so
-conversation isolation cannot be argued away by a tool call.
-
-`remember` closes the session boundary on every call, because an agent
-told "stored" about messages still sitting accumulated would go on to
-search for them and find nothing.
+The answering agent drives EverOS's own `recall` over what its pipeline
+extracted; ingestion stays EverOS's own `memorize`. The project and app
+are the adapter's, never the agent's to choose, so conversation isolation
+cannot be argued away by a tool call.
 """
 
 import time
 from typing import Any
 
-from amb.agent.toolset import IngestToolset, SearchToolset
+from amb.agent.toolset import SearchToolset
 from amb.base import Memory
-from amb.contracts import Session
 from src.memory import EverOSMemory
 
 
@@ -70,59 +65,3 @@ class EverOSSearchToolset(SearchToolset):
         t0 = time.perf_counter()
         hits = self.everos.search(self.conversation_id, query, k=self.k)
         return self.record(hits, time.perf_counter() - t0)
-
-
-class EverOSIngestToolset(IngestToolset):
-    """EverOS's write path, exposed to the ingesting agent."""
-
-    def __init__(
-        self,
-        memory: Memory,
-        conversation_id: str,
-        session: Session,
-        **kwargs: Any,
-    ) -> None:
-        """Bind the toolset to one session and expose remember."""
-        super().__init__(memory, conversation_id, session, **kwargs)
-        self.add_function(self.remember, name="remember")
-
-    @property
-    def everos(self) -> EverOSMemory:
-        """The bound system, typed to its concrete class."""
-        assert isinstance(self.memory, EverOSMemory)
-        return self.memory
-
-    def remember(self, content: str, source_turn_ids: list[str]) -> str:
-        """Hand one message to EverOS to remember.
-
-        Args:
-            content: What is worth remembering, phrased so EverOS's own
-                extraction has something to work with — a statement, not
-                a keyword.
-            source_turn_ids: The ids of the turns it came from, exactly
-                as shown in the transcript.
-
-        Returns:
-            Whether the content was stored, and whether it was extracted.
-        """
-        cited = [t for t in source_turn_ids if t in self.turn_ids()]
-        if not cited:
-            return "not stored: none of the cited turn ids exist in this session"
-        t0 = time.perf_counter()
-        status = self.everos.memorize(
-            self.conversation_id,
-            [
-                {
-                    "sender_id": self.everos._user_id(self.conversation_id),
-                    "sender_name": "agent",
-                    "role": "assistant",
-                    "timestamp": self.everos._epoch_ms(self.session.timestamp),
-                    "content": content,
-                }
-            ],
-            session_id=self.session.session_id,
-        )
-        self.record_write(time.perf_counter() - t0)
-        if len(cited) < len(source_turn_ids):
-            return f"stored ({status}), but unknown turn ids were dropped"
-        return f"stored ({status})"

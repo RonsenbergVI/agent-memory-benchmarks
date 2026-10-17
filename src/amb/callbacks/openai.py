@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING
 
 from amb.base.callback import Callback
 from amb.base.memory import Memory
-from amb.constants import TOKEN_TRACKING_KEYS
+from amb.constants import HARNESS_CLIENT_ATTR, TOKEN_TRACKING_KEYS
 from amb.contracts import QAPair, Run, Sample
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 class OpenAIUsageTracker(Callback):
-    """Counts tokens for memory systems that call the openai SDK in-process.
+    """Counts tokens for memory systems that call the openai or anthropic SDK in-process.
 
     Attached by default on every Benchmark: wrappers on the SDK's sync and
     async request methods read the billed ``usage`` off every response,
@@ -50,6 +50,9 @@ class OpenAIUsageTracker(Callback):
     `asyncio.run_coroutine_threadsafe` copying the *submitting* thread's
     context. Under thread-local storage those calls were intercepted and
     silently dropped, and the system reported a zero it had not earned.
+
+    amb's own agents run in the same process on the same SDKs; their clients
+    carry `HARNESS_CLIENT_ATTR`, and calls through them are never booked.
     """
 
     KEYS = TOKEN_TRACKING_KEYS
@@ -147,11 +150,16 @@ class OpenAIUsageTracker(Callback):
         else:
             counters["llm_calls"] += 1
             if usage is not None:
-                # chat completions: prompt/completion; responses API: input/output
+                # chat completions: prompt/completion; responses API and
+                # anthropic: input/output, anthropic's cache reads/writes apart
                 counters["llm_input_tokens"] += (
-                    getattr(usage, "prompt_tokens", None)
-                    or getattr(usage, "input_tokens", 0)
-                    or 0
+                    (
+                        getattr(usage, "prompt_tokens", None)
+                        or getattr(usage, "input_tokens", 0)
+                        or 0
+                    )
+                    + (getattr(usage, "cache_creation_input_tokens", 0) or 0)
+                    + (getattr(usage, "cache_read_input_tokens", 0) or 0)
                 )
                 counters["llm_output_tokens"] += (
                     getattr(usage, "completion_tokens", None)
@@ -242,6 +250,20 @@ class OpenAIUsageTracker(Callback):
             ]
         except ImportError:
             pass
+        try:
+            # parse() posts directly rather than through create(), so both
+            from anthropic.resources.beta.messages import messages as beta
+            from anthropic.resources.messages import messages
+
+            for module in (messages, beta):
+                targets += [
+                    (module.Messages, "create", "llm", False),
+                    (module.Messages, "parse", "llm", False),
+                    (module.AsyncMessages, "create", "llm", True),
+                    (module.AsyncMessages, "parse", "llm", True),
+                ]
+        except ImportError:
+            pass
         return targets
 
     def _install(self) -> None:
@@ -264,6 +286,13 @@ class OpenAIUsageTracker(Callback):
             setattr(owner, name, original)
         self._originals.clear()
 
+    @staticmethod
+    def _harness(resource: object) -> bool:
+        """Whether the call went through one of amb's own agent clients."""
+        return bool(
+            getattr(getattr(resource, "_client", None), HARNESS_CLIENT_ATTR, False)
+        )
+
     def _wrap(self, original: Callable, kind: str, is_async: bool) -> Callable:
         """Wrap an SDK method so each response updates the counters."""
         if is_async:
@@ -272,14 +301,16 @@ class OpenAIUsageTracker(Callback):
                 client_self: object, *args: object, **kwargs: object
             ) -> object:
                 response = await original(client_self, *args, **kwargs)
-                await self._arecord(kind, response)
+                if not self._harness(client_self):
+                    await self._arecord(kind, response)
                 return response
 
         else:
 
             def wrapper(client_self: object, *args: object, **kwargs: object) -> object:
                 response = original(client_self, *args, **kwargs)
-                self._record(kind, response)
+                if not self._harness(client_self):
+                    self._record(kind, response)
                 return response
 
         return wrapper

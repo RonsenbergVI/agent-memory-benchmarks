@@ -27,7 +27,7 @@ Hindsight extracts inside its own server, so no tracker here can observe the tra
 ```bash
 docker compose -p hindsight-smoke -f benchmarks/hindsight/docker-compose.yaml \
   run --build --rm benchmark run --system hindsight \
-  --dataset locomo --limit 1 --turns 40 --questions 5
+  --dataset locomo --model anthropic:claude-haiku-5-5 --limit 1 --turns 40 --questions 5
 docker compose -p hindsight-smoke -f benchmarks/hindsight/docker-compose.yaml down -v
 ```
 

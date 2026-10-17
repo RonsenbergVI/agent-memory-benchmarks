@@ -60,16 +60,16 @@ touching the conversations running beside it under ``--workers N``.
 
 import os
 import threading
-import uuid
 from contextlib import ExitStack
 from typing import Any, ClassVar
 
-from amb.base import Memory
+from amb.base import Memory, split_model
+from amb.constants import DEFAULT_EMBEDDING, DEFAULT_LLM
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+# langchain-anthropic's 4096 leaves an adaptive-thinking model little room
+ANTHROPIC_MAX_TOKENS = 16000
 DEFAULT_EMBEDDING_DIMENSIONS = 1536
 DEFAULT_DATABASE_URL = "postgresql://langmem:langmem@localhost:5432/langmem"
 # LangMem's own default: how many existing memories the manager pulls in
@@ -90,11 +90,14 @@ class LangMemMemory(Memory):
     name: ClassVar[str] = "langmem"
     description: ClassVar[str] = "LangMem — extraction over a LangGraph store"
     sdk_dist: ClassVar[str | None] = "langmem"
+    # langchain's own provider:name ids, so --llm/--embedding pass through as-is
+    llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
+    embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
 
     def __init__(
         self,
-        model: str = DEFAULT_INGESTION_MODEL,
-        embedding_model: str = DEFAULT_EMBEDDING_MODEL,
+        model: str = DEFAULT_LLM,
+        embedding_model: str = DEFAULT_EMBEDDING,
         embedding_dimensions: int | str = DEFAULT_EMBEDDING_DIMENSIONS,
         query_limit: int | str = DEFAULT_QUERY_LIMIT,
         **params: object,
@@ -103,6 +106,8 @@ class LangMemMemory(Memory):
         super().__init__(**params)
         self.model = model
         self.embedding_model = embedding_model
+        self.model_name(model, "llm")
+        self.model_name(embedding_model, "embedding")
         # --param values arrive as strings
         self.embedding_dimensions = int(embedding_dimensions)
         self.query_limit = int(query_limit)
@@ -124,7 +129,7 @@ class LangMemMemory(Memory):
             "dims": self.embedding_dimensions,
             # LangGraph resolves this through langchain's `init_embeddings`,
             # so the embedder is the openai SDK and its spend is measured
-            "embed": f"openai:{self.embedding_model}",
+            "embed": self.embedding_model,
         }
         logger.bind(scope="langmem").debug(
             "store: {} | model={} embedder={} dims={}",
@@ -138,8 +143,13 @@ class LangMemMemory(Memory):
                 PostgresStore.from_conn_string(url, index=index)
             )
             self._store.setup()
+        model: Any = self.model
+        if split_model(self.model)[0] == "anthropic":
+            from langchain.chat_models import init_chat_model
+
+            model = init_chat_model(self.model, max_tokens=ANTHROPIC_MAX_TOKENS)
         self._manager = create_memory_store_manager(
-            self.model,
+            model,
             # templated per call: the session segment is what makes a hit
             # attributable, and the conversation segment is what keeps
             # recall inside one conversation
@@ -174,28 +184,6 @@ class LangMemMemory(Memory):
         )
         self._conversations.add(conversation_id)
         self._sessions.add(session.session_id)
-
-    def store_memory(
-        self,
-        conversation_id: str,
-        content: str,
-        *,
-        session_id: str,
-    ) -> None:
-        """Write one memory verbatim (agentic mode).
-
-        This is what LangMem's own `manage_memory` tool does — a `put`
-        of ``{"content": ...}`` under the namespace, with no extraction
-        pass. The agent is the extractor here, so the memory lands as
-        written.
-        """
-        self._store.put(
-            (ROOT, conversation_id, session_id),
-            key=str(uuid.uuid4()),
-            value={"content": content},
-        )
-        self._conversations.add(conversation_id)
-        self._sessions.add(session_id)
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return up to k memories from this conversation's namespace."""

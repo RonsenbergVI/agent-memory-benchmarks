@@ -25,10 +25,10 @@ from typing import TYPE_CHECKING, ClassVar
 from amb.base.callback import Callback, Callbacks
 from amb.base.memory import Memory
 from amb.callbacks import OpenAIUsageTracker
-from amb.contracts import Sample, Session
+from amb.contracts import Sample
 
 if TYPE_CHECKING:
-    from amb.agent.toolset import IngestToolset, SearchToolset
+    from amb.agent.toolset import SearchToolset
 
 
 class Benchmark:
@@ -41,9 +41,8 @@ class Benchmark:
     name: ClassVar[str] = "unnamed"
     system_class: ClassVar[type[Memory]]
     default_params: ClassVar[dict] = {}
-    # agentic mode requires both toolset classes to be set
+    # the system's native search verbs; None gets the generic `search_memory`
     search_toolset_class: ClassVar[type | None] = None
-    ingest_toolset_class: ClassVar[type | None] = None
     # Instantiated per run. Every benchmark gets the token tracker (plus the
     # AMB_USAGE_PROXY_URL counting proxy for server-backed systems); a system
     # that spends nothing records a truthful zero.
@@ -56,11 +55,6 @@ class Benchmark:
         records exactly what was asked for.
         """
         self.params = dict(params or {})
-
-    @classmethod
-    def supports_agentic(cls) -> bool:
-        """Whether this system exposes both halves of its tool surface."""
-        return bool(cls.search_toolset_class and cls.ingest_toolset_class)
 
     def create_system(self) -> Memory:
         """Build the memory system, applying any `--param` overrides."""
@@ -76,16 +70,12 @@ class Benchmark:
     def create_search_toolset(
         self, system: Memory, conversation_id: str, k: int = 10
     ) -> "SearchToolset":
-        """Build the system's search toolset, per question (agentic mode)."""
-        assert self.search_toolset_class is not None  # checked by Runner.run()
-        return self.search_toolset_class(system, conversation_id, k=k)
+        """Build the system's search toolset, per question."""
+        # lazy: amb.agent imports amb.base, which imports this module
+        from amb.agent.toolset import MemoryToolset
 
-    def create_ingest_toolset(
-        self, system: Memory, conversation_id: str, session: Session
-    ) -> "IngestToolset":
-        """Build the system's write toolset, per session (agentic mode)."""
-        assert self.ingest_toolset_class is not None  # checked by Runner.run()
-        return self.ingest_toolset_class(system, conversation_id, session)
+        toolset_class = self.search_toolset_class or MemoryToolset
+        return toolset_class(system, conversation_id, k=k)
 
     def before_sample(self, system: Memory, sample: Sample) -> None:
         """Called after setup, before ingestion."""

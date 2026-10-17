@@ -23,11 +23,11 @@
 from dataclasses import dataclass, field
 
 from amb.base.reporting import Section
-from amb.constants import LATENCY, SUMMARY_ORDER, TOKENS
+from amb.constants import CI_SUFFIX, HEADLINE, LATENCY, TOKENS
 from amb.contracts import Block, Figure, Heading, Paragraph, Rule, Table
 from amb.reporting.chart import Chart
 from amb.reporting.helpers import headline, pretty, slug
-from amb.reporting.report import RunGroup, precision_pinned
+from amb.reporting.report import RunGroup
 from amb.reporting.run import ComparisonReport, run_date
 
 
@@ -55,9 +55,9 @@ def spend_sweep(group: RunGroup, stem: str, metric: str) -> Chart:
         y=metric,
         out_dir=group.plot_dir,
         summaries=group.summaries,
-        alt=f"Retrieval {pretty(stem)} vs hits returned per query",
+        alt=f"{headline(pretty(metric))} vs hits returned per query",
         title=headline(f"{pretty(metric)} vs hits returned"),
-        subtitle=f"{group.label} · {group.mode} · a point per k, "
+        subtitle=f"{group.label} · a point per k, "
         f"newest run per system and k{freshness(group.summaries)}",
     )
 
@@ -139,30 +139,23 @@ class GroupCharts(Section):
                 y=metric,
                 out_dir=self.group.plot_dir,
                 summaries=self.group.summaries,
-                alt=f"Retrieval {pretty(stem)} vs k",
+                alt=f"{headline(pretty(metric))} vs k",
                 title=headline(f"{pretty(metric)} vs k"),
-                subtitle=f"{self.group.label} · {self.group.mode} · "
+                subtitle=f"{self.group.label} · "
                 f"newest run per system and k{freshness(self.group.summaries)}",
             )
-            for stem, metric in sorted(
-                metrics, key=lambda pair: SUMMARY_ORDER.index(pair[0])
-            )
+            for stem, metric in metrics
         ]
         self.sweeps = [c for c in planned if c.has_data()]
         self.skipped += len(planned) - len(self.sweeps)
-        planned = [
-            spend_sweep(self.group, stem, metric)
-            for stem, metric in sorted(
-                metrics, key=lambda pair: SUMMARY_ORDER.index(pair[0])
-            )
-        ]
+        planned = [spend_sweep(self.group, stem, metric) for stem, metric in metrics]
         self.spends = [c for c in planned if c.has_data()]
         self.skipped += len(planned) - len(self.spends)
         planned = [self._category_sweep(c) for c in self.group.categories()]
         self.category_sweeps = [c for c in planned if c.has_data()]
         self.skipped += len(planned) - len(self.category_sweeps)
         for k in self.group.ks():
-            bars = [self._bars(metric, k) for _, metric in metrics]
+            bars = [self._bars(stem, metric, k) for stem, metric in metrics]
             scatters = [
                 self._scatter(x, y, stem, k)
                 for x, y, stem in (
@@ -188,21 +181,21 @@ class GroupCharts(Section):
         return [s for s in self.group.summaries if s.get("k") == k]
 
     def _category_sweep(self, category: str) -> Chart:
-        """One category's recall across k, a line per system.
+        """One category's judge accuracy across k, a line per system.
 
         The breakdown table says where a system stands at one k; this says
         whether a bigger budget is what it was missing.
         """
         return Chart(
             kind="lines",
-            stem=f"k_recall_{slug(category)}",
-            y=f"by_category.{category}.retrieval_recall",
-            y_label=f"{category} recall",
+            stem=f"k_accuracy_{slug(category)}",
+            y=f"by_category.{category}.{HEADLINE}",
+            y_label=f"{category} accuracy",
             out_dir=self.group.plot_dir,
             summaries=self.group.summaries,
-            alt=f"Retrieval recall vs k for {category} questions",
-            title=headline(f"{category} recall vs k"),
-            subtitle=f"{self.group.label} · {self.group.mode} · "
+            alt=f"Judge accuracy vs k for {category} questions",
+            title=headline(f"{category} accuracy vs k"),
+            subtitle=f"{self.group.label} · "
             f"newest run per system and k{freshness(self.group.summaries)}",
         )
 
@@ -211,30 +204,31 @@ class GroupCharts(Section):
         return Chart(
             kind="categories",
             stem=f"categories_k{k}",
-            y="retrieval_recall",
+            y=HEADLINE,
             k=k,
             out_dir=self.group.plot_dir,
             summaries=self.group.summaries,
-            alt=f"Retrieval recall by question category at k={k}",
-            title=headline(f"recall by question category at k={k}"),
-            subtitle=f"{self.group.label} · {self.group.mode} · "
+            alt=f"Judge accuracy by question category at k={k}",
+            title=headline(f"accuracy by question category at k={k}"),
+            subtitle=f"{self.group.label} · "
             f"newest run per system{freshness(self._at_k(k))}",
         )
 
-    def _bars(self, metric: str, k: int) -> Chart:
-        """One metric's system comparison at `k`."""
-        stem = metric.removeprefix("retrieval_")
+    def _bars(self, stem: str, metric: str, k: int) -> Chart:
+        """One score's system comparison at `k`, with its interval when binary."""
         return Chart(
             kind="bars",
-            stem=f"session_{stem}_k{k}",
+            stem=f"{stem}_k{k}",
             y=metric,
             k=k,
             out_dir=self.group.plot_dir,
             summaries=self.group.summaries,
-            alt=f"Session-level {pretty(stem)} by system",
+            alt=f"{headline(pretty(metric))} by system",
             title=headline(f"{pretty(metric)} by system"),
-            subtitle=f"{self.group.label} · {self.group.mode} · k={k} · "
-            f"newest run per system{freshness(self._at_k(k))}",
+            subtitle=f"{self.group.label} · k={k} · "
+            f"newest run per system{freshness(self._at_k(k))}"
+            + (" · whiskers: 95% Wilson interval" if metric == HEADLINE else ""),
+            ci=metric + CI_SUFFIX if metric == HEADLINE else None,
         )
 
     def _scatter(self, x: str, y: str, stem: str, k: int) -> Chart:
@@ -249,8 +243,7 @@ class GroupCharts(Section):
             summaries=self.group.summaries,
             alt=f"{headline(pretty(y))} vs {pretty(x)}",
             title=headline(f"{pretty(y)} vs {pretty(x)}"),
-            subtitle=f"{self.group.label} · {self.group.mode} · k={k}"
-            f"{freshness(self._at_k(k))}",
+            subtitle=f"{self.group.label} · k={k}{freshness(self._at_k(k))}",
             better=(
                 r"$\downarrow$ faster, $\leftarrow$ cheaper"
                 if stem == "tokens_latency"
@@ -276,22 +269,9 @@ class GroupCharts(Section):
     def blocks(self) -> list[Block]:
         """The group's heading, why its metric set is what it is, then each k."""
         blocks: list[Block] = [Heading(level=self.level, text=self.group.label)]
-        if not self.metric_filter and precision_pinned(self.group.summaries):
-            blocks.append(
-                Paragraph(
-                    text="`retrieval_precision` reads 1.000 for every system at "
-                    "every k here by construction — this variant's haystack ships "
-                    "only the evidence sessions, so no hit can be a false "
-                    "positive. Only the recall charts are written: precision "
-                    "carries no information, and F1 collapses to a pure function "
-                    "of recall once precision is pinned at 1 (F1 = 2·1·R/(1+R))."
-                )
-            )
         if self.sweeps:
             blocks.append(
-                Heading(
-                    level=self.level + 1, text=f"{self.group.label}: retrieval vs k"
-                )
+                Heading(level=self.level + 1, text=f"{self.group.label}: scores vs k")
             )
             blocks.append(
                 Paragraph(
@@ -304,7 +284,7 @@ class GroupCharts(Section):
             blocks.append(
                 Heading(
                     level=self.level + 1,
-                    text=f"{self.group.label}: retrieval vs hits returned",
+                    text=f"{self.group.label}: scores vs hits returned",
                 )
             )
             blocks.append(
@@ -321,7 +301,7 @@ class GroupCharts(Section):
             blocks.append(
                 Heading(
                     level=self.level + 1,
-                    text=f"{self.group.label}: recall vs k by question category",
+                    text=f"{self.group.label}: accuracy vs k by question category",
                 )
             )
             blocks.append(
@@ -353,10 +333,16 @@ class GroupCharts(Section):
                 blocks.append(
                     Heading(
                         level=self.level + 1,
-                        text=f"{self.group.label}: session-level comparison (k={k})",
+                        text=f"{self.group.label}: system comparison (k={k})",
                     )
                 )
-                blocks.append(Paragraph(text="One bar per system, newest run."))
+                blocks.append(
+                    Paragraph(
+                        text="One bar per system, newest run. Accuracy bars carry "
+                        "their 95% Wilson interval: overlapping whiskers are not "
+                        "a ranking."
+                    )
+                )
                 blocks += [Figure(alt=c.alt, path=c.path) for c in bars]
             if scatters:
                 blocks.append(
@@ -367,8 +353,8 @@ class GroupCharts(Section):
                 )
                 blocks.append(
                     Paragraph(
-                        text="Retrieval quality against memory tokens spent and "
-                        "search latency."
+                        text="Answer accuracy and retrieval recall against memory "
+                        "tokens spent and search latency."
                     )
                 )
                 blocks += [Figure(alt=c.alt, path=c.path) for c in scatters]
@@ -401,26 +387,26 @@ class GroupSummary(Section):
         table = Chart(
             kind="table",
             stem=f"summary_k{self.k}",
-            y="retrieval_f1",
+            y=HEADLINE,
             k=self.k,
             out_dir=self.group.plot_dir,
             summaries=self.group.summaries,
             alt=f"Cross-system summary at k={self.k}",
             title=headline(f"summary at k={self.k}"),
-            subtitle=f"{self.group.label} · {self.group.mode} · "
+            subtitle=f"{self.group.label} · "
             f"newest run per system{freshness(self.group.summaries)}",
         )
         self.summary = table if table.has_data() else None
         breakdown = Chart(
             kind="categories",
             stem=f"categories_k{self.k}",
-            y="retrieval_recall",
+            y=HEADLINE,
             k=self.k,
             out_dir=self.group.plot_dir,
             summaries=self.group.summaries,
-            alt=f"Retrieval recall by question category at k={self.k}",
-            title=headline(f"recall by question category at k={self.k}"),
-            subtitle=f"{self.group.label} · {self.group.mode} · "
+            alt=f"Judge accuracy by question category at k={self.k}",
+            title=headline(f"accuracy by question category at k={self.k}"),
+            subtitle=f"{self.group.label} · "
             f"newest run per system{freshness(self.group.summaries)}",
         )
         # a dataset whose runs carry no question labels simply has no table
@@ -432,24 +418,18 @@ class GroupSummary(Section):
                 y=metric,
                 out_dir=self.group.plot_dir,
                 summaries=self.group.summaries,
-                alt=f"Retrieval {pretty(stem)} vs k",
+                alt=f"{headline(pretty(metric))} vs k",
                 title=headline(f"{pretty(metric)} vs k"),
-                subtitle=f"{self.group.label} · {self.group.mode} · "
+                subtitle=f"{self.group.label} · "
                 f"newest run per system and k{freshness(self.group.summaries)}",
             )
-            for stem, metric in sorted(
-                self.group.metrics(self.metric_filter),
-                key=lambda pair: SUMMARY_ORDER.index(pair[0]),
-            )
+            for stem, metric in self.group.metrics(self.metric_filter)
         ]
         self.lines = [c for c in planned if c.has_data()]
         self.skipped = len(planned) - len(self.lines) + (0 if self.summary else 1)
         planned = [
             spend_sweep(self.group, stem, metric)
-            for stem, metric in sorted(
-                self.group.metrics(self.metric_filter),
-                key=lambda pair: SUMMARY_ORDER.index(pair[0]),
-            )
+            for stem, metric in self.group.metrics(self.metric_filter)
         ]
         self.spends = [c for c in planned if c.has_data()]
         self.skipped += len(planned) - len(self.spends)

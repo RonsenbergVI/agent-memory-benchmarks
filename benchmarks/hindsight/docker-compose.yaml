@@ -31,9 +31,13 @@ services:
         required: false
     environment:
       # extraction runs inside this server, so the model is its configuration,
-      # not the adapter's; gpt-5-mini matches every other system's ingestion
-      - HINDSIGHT_API_LLM_PROVIDER=openai
-      - HINDSIGHT_API_LLM_MODEL=gpt-5-mini
+      # not the adapter's: set HINDSIGHT_API_LLM_PROVIDER/MODEL for `up`/`run`
+      # to change it (the benchmark service reads the same values, and refuses
+      # an --llm that disagrees). An anthropic provider also needs
+      # HINDSIGHT_API_LLM_API_KEY set to the Anthropic key.
+      - HINDSIGHT_API_LLM_PROVIDER=${HINDSIGHT_API_LLM_PROVIDER:-openai}
+      - HINDSIGHT_API_LLM_MODEL=${HINDSIGHT_API_LLM_MODEL:-gpt-5-mini}
+      - ${HINDSIGHT_API_LLM_API_KEY:+HINDSIGHT_API_LLM_API_KEY=}${HINDSIGHT_API_LLM_API_KEY:-_AMB_UNSET_HINDSIGHT_LLM_KEY=1}
       - HINDSIGHT_API_DATABASE_URL=postgresql://hindsight:hindsight@db:5432/hindsight
       - HINDSIGHT_API_VECTOR_EXTENSION=pgvector
       - HINDSIGHT_API_TEXT_SEARCH_EXTENSION=pg_search
@@ -50,6 +54,8 @@ services:
       - HINDSIGHT_API_EMBEDDINGS_PROVIDER=openai
       - HINDSIGHT_API_EMBEDDINGS_OPENAI_MODEL=text-embedding-3-small
       - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      # embeddings stay on OpenAI's key whatever provider the LLM is on
+      - ${OPENAI_API_KEY:+HINDSIGHT_API_EMBEDDINGS_OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI_EMBEDDINGS=1}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8888/health || exit 1"]
       interval: 5s
@@ -72,11 +78,13 @@ services:
       - HINDSIGHT_BASE_URL=http://hindsight:8888
       # recorded in the run's identity: the models are the server's, and
       # two differently-configured servers are different experiments
-      - HINDSIGHT_API_LLM_MODEL=gpt-5-mini
+      - HINDSIGHT_API_LLM_PROVIDER=${HINDSIGHT_API_LLM_PROVIDER:-openai}
+      - HINDSIGHT_API_LLM_MODEL=${HINDSIGHT_API_LLM_MODEL:-gpt-5-mini}
       - HINDSIGHT_API_EMBEDDING_MODEL=text-embedding-3-small
       - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${ANTHROPIC_API_KEY:+ANTHROPIC_API_KEY=}${ANTHROPIC_API_KEY:-_AMB_UNSET_ANTHROPIC=1}
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
-    command: run --system hindsight --dataset locomo
+    command: run --system hindsight --dataset locomo --model anthropic:claude-haiku-5-5
     volumes:
       - ../../.data:/amb/.data
       - ../../runs:/amb/runs

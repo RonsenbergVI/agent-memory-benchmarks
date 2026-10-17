@@ -31,9 +31,10 @@ three messages and its most-used anchors (context the client keeps per
 graph, so per conversation here). The SDK's OpenAIEmbedder
 (text-embedding-3-small) encodes messages and queries. Both run
 in-process, so token spend is visible to the OpenAIUsageTracker.
-In agentic mode the driving agent is the extractor. ``--param
-model=none`` drops the tagger; ``--param embedding_model=none`` drops
-the embedder; both give fraise's stock hybrid retrieval with no LLM or
+Agentic mode ingests the same way; only search is agent-driven. An
+anthropic ``--llm`` runs the same prompt and schema through
+``src.extractor.AnthropicExtractor``, since the SDK ships only OpenAI's;
+``--llm none`` drops the tagger and ``--embedding none`` the embedder; both give fraise's stock hybrid retrieval with no LLM or
 embedding calls.
 
 Each conversation lives in its own graph — a stable hash of its id over
@@ -53,12 +54,11 @@ import os
 import zlib
 from typing import ClassVar
 
-from amb.base import Memory
+from amb.base import Memory, split_model
+from amb.constants import DEFAULT_EMBEDDING, DEFAULT_LLM
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 # graph-walk hops from a match on recall
 DEFAULT_RECALL_DEPTH = 2
 # must match the server's -num-graphs (the compose file sets 256)
@@ -71,12 +71,15 @@ class FraiseMemory(Memory):
     name: ClassVar[str] = "fraise"
     description: ClassVar[str] = "Fraise — hybrid full-text + graph memory database"
     sdk_dist: ClassVar[str | None] = "fraise-sdk"
+    llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
+    embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
+    optional_models: ClassVar[tuple[str, ...]] = ("llm", "embedding")
 
     def __init__(
         self,
         base_url: str | None = None,
-        model: str | None = DEFAULT_INGESTION_MODEL,
-        embedding_model: str | None = DEFAULT_EMBEDDING_MODEL,
+        model: str | None = DEFAULT_LLM,
+        embedding_model: str | None = DEFAULT_EMBEDDING,
         embedding_dimensions: int | str | None = None,
         depth: int | str | None = DEFAULT_RECALL_DEPTH,
         num_graphs: int | str = DEFAULT_NUM_GRAPHS,
@@ -87,9 +90,11 @@ class FraiseMemory(Memory):
         self.base_url = base_url or os.environ.get(
             "FRAISE_BASE_URL", "http://localhost:9876"
         )
-        # explicit none (--param model=none) drops the tagger
+        # explicit none (--llm none) drops the tagger
         self.model = model
         self.embedding_model = embedding_model
+        self._llm = self.model_name(model, "llm")
+        self._embedder = self.model_name(embedding_model, "embedding")
         # --param values arrive as strings; the SDK wants an int or None
         self.embedding_dimensions = (
             int(embedding_dimensions) if embedding_dimensions else None
@@ -119,12 +124,19 @@ class FraiseMemory(Memory):
         from fraise_sdk.providers.openai import OpenAIEmbedder, OpenAIExtractor
 
         embedder = None
-        if self.embedding_model:
+        if self._embedder:
             embedder = OpenAIEmbedder(
-                model=self.embedding_model,
+                model=self._embedder,
                 dimensions=self.embedding_dimensions,
             )
-        extractor = OpenAIExtractor(model=self.model) if self.model else None
+        extractor = None
+        if self.model and self._llm:
+            if split_model(self.model)[0] == "anthropic":
+                from src.extractor import AnthropicExtractor
+
+                extractor = AnthropicExtractor(model=self._llm)
+            else:
+                extractor = OpenAIExtractor(model=self._llm)
         self.client = FraiseClient(
             self.base_url, embedder=embedder, extractor=extractor
         )

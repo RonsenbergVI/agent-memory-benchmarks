@@ -25,8 +25,9 @@ services:
     environment:
       - FRAISE_BASE_URL=http://fraise:9876
       - ${OPENAI_API_KEY:+OPENAI_API_KEY=}${OPENAI_API_KEY:-_AMB_UNSET_OPENAI=1}
+      - ${ANTHROPIC_API_KEY:+ANTHROPIC_API_KEY=}${ANTHROPIC_API_KEY:-_AMB_UNSET_ANTHROPIC=1}
       - ${HF_TOKEN:+HF_TOKEN=}${HF_TOKEN:-_AMB_UNSET_HF=1}
-    command: run --system fraise --dataset locomo
+    command: run --system fraise --dataset locomo --model anthropic:claude-haiku-5-5
     volumes:
       - ../../.data:/amb/.data
       - ../../runs:/amb/runs

@@ -81,14 +81,14 @@ import logging
 import os
 import sys
 import threading
+from collections.abc import Iterator
 from typing import Any, ClassVar
 
-from amb.base import Memory
+from amb.base import Memory, split_model
+from amb.constants import DEFAULT_EMBEDDING, DEFAULT_LLM
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
-DEFAULT_INGESTION_MODEL = "gpt-5-mini"
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 DEFAULT_EMBEDDING_DIMENSIONS = 1536
 # MemOS's own default: vector + graph recall, reranked locally. "fine"
 # adds an LLM pass over the query, which is query understanding rather
@@ -113,7 +113,7 @@ _ID_ESCAPE = "q"
 _SETUP_LOCK = threading.Lock()
 _ACCOMMODATED = False
 # tracked apart: the backend is a per-instance choice, the rest is not
-_REASONING_PATCHED = False
+_BACKEND_PATCHED = False
 
 
 def _reasoning_llm_class() -> type:
@@ -141,6 +141,59 @@ def _reasoning_llm_class() -> type:
             return body
 
     return ReasoningOpenAILLM
+
+
+def _anthropic_llm_class() -> type:
+    """MemOS's LLM contract, answered by a Claude model.
+
+    MemOS has no anthropic backend, so this takes the ``openai`` one's
+    place the way the reasoning class does: same config (model and
+    max_tokens), same ``generate`` contract, the provider swapped. Only
+    text generation is covered — a tool call raises rather than being
+    silently dropped.
+    """
+    import anthropic
+    from memos.llms.base import BaseLLM
+
+    class AnthropicLLM(BaseLLM):
+        """Claude through the Messages API, behind MemOS's LLM interface."""
+
+        def __init__(self, config: Any) -> None:
+            """Keep MemOS's config; the key comes from ANTHROPIC_API_KEY."""
+            self.config = config
+            self.client = anthropic.Anthropic()
+
+        def _request(self, messages: list[dict], **kwargs: Any) -> dict:
+            """MemOS's chat messages as a Messages API request."""
+            if kwargs.get("tools"):
+                raise NotImplementedError("tool calls are not wired for anthropic")
+            system = "\n\n".join(
+                m["content"] for m in messages if m["role"] == "system"
+            )
+            return {
+                "model": kwargs.get(
+                    "model_name_or_path", self.config.model_name_or_path
+                ),
+                "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
+                "messages": [m for m in messages if m["role"] != "system"],
+                **({"system": system} if system else {}),
+            }
+
+        def generate(self, messages: list[dict], **kwargs: Any) -> str:
+            """One completion's text."""
+            response = self.client.messages.create(**self._request(messages, **kwargs))
+            return "".join(b.text for b in response.content if b.type == "text")
+
+        def generate_stream(self, messages: list[dict], **kwargs: Any) -> Iterator[str]:
+            """One completion's text, as it streams.
+
+            Yields:
+                The text deltas, in order.
+            """
+            with self.client.messages.stream(**self._request(messages, **kwargs)) as s:
+                yield from s.text_stream
+
+    return AnthropicLLM
 
 
 def _propagate_context() -> None:
@@ -222,7 +275,7 @@ def _quiet_graph_dumps() -> None:
     memos_neo4j.print = print_to_log
 
 
-def _accommodate(reasoning: bool) -> None:
+def _accommodate(reasoning: bool, provider: str) -> None:
     """Install this adapter's accommodations, once per process.
 
     All but one are process-wide and run on the first call. The
@@ -231,18 +284,22 @@ def _accommodate(reasoning: bool) -> None:
     it stays behind the others because building it imports MemOS, and
     `_quiet_logging` is what makes that import quiet.
     """
-    global _ACCOMMODATED, _REASONING_PATCHED
+    global _ACCOMMODATED, _BACKEND_PATCHED
     with _SETUP_LOCK:
         if not _ACCOMMODATED:
             _quiet_logging()
             _quiet_graph_dumps()
             _propagate_context()
             _ACCOMMODATED = True
-        if reasoning and not _REASONING_PATCHED:
+        if (reasoning or provider == "anthropic") and not _BACKEND_PATCHED:
             from memos.llms.factory import LLMFactory
 
-            LLMFactory.backend_to_class["openai"] = _reasoning_llm_class()
-            _REASONING_PATCHED = True
+            LLMFactory.backend_to_class["openai"] = (
+                _anthropic_llm_class()
+                if provider == "anthropic"
+                else _reasoning_llm_class()
+            )
+            _BACKEND_PATCHED = True
 
 
 class MemOSMemory(Memory):
@@ -251,11 +308,14 @@ class MemOSMemory(Memory):
     name: ClassVar[str] = "memos"
     description: ClassVar[str] = "MemOS — MemCube memory, scheduled OS-style"
     sdk_dist: ClassVar[str | None] = "MemoryOS"
+    # anthropic through `_anthropic_llm_class`: MemOS ships no backend for it
+    llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
+    embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
 
     def __init__(
         self,
-        model: str = DEFAULT_INGESTION_MODEL,
-        embedding_model: str = DEFAULT_EMBEDDING_MODEL,
+        model: str = DEFAULT_LLM,
+        embedding_model: str = DEFAULT_EMBEDDING,
         embedding_dimensions: int | str = DEFAULT_EMBEDDING_DIMENSIONS,
         search_mode: str = DEFAULT_SEARCH_MODE,
         max_tokens: int | str = DEFAULT_MAX_TOKENS,
@@ -267,6 +327,8 @@ class MemOSMemory(Memory):
         super().__init__(**params)
         self.model = model
         self.embedding_model = embedding_model
+        self._llm = self.model_name(model, "llm") or ""
+        self._embedder = self.model_name(embedding_model, "embedding")
         # --param values arrive as strings
         self.embedding_dimensions = int(embedding_dimensions)
         self.search_mode = search_mode
@@ -276,7 +338,7 @@ class MemOSMemory(Memory):
         # None auto-detects from the model name; false restores MemOS's
         # own request body for a model that accepts it
         self.reasoning = (
-            self.model.startswith(_REASONING_MODELS) if reasoning is None else reasoning
+            self._llm.startswith(_REASONING_MODELS) if reasoning is None else reasoning
         )
         # the conversation this instance was built for: MemOS is created
         # lazily, because the base contract passes the id only per call
@@ -286,7 +348,7 @@ class MemOSMemory(Memory):
 
     def setup(self) -> None:
         """Install the accommodations MemOS needs in this harness."""
-        _accommodate(self.reasoning)
+        _accommodate(self.reasoning, split_model(self.model)[0])
 
     @staticmethod
     def _slug(value: str) -> str:
@@ -332,9 +394,9 @@ class MemOSMemory(Memory):
         """What this benchmark overrides in MemOS's own default config."""
         return {
             "text_mem_type": "tree_text",
-            "model_name": self.model,
+            "model_name": self._llm,
             "max_tokens": self.max_tokens,
-            "embedder_model": self.embedding_model,
+            "embedder_model": self._embedder,
             "embedding_dimension": self.embedding_dimensions,
             "neo4j_uri": os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
             "neo4j_user": os.environ.get("NEO4J_USER", "neo4j"),
@@ -412,27 +474,6 @@ class MemOSMemory(Memory):
             session_id=session.session_id,
         )
         self._sessions.add(session.session_id)
-
-    def store(
-        self,
-        conversation_id: str,
-        content: str,
-        *,
-        session_id: str,
-    ) -> None:
-        """Hand MemOS one statement to remember (agentic mode).
-
-        MemOS's own reader extracts from it, exactly as it does for a
-        session's messages — the agent is the source, not the extractor.
-        """
-        mos = self._store(conversation_id)
-        mos.add(
-            memory_content=content,
-            user_id=self._user(conversation_id),
-            mem_cube_id=self._cube(conversation_id),
-            session_id=session_id,
-        )
-        self._sessions.add(session_id)
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return up to k memories from this conversation's MemCube."""

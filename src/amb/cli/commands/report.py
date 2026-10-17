@@ -125,8 +125,8 @@ def report(  # noqa: PLR0913 - one option per output/filter, all independent
 
     Raises:
         click.ClickException: no summaries under the directory, an unknown
-            report name, --dataset/--variant naming a combination with no
-            runs, or a section's runs spanning several modes.
+            report name, or --dataset/--variant naming a combination with
+            no runs.
     """
     requested: dict[str, Path | None] = {}
     if output:

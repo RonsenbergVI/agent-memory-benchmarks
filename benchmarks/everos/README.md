@@ -29,7 +29,7 @@ EverOS's runtime is normally brought up by its HTTP app's lifespan. Driving the 
 ```bash
 docker compose -p everos-smoke -f benchmarks/everos/docker-compose.yaml \
   run --build --rm benchmark run --system everos \
-  --dataset locomo --limit 1 --turns 40 --questions 5
+  --dataset locomo --model anthropic:claude-haiku-5-5 --limit 1 --turns 40 --questions 5
 ```
 
 ## Parameters

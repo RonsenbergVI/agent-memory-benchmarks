@@ -26,7 +26,7 @@ from typing import ClassVar
 
 from amb.base import Benchmark
 from src.memory import FraiseMemory
-from src.toolset import FraiseIngestToolset, FraiseSearchToolset
+from src.toolset import FraiseSearchToolset
 
 
 class FraiseBenchmark(Benchmark):
@@ -40,4 +40,3 @@ class FraiseBenchmark(Benchmark):
     name: ClassVar[str] = "fraise"
     system_class = FraiseMemory
     search_toolset_class = FraiseSearchToolset
-    ingest_toolset_class = FraiseIngestToolset

@@ -25,6 +25,7 @@ from pathlib import Path
 
 import click
 
+from amb.base.memory import MODEL_PARAMS
 from amb.constants import DEFAULT_DATA_DIR, DEFAULT_RUNS_DIR
 from amb.registry import get_benchmark
 from amb.reporting import RunReport
@@ -75,20 +76,11 @@ PARAM = ParamType()
 @click.option("--dataset", required=True, help="dataset to run against")
 @click.option("--variant", help="dataset variant; defaults to the loader's own")
 @click.option(
-    "--mode",
-    type=click.Choice(["direct", "agentic"]),
-    default="direct",
-    show_default=True,
-    help="direct: the harness drives ingestion and search; "
-    "agentic: a model drives both through the system's own tools. "
-    "Answers are generated iff --model is set (mandatory for agentic)",
-)
-@click.option(
     "--k",
     type=click.IntRange(min=1),
     default=10,
     show_default=True,
-    help="hits requested per query",
+    help="hits each of the agent's searches may return",
 )
 @click.option("--limit", type=click.IntRange(min=1), help="max conversations")
 @click.option(
@@ -135,8 +127,10 @@ PARAM = ParamType()
 )
 @click.option(
     "--model",
-    help="answer model (pydantic-ai id, e.g. openai:gpt-5-mini). No default: "
-    "direct runs skip answer generation without it; agentic runs require it",
+    required=True,
+    help="the question agent (pydantic-ai id, e.g. anthropic:claude-haiku-5-5): "
+    "it searches the system's own tools and answers. `test` is pydantic-ai's "
+    "offline model, for smoke runs",
 )
 @click.option(
     "--judge",
@@ -162,23 +156,52 @@ PARAM = ParamType()
     help="where this run's data is written",
 )
 @click.option(
+    "--llm",
+    metavar="PROVIDER:NAME",
+    help="the memory system's own LLM (extraction), e.g. openai:gpt-5-mini or "
+    "anthropic:claude-haiku-5-5; `none` for a system that can run without "
+    "one. Systems that cannot run the provider natively refuse to start. "
+    "Default: openai:gpt-5-mini",
+)
+@click.option(
+    "--embedding",
+    metavar="PROVIDER:NAME",
+    help="the memory system's own embedding model, e.g. "
+    "openai:text-embedding-3-small (the default); `none` as for --llm",
+)
+@click.option(
     "--param",
     "params",
     type=PARAM,
     multiple=True,
     metavar="KEY=VALUE",
-    help="set a memory-system parameter, e.g. model=gpt-5-mini or "
-    "embedding_model=text-embedding-3-small (repeatable; true/false and "
-    "numbers are coerced)",
+    help="set a memory-system parameter, e.g. ingest=agent (repeatable; "
+    "true/false and numbers are coerced)",
 )
-def run(system: str, params: tuple[tuple[str, object], ...], **options) -> None:
+def run(
+    system: str,
+    llm: str | None,
+    embedding: str | None,
+    params: tuple[tuple[str, object], ...],
+    **options,
+) -> None:
     """Run one system against one dataset.
 
     Raises:
-        click.ClickException: with --judge but no judge model to use.
+        click.ClickException: with --judge but no judge model to use, or a
+            model set through --param instead of --llm/--embedding.
     """
+    system_params = dict(params)
+    if clash := [key for key in MODEL_PARAMS if key in system_params]:
+        raise click.ClickException(
+            f"--param {clash[0]}= is not accepted: use --llm / --embedding"
+        )
+    # one flag per model, the same for every system; each adapter translates it
+    for key, value in (("model", llm), ("embedding_model", embedding)):
+        if value is not None:
+            system_params[key] = None if value.lower() == "none" else value
     # --param belongs to the system under test; the rest is run execution
-    benchmark = get_benchmark(system).benchmark_class()(params=dict(params))
+    benchmark = get_benchmark(system).benchmark_class()(params=system_params)
     config = RunConfig(**options)
     data = Runner(benchmark, config).run()
     report = RunReport(data)

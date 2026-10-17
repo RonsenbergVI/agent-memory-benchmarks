@@ -26,7 +26,7 @@ from typing import ClassVar
 
 from amb.base import Benchmark
 from src.memory import Mem0Memory
-from src.toolset import Mem0IngestToolset, Mem0SearchToolset
+from src.toolset import Mem0SearchToolset
 
 
 class Mem0Benchmark(Benchmark):
@@ -39,4 +39,3 @@ class Mem0Benchmark(Benchmark):
     name: ClassVar[str] = "mem0"
     system_class = Mem0Memory
     search_toolset_class = Mem0SearchToolset
-    ingest_toolset_class = Mem0IngestToolset
