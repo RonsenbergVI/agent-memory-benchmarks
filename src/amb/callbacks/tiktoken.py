@@ -33,10 +33,9 @@ class TiktokenUsageTracker(Callback):
 
     For systems that spend inside their own server, invisible to the SDK
     wrappers: the adapter reports its computed spend through
-    `Memory.usage_counters()` (letta: tiktoken over every stored passage
-    and query — exact for embeddings, which bill their input verbatim),
-    and this callback writes the same report fields as OpenAIUsageTracker.
-    Opt-in via `callback_classes` (letta today). Marks are thread-local
+    `Memory.usage_counters()` (hindsight: the usage its server reports;
+    cognee: a litellm callback), and this callback writes the same report
+    fields as OpenAIUsageTracker. Opt-in via `callback_classes`. Marks are thread-local
     and each sample has its own system instance, so attribution holds
     under `--workers`.
     """

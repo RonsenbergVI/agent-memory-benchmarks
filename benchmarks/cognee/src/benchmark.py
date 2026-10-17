@@ -38,7 +38,7 @@ class CogneeBenchmark(Benchmark):
     and would record a cognee run as free. The adapter books its own
     spend from a litellm callback instead, and `TiktokenUsageTracker`
     reads those counters at the same lifecycle boundaries — the same
-    arrangement letta uses for spend that happens inside its server.
+    arrangement hindsight uses for spend that happens inside its server.
     """
 
     name: ClassVar[str] = "cognee"

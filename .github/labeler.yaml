@@ -31,11 +31,6 @@ memory:langmem:
       - any-glob-to-any-file:
           - benchmarks/langmem/**
 
-memory:letta:
-  - changed-files:
-      - any-glob-to-any-file:
-          - benchmarks/letta/**
-
 memory:mem0:
   - changed-files:
       - any-glob-to-any-file:

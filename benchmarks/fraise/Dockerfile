@@ -1,5 +1,5 @@
 # Build from the repo root (docker compose here does this for you):
-#   docker build -f benchmarks/fraise/Dockerfile -t amb-letta .
+#   docker build -f benchmarks/fraise/Dockerfile -t amb-fraise .
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 # the floating tag lags behind the repo's required uv (>0.10,<0.13);
 # pin the binary itself so builds don't depend on the tag's age
