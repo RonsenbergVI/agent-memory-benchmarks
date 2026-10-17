@@ -29,11 +29,7 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: LongMemEval is paused, not dropped. The oracle variant
-# hands every system a small candidate set, so the field compresses into
-# 0.856-0.993 F1 — a full run per system for a nearly flat table. It
-# rejoins when a battery has room for a third dataset; the results it
-# already produced stay published.
+# locomo only: longmemeval runs every system from longmemeval.yml
 jobs:
   locomo:
     name: graphiti / locomo / k${{ matrix.k }}

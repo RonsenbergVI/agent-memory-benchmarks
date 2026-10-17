@@ -1,0 +1,129 @@
+name: Benchmark longmemeval
+
+on:
+  push:
+    # harness releases only: a system's own tag reruns its locomo workflow,
+    # and this matrix would rerun every system for it
+    tags: ["v[0-9]+.[0-9]+.0"]
+  workflow_dispatch:
+
+concurrency:
+  group: benchmark-longmemeval
+
+permissions:
+  contents: write
+
+env:
+  SUMMARY_K: 10
+  ANSWER_MODEL: anthropic:claude-haiku-5-5
+  JUDGE_MODEL: anthropic:claude-haiku-5-5
+  LLM: anthropic:claude-haiku-5-5
+  EMBEDDING: openai:text-embedding-3-small
+
+# xs only: 151 questions over their own evidence, sized to ingest in about
+# locomo's time (see METHODOLOGY.md). Every system's locomo run stays in its
+# own workflow.
+jobs:
+  xs:
+    name: ${{ matrix.system }} / longmemeval xs / k${{ matrix.k }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        system: [cognee, everos, fraise, graphiti, hindsight, langmem, mem0, memos]
+        k: [1, 3, 5, 10]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the workspace
+        run: uv sync --locked
+
+      - name: Pull the dataset
+        run: uv run amb datasets pull longmemeval --variant xs
+
+      # fraise's server image lives on ghcr
+      - name: Log in to ghcr
+        if: matrix.system == 'fraise'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run the benchmark
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # only hindsight's compose reads these: its extraction runs inside the server
+          HINDSIGHT_API_LLM_API_KEY: ${{ startsWith(env.LLM, 'anthropic:') && secrets.ANTHROPIC_API_KEY || '' }}
+        run: |
+          export HINDSIGHT_API_LLM_PROVIDER="${LLM%%:*}" HINDSIGHT_API_LLM_MODEL="${LLM#*:}"
+          docker compose -f benchmarks/${{ matrix.system }}/docker-compose.yaml \
+            run --build --rm benchmark run --system ${{ matrix.system }} \
+            --dataset longmemeval --variant xs \
+            --llm "$LLM" --embedding "$EMBEDDING" \
+            --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
+            --workers 3 \
+            --k ${{ matrix.k }}
+          docker compose -f benchmarks/${{ matrix.system }}/docker-compose.yaml down -v
+
+      - name: Upload run data
+        uses: actions/upload-artifact@v7
+        with:
+          name: runs-${{ matrix.system }}-longmemeval-xs-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: runs/
+          if-no-files-found: error
+          retention-days: 5
+
+  publish:
+    name: publish results to main
+    needs: [xs]
+    if: always()
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-results
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
+          ref: main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the workspace
+        run: uv sync --locked
+
+      - name: Collect run data
+        uses: actions/download-artifact@v8
+        with:
+          pattern: runs-*
+          path: runs
+          merge-multiple: true
+
+      - name: Regenerate plots and reports
+        run: |
+          tag=""
+          [ "${{ github.ref_type }}" = "tag" ] && tag="--tag $GITHUB_REF_NAME"
+          uv run amb plot all
+          uv run amb plot all --dark
+          uv run amb report --latest --k "$SUMMARY_K" \
+            --output RESULTS.md \
+            --commit "$GITHUB_SHA" $tag
+
+      - name: Commit results to main
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "results: longmemeval benchmark run for ${{ github.ref_name }}"
+          file_pattern: "runs plots RESULTS.md"

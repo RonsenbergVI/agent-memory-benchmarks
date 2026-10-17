@@ -29,10 +29,7 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: a new integration earns its longmemeval jobs once it has a
-# green locomo run to stand on. The oracle cells are the long, expensive
-# half of the matrix, and there is no sense spending on them while the
-# cheap half is still unproven.
+# locomo only: longmemeval runs every system from longmemeval.yml
 jobs:
   locomo:
     name: langmem / locomo / k${{ matrix.k }}

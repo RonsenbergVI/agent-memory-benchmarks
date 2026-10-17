@@ -29,9 +29,7 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: cognee ingests at ~70s per session, and a longmemeval
-# oracle cell would run past the 360-minute ceiling — graphiti's takes
-# 5.4 hours at a quarter of that per-session cost.
+# locomo only: longmemeval runs every system from longmemeval.yml
 jobs:
   locomo:
     name: cognee / locomo / k${{ matrix.k }}
