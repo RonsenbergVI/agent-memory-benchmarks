@@ -29,7 +29,7 @@ env:
   LLM: anthropic:claude-haiku-5-5
   EMBEDDING: openai:text-embedding-3-small
 
-# locomo only: longmemeval runs every system from longmemeval.yml
+# locomo only: longmemeval runs from hindsight-longmemeval.yml
 jobs:
   locomo:
     name: hindsight / locomo / k${{ matrix.k }}

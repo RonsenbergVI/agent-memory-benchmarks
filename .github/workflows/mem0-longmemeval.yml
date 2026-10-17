@@ -1,0 +1,145 @@
+name: Benchmark mem0 longmemeval
+
+on:
+  push:
+    # micro is always 0 under the major.minor release scheme; the
+    # strict patterns keep a hand-pushed patch or prerelease tag from
+    # starting paid benchmark runs
+    tags: ["v[0-9]+.[0-9]+.0", "mem0/v[0-9]+.[0-9]+.0"]
+  workflow_dispatch:
+
+# one mem0 benchmark run at a time; a second trigger queues rather than
+# interleaving runs/ artifacts. Other frameworks' workflows run in
+# parallel — publishing is serialized by the publish job's own group.
+concurrency:
+  group: benchmark-mem0-longmemeval
+
+permissions:
+  contents: write
+
+env:
+  # the k the README summary table compares at; the chart sets cover every
+  # k the runs actually used, so this narrows the headline only
+  SUMMARY_K: 10
+  # amb's own agents, the same for every system: the question agent searches
+  # through the system's native tools and answers, the judge grades it
+  ANSWER_MODEL: anthropic:claude-haiku-5-5
+  JUDGE_MODEL: anthropic:claude-haiku-5-5
+  # the system's own LLM and embedder, one id each for every system
+  LLM: anthropic:claude-haiku-5-5
+  EMBEDDING: openai:text-embedding-3-small
+
+# longmemeval xs only: 151 questions over their own evidence, sized to
+# ingest in about locomo's time; locomo runs from mem0.yml
+jobs:
+  xs:
+    name: mem0 / longmemeval xs / k${{ matrix.k }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        k: [1, 3, 5, 10]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the workspace
+        run: uv sync --locked
+
+      # pulled on the runner; the compose stack volume-mounts .data/
+      - name: Pull the dataset
+        run: uv run amb datasets pull longmemeval --variant xs
+
+      - name: Run the benchmark
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          docker compose -f benchmarks/mem0/docker-compose.yaml \
+            run --build --rm benchmark run --system mem0 \
+            --dataset longmemeval --variant xs \
+            --llm "$LLM" --embedding "$EMBEDDING" \
+            --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
+            --workers 3 \
+            --k ${{ matrix.k }}
+          docker compose -f benchmarks/mem0/docker-compose.yaml down -v
+
+      # the run id + attempt make the name unique, so a later identical run
+      # (or a job re-run) gets its own artifact instead of colliding with or
+      # replacing an earlier one; kept a few days for inspection
+      - name: Upload run data
+        uses: actions/upload-artifact@v7
+        with:
+          name: runs-mem0-longmemeval-xs-k${{ matrix.k }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: runs/
+          if-no-files-found: error
+          retention-days: 5
+
+  publish:
+    name: publish results to main
+    needs: [xs]
+    # always: every cell that finished uploaded its artifact, so whatever
+    # completed still lands and the documents regenerate even when some failed
+    if: always()
+    runs-on: ubuntu-latest
+    # every framework workflow commits to main through this one group, so
+    # two finishing together publish one after the other instead of racing
+    # the push
+    concurrency:
+      group: publish-results
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.CI_DEPLOY_KEY }}
+          ref: main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the workspace
+        run: uv sync --locked
+
+      - name: Collect run data
+        uses: actions/download-artifact@v8
+        with:
+          pattern: runs-*
+          path: runs
+          merge-multiple: true
+
+      - name: Regenerate plots and reports
+        run: |
+          # every run stamps the commit that triggered it; only a real
+          # release also stamps its tag
+          tag=""
+          [ "${{ github.ref_type }}" = "tag" ] && tag="--tag $GITHUB_REF_NAME"
+          # both commands read the same report objects, so neither needs to
+          # be told which datasets or variants exist: the (dataset, variant)
+          # groups are discovered from runs/ itself, which holds every run
+          # ever committed to main (checkout brings the full tree, not just
+          # this run's artifacts). `amb plot all` draws exactly the charts the
+          # documents link — every k the runs used, one directory per group
+          # — and `amb report` writes the documents that link them, so the
+          # two cannot drift apart.
+          uv run amb plot all
+          uv run amb plot all --dark
+          uv run amb report --latest --k "$SUMMARY_K" \
+            --output RESULTS.md \
+            --commit "$GITHUB_SHA" $tag
+
+      # commits as github-actions[bot] and skips cleanly when nothing
+      # changed; pushes to the checked-out branch (main)
+      - name: Commit results to main
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "results: mem0 longmemeval benchmark run for ${{ github.ref_name }}"
+          file_pattern: "runs plots RESULTS.md"
