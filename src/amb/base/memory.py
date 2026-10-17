@@ -97,8 +97,8 @@ class Memory(ABC):
         """Token spend this system computes about itself (empty by default).
 
         For spend inside the system's own server, invisible to the SDK
-        tracker: report OpenAIUsageTracker.KEYS here (letta: tiktoken over
-        every stored passage and query); TiktokenUsageTracker books the
-        deltas into the report.
+        tracker: report OpenAIUsageTracker.KEYS here (hindsight: the usage
+        its server reports); TiktokenUsageTracker books the deltas into
+        the report.
         """
         return {}

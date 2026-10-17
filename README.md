@@ -13,7 +13,6 @@
 [![Benchmark graphiti](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/graphiti.yml)
 [![Benchmark hindsight](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/hindsight.yml)
 [![Benchmark langmem](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/langmem.yml)
-[![Benchmark letta](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/letta.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/letta.yml)
 [![Benchmark mem0](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/mem0.yml)
 [![Benchmark memos](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos.yml/badge.svg)](https://github.com/RonsenbergVI/agent-memory-benchmarks/actions/workflows/memos.yml)
 
@@ -138,7 +137,6 @@ Pre-alpha. Methodology is being defined and the test harness is in development. 
 | System | Repository | License | Memory model | Results |
 | --- | --- | --- | --- | --- |
 | Mem0 | [mem0ai/mem0](https://github.com/mem0ai/mem0) | Apache-2.0 | Vector + extraction | [RESULTS.md](RESULTS.md) |
-| Letta | [letta-ai/letta](https://github.com/letta-ai/letta) | Apache-2.0 | Hierarchical (OS-style) | [RESULTS.md](RESULTS.md) |
 | Graphiti | [getzep/graphiti](https://github.com/getzep/graphiti) | Apache-2.0 | Temporal knowledge graph | [RESULTS.md](RESULTS.md) |
 | Fraise | [RonsenbergVI/fraise](https://github.com/RonsenbergVI/fraise) | MIT | Temporal knowledge graph + vector / text hybrid search | [RESULTS.md](RESULTS.md) |
 | EverOS (EverMind) | [EverMind-AI/EverOS](https://github.com/EverMind-AI/EverOS) | Apache-2.0 | Local-first, Markdown-native | [RESULTS.md](RESULTS.md) |

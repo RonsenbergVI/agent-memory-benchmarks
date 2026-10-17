@@ -81,19 +81,6 @@
         }
       ]
     },
-    "benchmarks/letta": {
-      "release-type": "python",
-      "component": "letta",
-      "tag-separator": "/",
-      "versioning": "always-bump-minor",
-      "extra-files": [
-        {
-          "type": "toml",
-          "path": "/uv.lock",
-          "jsonpath": "$.package[?(@.name.value=='letta')].version"
-        }
-      ]
-    },
     "benchmarks/mem0": {
       "release-type": "python",
       "component": "mem0",

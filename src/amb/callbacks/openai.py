@@ -41,8 +41,8 @@ class OpenAIUsageTracker(Callback):
     async request methods read the billed ``usage`` off every response,
     giving a token_usage dict per sample and a memory_tokens delta per
     question; a system with no in-process calls records a truthful zero.
-    Server-side spenders attach their own strategy instead (letta's
-    TiktokenUsageTracker). Patching is process-wide — fine, one system
+    Server-side spenders attach their own strategy instead
+    (TiktokenUsageTracker). Patching is process-wide — fine, one system
     instance runs at a time.
 
     Counters live in a `ContextVar`, not `threading.local()`: integrations

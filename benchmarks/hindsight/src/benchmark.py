@@ -36,8 +36,8 @@ class HindsightBenchmark(Benchmark):
     name: ClassVar[str] = "hindsight"
     system_class = HindsightMemory
     # hindsight spends inside its server, invisible to the default tracker
-    # (its zero is what the harness observed, not what the run cost — same
-    # shape as letta); this opt-in tracker books what the server reports
+    # (its zero is what the harness observed, not what the run cost); this
+    # opt-in tracker books what the server reports
     callback_classes = (TiktokenUsageTracker,)
     search_toolset_class = HindsightSearchToolset
     ingest_toolset_class = HindsightIngestToolset
