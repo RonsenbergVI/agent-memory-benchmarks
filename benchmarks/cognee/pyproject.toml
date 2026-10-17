@@ -5,7 +5,7 @@
 # (`uv sync --package cognee-benchmark`), the release-please extra-files
 # jsonpath and uv.lock all key off this name.
 name = "cognee-benchmark"
-version = "0.1.0"
+version = "0.2.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
