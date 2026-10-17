@@ -41,8 +41,11 @@ jobs:
             release
           requireScope: false
           # Allow breaking-change marker: feat!: or feat(scope)!:
-          headerPattern: '^(\w+)(?:\(([\w\-\.]+)\))?(!)?: (.+)$'
-          headerPatternCorrespondence: type, scope, breaking, subject
+          # Keep exactly three groups: `!` titles are parsed by the preset's
+          # breakingHeaderPattern (type, scope, subject) under this same
+          # correspondence, so a fourth group left the subject empty.
+          headerPattern: '^(\w+)(?:\(([\w\-\.]+)\))?!?: (.+)$'
+          headerPatternCorrespondence: type, scope, subject
 
      # https://github.com/finleyfamily/action-enforce-branch-name
       - name: Validate branch name
