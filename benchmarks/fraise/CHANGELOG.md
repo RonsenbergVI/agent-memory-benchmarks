@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.8.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.7.0...fraise/v0.8.0) (2026-10-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* agent-only runs scored by judge accuracy, on Anthropic ([#242](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/242))
+* remove the retired letta integration ([#238](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/238))
+
+### Features
+
+* agent-only runs scored by judge accuracy, on Anthropic ([#242](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/242)) ([ab65ceb](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/ab65ceb6b395aab0ec32dc9f9f4cda67e73e11ca))
+
+
+### Maintenance
+
+* remove the retired letta integration ([#238](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/238)) ([14467b0](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/14467b043e5400945d79b7c198265f621c621f0a))
+
 ## [0.7.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.6.0...fraise/v0.7.0) (2026-10-11)
 
 
