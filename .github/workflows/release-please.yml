@@ -8,6 +8,13 @@ permissions:
   contents: write
   pull-requests: write
 
+# Serialized: a run overlapping another's release merge sees it untagged and
+# reopens it (#252, after #243/#246 merged 12 s apart). Superseded pending
+# runs are dropped, which is safe — every run reads main's head.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
 jobs:
   release-please:
     runs-on: ubuntu-latest

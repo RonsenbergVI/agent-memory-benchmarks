@@ -27,7 +27,7 @@ from pathlib import Path
 from amb.reporting.chart import Chart
 
 
-def _summary(system: str, accuracy: float) -> dict:
+def _summary(system: str, accuracy: float, recall: float = 0.9) -> dict:
     return {
         "run_id": "20260820T000000Z",
         "system": system,
@@ -40,7 +40,7 @@ def _summary(system: str, accuracy: float) -> dict:
             "high": accuracy + 0.05,
             "n": 300,
         },
-        "retrieval_recall": 0.9,
+        "retrieval_recall": recall,
         "memory_tokens_total": 1000.0,
         "search_latency": {"p50_s": 0.1},
     }
@@ -50,7 +50,7 @@ def _table_chart(tmp_path: Path, summaries: list[dict], k: int = 10) -> Chart:
     return Chart(
         kind="table",
         stem=f"summary_k{k}",
-        y="judge_accuracy",
+        y="retrieval_recall",
         k=k,
         out_dir=tmp_path,
         summaries=summaries,
@@ -60,10 +60,11 @@ def _table_chart(tmp_path: Path, summaries: list[dict], k: int = 10) -> Chart:
 
 
 def test_table_chart_ranks_and_renders(tmp_path: Path) -> None:
-    chart = _table_chart(tmp_path, [_summary("aaa", 0.5), _summary("bbb", 0.6)])
+    chart = _table_chart(
+        tmp_path, [_summary("aaa", 0.6, recall=0.7), _summary("bbb", 0.5, recall=0.8)]
+    )
     assert chart.has_data()
-    # rows come ranked most accurate first, so the image argues the same order
-    # as the markdown table it replaces
+    # ranked by recall, not accuracy: the less accurate system leads
     assert [row[0] for row in chart.data()] == ["bbb", "aaa"]
     path = chart.draw()
     assert path == tmp_path / "summary_k10.png"

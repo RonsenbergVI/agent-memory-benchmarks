@@ -20,7 +20,19 @@ Did the agent, searching the system, answer correctly? `judge_accuracy` is the s
 
 ### Retrieval
 
-Did the agent's searches surface the evidence? Retrieved ids are scored against the dataset's evidence labels as two separate families: session-level `retrieval_precision/recall/f1` (every system can attest a memory's session) and turn-level `turn_precision/recall/f1` (only verbatim-turn stores, like naive). Session-level recall is the diagnostic published beside accuracy; precision mostly measures how sparingly the agent searched, so it is not headlined. `hits_per_query` and `sessions_per_query` show how much of the `--k` budget each search used.
+Did the agent's searches surface the evidence? Retrieved ids are scored against the dataset's evidence labels as two separate families: session-level `retrieval_precision/recall/f1` (every system can attest a memory's session) and turn-level `turn_precision/recall/f1` (only verbatim-turn stores, like naive). Session-level recall is what the summary and per-category tables rank by; precision mostly measures how sparingly the agent searched, so it is not headlined. `hits_per_query` and `sessions_per_query` show how much the agent looked at per question; see [k is a ceiling, not a quota](#k-is-a-ceiling-not-a-quota).
+
+### k is a ceiling, not a quota
+
+`--k` is the most hits one search may return. It is never padded and never exceeded: a system that finds less returns less, and what came back is what gets scored. The harness does not truncate, so an adapter returning more than k is a bug in the adapter. k caps each *search*, not the question. The agent may search several times, and `hits_per_query` (the comparison table's `hits/q`) counts every hit across those searches, with `sessions_per_query` counting the distinct sessions they cite. Measured on LoCoMo, mem0 2.0.20 at k=10 runs 1.84 searches/question, returns exactly 10 hits on each, and reports 18.42 hits/q. Each `results.jsonl` row records `num_searches`, so hits per search can be recovered from any run.
+
+So compare systems at matched hits/q, not matched k. Recall rises with every hit the agent sees, so at the same k a system whose agent searched more often, or whose searches came back full, can look like it ranks better when the agent has only read more of it. The other direction is just as real. In the direct-mode runs withdrawn in #242 (still in git history), EverOS 1.2.3 returned 1.83, 2.93 and 5.57 hits per search at k = 3, 5 and 10, while every other system returned the full k. RESULTS.md's "scores vs hits returned" charts place each k at its measured hits/q for exactly this comparison.
+
+### Error attribution
+
+Who lost a question: the memory or the agent? `attribution` crosses "every evidence session retrieved" with the judge's verdict, so each judged, evidence-labelled question falls in one of four cells, reported as shares of `n`: `correct`, `agent_fault` (found, wrong), `memory_fault` (missed, wrong) and `lucky` (missed, right). Each branch also reports its rate and its split: `found` with `correct_when_found` (the agent's own rate) and `missed` with `correct_when_missed` (the agent's prior). Found is strict — half a multi-hop chain is a miss — and questions without evidence labels are left out rather than counted as misses. RESULTS.md prints this as two mirrored error-analysis tables per k, one per branch; it is also broken down by question category.
+
+The two rates collapse into one number, `memory_lift` = `found × (correct_when_found − correct_when_missed)`: the accuracy points the memory added over what the agent answers without the evidence. It credits a memory only for evidence it both found and returned in a usable form. The summary table carries it beside accuracy, RESULTS.md prints its factors per k, and the README breaks it down by question category. The rate without evidence is estimated from each system's own misses, not measured against a memoryless run.
 
 ### Latency
 
@@ -51,7 +63,7 @@ data = Runner(FraiseBenchmark(params={"model": "openai:gpt-5-mini"}),
 Every experiment is the same pipeline — **ingest → qa → evaluation** — measured the way an agent uses memory:
 
 - **Ingest:** each session goes through the adapter's `ingest_session`, i.e. the system's **own extractor** (mem0's fact extraction, graphiti's entity extraction, hindsight's server-side retain, ...), on the model set with `--llm`.
-- **QA:** amb's question agent (`--model`, required) searches through the system's *own* search tools (mem0's `search_memory`, hindsight's `recall`, fraise's `recall`, ... or the generic `search_memory`) as many times as it likes, then answers. Retrieval is recorded on everything it chose to look at.
+- **QA:** amb's question agent (`--model`, required) searches through the system's *own* search tools (mem0's `search_memory`, hindsight's `recall`, fraise's `query` (raw FQL recalls, written from the language spec in its instructions), ... or the generic `search_memory`) as many times as it likes, then answers. Retrieval is recorded on everything it chose to look at.
 - **Evaluation:** the judge (`--judge-model`) gives each answer one binary verdict, correct or not. **Judge accuracy is the headline**, reported with its 95% Wilson interval — a few hundred verdicts per run leave a few points of noise, so systems inside each other's interval are not ranked as different. Session-level retrieval recall is the diagnostic beside it: whether the agent found the evidence at all. LoCoMo's adversarial questions are unanswerable; the judge counts a correct abstention ("I don't know") as correct there, so the verdict stays binary.
 
 There is no retrieval-only mode: earlier releases scored a harness-driven search on retrieval F1, and those results were withdrawn — they measured a search engine, not memory in an agent.
