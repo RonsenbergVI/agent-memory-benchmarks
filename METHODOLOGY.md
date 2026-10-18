@@ -28,6 +28,12 @@ Did the agent's searches surface the evidence? Retrieved ids are scored against 
 
 So compare systems at matched hits/q, not matched k. Recall rises with every hit the agent sees, so at the same k a system whose agent searched more often, or whose searches came back full, can look like it ranks better when the agent has only read more of it. The other direction is just as real. In the direct-mode runs withdrawn in #242 (still in git history), EverOS 1.2.3 returned 1.83, 2.93 and 5.57 hits per search at k = 3, 5 and 10, while every other system returned the full k. RESULTS.md's "scores vs hits returned" charts place each k at its measured hits/q for exactly this comparison.
 
+### Error attribution
+
+Who lost a question: the memory or the agent? `attribution` crosses "every evidence session retrieved" with the judge's verdict, so each judged, evidence-labelled question falls in one of four cells, reported as shares of `n`: `correct`, `agent_fault` (found, wrong), `memory_fault` (missed, wrong) and `lucky` (missed, right). Each branch also reports its rate and its split: `found` with `correct_when_found` (the agent's own rate) and `missed` with `correct_when_missed` (the agent's prior). Found is strict — half a multi-hop chain is a miss — and questions without evidence labels are left out rather than counted as misses. RESULTS.md prints this as two mirrored error-analysis tables per k, one per branch; it is also broken down by question category.
+
+The two rates collapse into one number, `memory_lift` = `found × (correct_when_found − correct_when_missed)`: the accuracy points the memory added over what the agent answers without the evidence. It credits a memory only for evidence it both found and returned in a usable form. The summary table carries it beside accuracy, RESULTS.md prints its factors per k, and the README breaks it down by question category. The rate without evidence is estimated from each system's own misses, not measured against a memoryless run.
+
 ### Latency
 
 `ingest.total_s` (summed ingestion), plus p50/p95/p99 of per-question `search_latency` (the time spent in all of the agent's searches for that question) and `answer_latency` (the whole agent turn).
