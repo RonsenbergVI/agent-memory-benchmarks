@@ -20,7 +20,7 @@ Did the agent, searching the system, answer correctly? `judge_accuracy` is the s
 
 ### Retrieval
 
-Did the agent's searches surface the evidence? Retrieved ids are scored against the dataset's evidence labels as two separate families: session-level `retrieval_precision/recall/f1` (every system can attest a memory's session) and turn-level `turn_precision/recall/f1` (only verbatim-turn stores, like naive). Session-level recall is the diagnostic published beside accuracy; precision mostly measures how sparingly the agent searched, so it is not headlined. `hits_per_query` and `sessions_per_query` show how much of the `--k` budget each search used.
+Did the agent's searches surface the evidence? Retrieved ids are scored against the dataset's evidence labels as two separate families: session-level `retrieval_precision/recall/f1` (every system can attest a memory's session) and turn-level `turn_precision/recall/f1` (only verbatim-turn stores, like naive). Session-level recall is what the summary and per-category tables rank by; precision mostly measures how sparingly the agent searched, so it is not headlined. `hits_per_query` and `sessions_per_query` show how much of the `--k` budget each search used.
 
 ### Latency
 
