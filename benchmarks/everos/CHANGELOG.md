@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/everos/v0.3.0...everos/v0.4.0) (2026-10-18)
+
+
+### Bug fixes
+
+* **everos:** restore the everalgo-boundary &lt;0.3 cap ([#253](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/253)) ([53ca990](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/53ca9900097b82e2fb749a227b9a027248a1cd29))
+
+## [0.3.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/everos/v0.2.0...everos/v0.3.0) (2026-10-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* agent-only runs scored by judge accuracy, on Anthropic ([#242](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/242))
+
+### Features
+
+* agent-only runs scored by judge accuracy, on Anthropic ([#242](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/242)) ([ab65ceb](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/ab65ceb6b395aab0ec32dc9f9f4cda67e73e11ca))
+
 ## [0.2.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/everos/v0.1.0...everos/v0.2.0) (2026-10-04)
 
 

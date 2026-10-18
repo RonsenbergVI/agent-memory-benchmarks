@@ -27,6 +27,11 @@ updates:
     commit-message:
       prefix: "deps: "
       prefix-development: "deps: "
+    ignore:
+      # breaks everalgo-agent-memory 0.4.0 at the first memorize(); lift
+      # only alongside an everos release that requires it
+      - dependency-name: everalgo-boundary
+        versions: [">=0.3"]
 
   - package-ecosystem: github-actions
     directory: /

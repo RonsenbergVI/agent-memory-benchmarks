@@ -263,7 +263,8 @@ def results_report(
         Prose([Heading(level=2, text="Plots"), Paragraph(text=RESULTS_PLOTS_INTRO)]),
     ]
     sections += [
-        GroupCharts(group, level=3, metric_filter=metric_filter) for group in groups
+        GroupCharts(group, comparison, level=3, metric_filter=metric_filter)
+        for group in groups
     ]
     sections.append(Prose([Paragraph(text=RESULTS_OUTRO)]))
     return BenchmarkReport(name="results", path=path, sections=sections, groups=groups)
