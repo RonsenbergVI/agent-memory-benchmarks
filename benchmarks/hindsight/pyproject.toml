@@ -12,7 +12,7 @@ requires-python = ">=3.13"
 dependencies = [
     "amb",
     # pinned to the line the server runs (see server.Dockerfile)
-    "hindsight-client>=0.9,<1",
+    "hindsight-client>=0.9,<2",
 ]
 
 # every integration ships its module as `src` — SDKs own the pretty names
