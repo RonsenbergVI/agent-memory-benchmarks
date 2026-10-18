@@ -6,9 +6,9 @@ Note the repo: the project moved to the `vectorize-io` org, and the `hindsight-a
 
 ## The server is built from PyPI, not from the project's image
 
-The project's published container images stop at **0.6.2** while the source and the `hindsight-api` distribution are both at **0.9.x**. That gap is not cosmetic: 0.6.2 rejects the `pg_search` text-search backend the project's own compose files recommend, so an image-based stack is forced onto Postgres-native FTS — a materially weaker text half than real BM25.
+The project's published container images stop at **0.6.2** while the source and the `hindsight-api` distribution have moved on (1.0.0 at the time of writing). That gap is not cosmetic: 0.6.2 rejects the `pg_search` text-search backend the project's own compose files recommend, so an image-based stack is forced onto Postgres-native FTS — a materially weaker text half than real BM25.
 
-`server.Dockerfile` therefore pip-installs `hindsight-api` at a pinned version (0.9.2) on `python:3.13-slim`, and the stack runs ParadeDB (pgvector + pg_search) as the project intends. `system_version` records what ran, so a later bump lands as a new row rather than displacing this one.
+`server.Dockerfile` therefore pip-installs `hindsight-api` at a pinned version (1.0.0, the same as the `hindsight-client` pin in `pyproject.toml` — the two are bumped together) on `python:3.13-slim`, and the stack runs ParadeDB (pgvector + pg_search) as the project intends. `system_version` records what ran, so a later bump lands as a new row rather than displacing this one.
 
 ## Cost is partly measured — the column carries a `*`
 

@@ -11,8 +11,9 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "amb",
-    # pinned to the line the server runs (see server.Dockerfile)
-    "hindsight-client>=0.9,<2",
+    # exactly the server's version: HINDSIGHT_API_VERSION in server.Dockerfile
+    # and docker-compose.yaml move with this pin, never apart from it
+    "hindsight-client==1.0.0",
 ]
 
 # every integration ships its module as `src` — SDKs own the pretty names
