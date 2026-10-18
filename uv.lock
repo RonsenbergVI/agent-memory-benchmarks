@@ -1339,7 +1339,7 @@ wheels = [
 
 [[package]]
 name = "everos"
-version = "1.2.3"
+version = "1.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
@@ -1348,6 +1348,9 @@ dependencies = [
     { name = "apscheduler" },
     { name = "click" },
     { name = "everalgo-agent-memory" },
+    { name = "everalgo-boundary" },
+    { name = "everalgo-clustering" },
+    { name = "everalgo-core" },
     { name = "everalgo-knowledge" },
     { name = "everalgo-rank" },
     { name = "everalgo-user-memory" },
@@ -1358,6 +1361,7 @@ dependencies = [
     { name = "openai" },
     { name = "portalocker" },
     { name = "prometheus-client" },
+    { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -1370,9 +1374,9 @@ dependencies = [
     { name = "watchdog" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/da/964c03d1c45a1279a6e0a2764b4e4ab77722c59537ec9be1b91dd0667673/everos-1.2.3.tar.gz", hash = "sha256:10675665c7e55f09378e9e3cf5dd3e326509810a031f7b5879c1a33f18079c3a", size = 1681463, upload-time = "2026-08-07T11:50:07.573Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/6d/34f2a5b0620ab7654e550c13b36acf28c69ba60e8b534eca2a14209a0d0a/everos-1.4.2.tar.gz", hash = "sha256:d032fba2a09aece98ebf1ba81449af46dd2031277c07bf4cc9253134ffc4b5ba", size = 1931163, upload-time = "2026-10-14T13:42:45.685Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/2b/5271c47296191b77b699be681110c59898a3a495a16d10221bc514538331/everos-1.2.3-py3-none-any.whl", hash = "sha256:f818bc61fefa35029b1066f0fce5579f4151ed932cfc35c3dd9d7362bcb1f89f", size = 604149, upload-time = "2026-08-07T11:50:06.123Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/11/8b303ea6e97d97929142fa26df5dcc145b725b571208142e7f4012bdd003/everos-1.4.2-py3-none-any.whl", hash = "sha256:1c55e43a73e117bad78106b3fbd501ef2330b3d0921351c64395621fe6e4a05d", size = 703787, upload-time = "2026-10-14T13:42:43.958Z" },
 ]
 
 [[package]]
