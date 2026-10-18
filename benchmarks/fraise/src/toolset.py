@@ -20,37 +20,95 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""Fraise's native tool surface for `--mode agentic`.
+"""Fraise's native tool surface for `--mode agentic`: one raw FQL `query` tool.
 
-The answering agent drives fraise's own `recall`; ingestion stays the
-adapter's tagged per-message `remember`. The adapter always routes to the
-conversation's own graph and adds the `conv-<id>` anchor, so conversation
-isolation is never left to the agent.
+The answering agent writes Fraise Query Language recalls itself, from the
+spec in the toolset's instructions, and reads the server's errors and
+warnings back to correct them. Ingestion stays the adapter's tagged
+per-message `remember`; the graph, the `conv-<id>` anchor, `top` and the
+vector are always the adapter's, so isolation and the k budget never rest
+on the agent.
 """
 
-import re
 import time
 from typing import Any
+
+from fraise_sdk.errors import FraiseAPIError
 
 from amb.agent.toolset import SearchToolset
 from amb.base import Memory
 from src.memory import FraiseMemory
 
+# condensed from the fraise v0.3.3 FQL docs (docs/query-language), recall only
+FQL_SPEC = """\
+You search this conversation's memory with the `query` tool, which runs one \
+Fraise Query Language (FQL) recall. Each stored fact is one conversation \
+message, verbatim, as "<speaker>: <text>", filed under topics and entities.
 
-def _slug(topic: str) -> str:
-    """Reduce an agent-chosen topic to a safe FQL anchor token."""
-    return re.sub(r"[^A-Za-z0-9_-]+", "-", topic).strip("-").lower()
+Grammar (EBNF; the tool's own clauses are marked):
+
+    recall_query = 'recall' recall_body ;
+    recall_body  = ( term+ field* ) | field+ ;  (* needs one seed *)
+    term         = bare_word | phrase ;         (* soft ranking seed *)
+    field        = anchor | modifier ;
+    anchor       = ( 'topic' | 'entity' ) ':' anchor_value ;  (* seed; repeatable *)
+    anchor_value = bare_word | phrase ;         (* folded to lower case *)
+    modifier     = since_field | until_field | depth_field ;  (* never a seed *)
+    since_field  = 'since' ':' time_value ;     (* lower time bound *)
+    until_field  = 'until' ':' time_value ;     (* upper time bound *)
+    depth_field  = 'depth' ':' integer ;        (* retrieval lane, 0-2 *)
+    (* set by the tool, never write them: the graph selector recall@N, *)
+    (* 'top:' (result limit), 'vec:' (semantic vector of your terms)   *)
+    bare_word    = letters and digits only ;
+    phrase       = "'" { any char | "''" } "'" ; (* literal; '' is one apostrophe *)
+    time_value   = integer ('s'|'m'|'h'|'d'|'w') | "'" YYYY-MM-DD "'" ;
+
+Rules:
+- Terms come first; after the first field a bare term is an error. Fields \
+interleave in any order; only anchors may repeat (a repeated modifier is a \
+duplicate-clause error).
+- Several terms are a union: any match seeds the search. There is no AND, OR \
+or NOT. An anchor beside terms is a hard filter: only facts filed under it \
+come back, so name one only when you are sure it was used at storage time; \
+an entity is a person or thing a message mentions, e.g. a speaker's name.
+- Reserved words are syntax wherever a term can stand: recall, remember, \
+forget, update, explain, describe, topic, entity, since, until, top, depth, \
+vec. Quote one to search for it ('top'). After a field's ':' a reserved \
+word is ordinary data (entity:top). Syntax is lower case.
+- A bare word is letters and digits only; anything else (spaces, hyphens, \
+punctuation, apostrophes) needs quotes: 'new york', 'machine-learning'. A \
+phrase is the best way to ask a whole natural-language question, and its \
+text is also embedded for semantic search.
+- English stop words never match as bare terms (warning); a recall made only \
+of stop words is an error. Inside a phrase they are fine.
+- depth: 0 searches the text and vector indices only; 1 lets topics and \
+entities that concentrate the matches pull in facts filed under them; 2 \
+admits them at their fair share, for maximum recall. Omit it for the default.
+- since/until filter by when a fact was stored. Every fact here was stored \
+at ingestion, not when it was said, so they cannot narrow by conversation \
+date; search for dates as terms instead.
+
+Examples:
+    recall 'when did Anna start her pottery class'
+    recall pottery 'art class' entity:anna
+    recall 'what does Ben think of his new job' depth:2
+
+The tool returns the ranked hits as {content, score}. A rejected query \
+returns its `error`, positioned by column in the `query` as sent; a query \
+that ran but carries something it should not returns `warnings` beside its \
+hits. Read them, fix the query, and search again.
+"""
 
 
 class FraiseSearchToolset(SearchToolset):
-    """Fraise's recall, exposed to the answering agent."""
+    """Fraise's raw FQL recall, exposed to the answering agent."""
 
     def __init__(
         self, memory: Memory, conversation_id: str, k: int = 10, **kwargs: Any
     ) -> None:
-        """Bind the toolset to one conversation and expose recall."""
-        super().__init__(memory, conversation_id, k=k, **kwargs)
-        self.add_function(self.recall, name="recall")
+        """Bind the toolset to one conversation and expose the query tool."""
+        super().__init__(memory, conversation_id, k=k, instructions=FQL_SPEC, **kwargs)
+        self.add_function(self.query, name="query")
 
     @property
     def fraise(self) -> FraiseMemory:
@@ -58,32 +116,32 @@ class FraiseSearchToolset(SearchToolset):
         assert isinstance(self.memory, FraiseMemory)
         return self.memory
 
-    def recall(
-        self,
-        query: str,
-        topics: list[str] | None = None,
-        entities: list[str] | None = None,
-    ) -> list[dict]:
-        """Search the conversation's memory database.
+    def query(self, fql: str) -> dict:
+        """Run one FQL recall over the conversation's memory.
 
         Args:
-            query: The information need as a natural phrase; matched
-                verbatim and, when the database has an embedder,
-                semantically.
-            topics: Topic tags to require on results — a hard filter, so
-                only use tags likely used at storage time.
-            entities: People or things results must be about (e.g. a
-                speaker's name).
+            fql: An FQL recall, e.g. `recall 'what did Anna paint' entity:anna`.
 
         Returns:
-            The best-matching stored facts with their scores.
+            The ranked `hits` and any `warnings`; or, for a rejected query,
+            the `error` and the `query` as sent.
+
+        Raises:
+            FraiseAPIError: the server failed (5xx), not the query.
         """
         t0 = time.perf_counter()
-        hits = self.fraise.recall_hits(
-            self.conversation_id,
-            query=query,
-            topics=[_slug(t) for t in topics or [] if _slug(t)],
-            entities=[e.replace("'", "’") for e in entities or []],
-            k=self.k,
-        )
-        return self.record(hits, time.perf_counter() - t0)
+        text, parameters = self.fraise.scope_query(self.conversation_id, fql, k=self.k)
+        try:
+            hits, warnings = self.fraise.query_hits(
+                self.conversation_id, text, parameters
+            )
+        except FraiseAPIError as exc:
+            # a server fault is the run's error, not the agent's to fix
+            if exc.status_code >= 500:
+                raise
+            return {"error": exc.message, "query": text}
+        result: dict = {"hits": self.record(hits, time.perf_counter() - t0)}
+        if warnings:
+            result["warnings"] = warnings
+            result["query"] = text
+        return result

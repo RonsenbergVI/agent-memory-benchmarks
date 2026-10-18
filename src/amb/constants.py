@@ -117,6 +117,10 @@ SCORE_METRICS = (
     ("recall", "retrieval_recall"),
 )
 HEADLINE = "judge_accuracy"
+# what the summary and category tables rank by: did the agent find the evidence
+RANKING = "retrieval_recall"
+# the memory's contribution: accuracy added over the agent's rate without evidence
+LIFT = "memory_lift"
 # where a binary metric's 95% interval lives: `<metric>_ci.low` / `.high`
 CI_SUFFIX = "_ci"
 
@@ -152,6 +156,38 @@ RESULTS_PLOTS_INTRO = (
     "experiments). Each section opens with its sweeps over k — the same "
     "overview the [README](README.md#results) shows — followed by the detail "
     "per k."
+)
+
+ATTRIBUTION_INTRO = (
+    "Who lost each question: the memory, or the agent it served. Each judged "
+    "question with evidence labels is split by whether every evidence session "
+    "was retrieved, then by the judge's verdict. The two tables mirror each "
+    "other: the verdict columns are shares of the branch, the branch's own "
+    "rate over every question closes the row, and both keep one row order, "
+    "most found first. Questions without evidence labels (LoCoMo's "
+    "adversarial ones) are left out, not scored as misses."
+)
+
+ATTRIBUTION_FOUND = (
+    "**Found.** The memory did its job. `correct with evidence` is the "
+    "agent's own rate and should be flat across systems; where it is not, a "
+    "memory is handing back evidence in a form the agent cannot use."
+)
+
+ATTRIBUTION_MISSED = (
+    "**Missed.** The memory failed. `correct without evidence` is the agent "
+    "right anyway, from prior knowledge or a guess; `wrong without evidence` "
+    "is what this memory's misses actually cost."
+)
+
+LIFT_INTRO = (
+    "What the memory contributed, as one number. `lift` is the accuracy the "
+    "memory added over what the agent answers without the evidence: "
+    "`found × gain`, where `gain` is `correct with evidence` less `correct "
+    "without evidence`. A memory that finds everything but returns it "
+    "unusably earns little; so does one that returns clean facts but misses "
+    "half the questions. The rate without evidence is estimated from each "
+    "system's own misses."
 )
 
 RESULTS_OUTRO = (

@@ -4,7 +4,7 @@
 # (`uv sync --package langmem-benchmark`), the release-please extra-files
 # jsonpath and uv.lock all key off this name.
 name = "langmem-benchmark"
-version = "0.1.0"
+version = "0.2.0"
 description = "LangMem benchmark."
 readme = "README.md"
 authors = [
