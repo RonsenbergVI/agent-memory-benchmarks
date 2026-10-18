@@ -20,7 +20,13 @@ Did the agent, searching the system, answer correctly? `judge_accuracy` is the s
 
 ### Retrieval
 
-Did the agent's searches surface the evidence? Retrieved ids are scored against the dataset's evidence labels as two separate families: session-level `retrieval_precision/recall/f1` (every system can attest a memory's session) and turn-level `turn_precision/recall/f1` (only verbatim-turn stores, like naive). Session-level recall is what the summary and per-category tables rank by; precision mostly measures how sparingly the agent searched, so it is not headlined. `hits_per_query` and `sessions_per_query` show how much of the `--k` budget each search used.
+Did the agent's searches surface the evidence? Retrieved ids are scored against the dataset's evidence labels as two separate families: session-level `retrieval_precision/recall/f1` (every system can attest a memory's session) and turn-level `turn_precision/recall/f1` (only verbatim-turn stores, like naive). Session-level recall is what the summary and per-category tables rank by; precision mostly measures how sparingly the agent searched, so it is not headlined. `hits_per_query` and `sessions_per_query` show how much the agent looked at per question; see [k is a ceiling, not a quota](#k-is-a-ceiling-not-a-quota).
+
+### k is a ceiling, not a quota
+
+`--k` is the most hits one search may return. It is never padded and never exceeded: a system that finds less returns less, and what came back is what gets scored. The harness does not truncate, so an adapter returning more than k is a bug in the adapter. k caps each *search*, not the question. The agent may search several times, and `hits_per_query` (the comparison table's `hits/q`) counts every hit across those searches, with `sessions_per_query` counting the distinct sessions they cite. Measured on LoCoMo, mem0 2.0.20 at k=10 runs 1.84 searches/question, returns exactly 10 hits on each, and reports 18.42 hits/q. Each `results.jsonl` row records `num_searches`, so hits per search can be recovered from any run.
+
+So compare systems at matched hits/q, not matched k. Recall rises with every hit the agent sees, so at the same k a system whose agent searched more often, or whose searches came back full, can look like it ranks better when the agent has only read more of it. The other direction is just as real. In the direct-mode runs withdrawn in #242 (still in git history), EverOS 1.2.3 returned 1.83, 2.93 and 5.57 hits per search at k = 3, 5 and 10, while every other system returned the full k. RESULTS.md's "scores vs hits returned" charts place each k at its measured hits/q for exactly this comparison.
 
 ### Latency
 
