@@ -51,18 +51,50 @@ each `up` starts empty.
 """
 
 import os
+import re
 import zlib
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from amb.base import Memory, split_model
 from amb.constants import DEFAULT_EMBEDDING, DEFAULT_LLM
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
 
+if TYPE_CHECKING:
+    from fraise_sdk.models import Hit
+
 # graph-walk hops from a match on recall
 DEFAULT_RECALL_DEPTH = 2
 # must match the server's -num-graphs (the compose file sets 256)
 DEFAULT_NUM_GRAPHS = 256
+# the request-parameter name a query's `vec:$v` binds to
+VECTOR_PARAM = "v"
+
+_RECALL_VERB = re.compile(r"^\s*recall(?:@\d+)?(?=\s|$)")
+_TOKEN = re.compile(
+    r"(?P<key>[A-Za-z]+):(?:'(?:[^']|'')*'|\S*)"
+    r"|'(?P<phrase>(?:[^']|'')*)'"
+    r"|(?P<word>\S+)"
+)
+
+
+def _quote(value: str) -> str:
+    """Write a value as an FQL phrase; inside quotes only `'` needs escaping."""
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _scan(body: str) -> tuple[list[str], set[str]]:
+    """Split a recall body into its search terms and its field keys (lower-cased)."""
+    terms: list[str] = []
+    keys: set[str] = set()
+    for match in _TOKEN.finditer(body):
+        if match["key"]:
+            keys.add(match["key"].lower())
+        elif match["phrase"] is not None:
+            terms.append(match["phrase"].replace("''", "'"))
+        else:
+            terms.append(match["word"])
+    return terms, keys
 
 
 class FraiseMemory(Memory):
@@ -123,9 +155,10 @@ class FraiseMemory(Memory):
         from fraise_sdk import FraiseClient
         from fraise_sdk.providers.openai import OpenAIEmbedder, OpenAIExtractor
 
-        embedder = None
+        # kept for raw FQL queries, which carry their vector out of band
+        self.embedder = None
         if self._embedder:
-            embedder = OpenAIEmbedder(
+            self.embedder = OpenAIEmbedder(
                 model=self._embedder,
                 dimensions=self.embedding_dimensions,
             )
@@ -138,7 +171,7 @@ class FraiseMemory(Memory):
             else:
                 extractor = OpenAIExtractor(model=self._llm)
         self.client = FraiseClient(
-            self.base_url, embedder=embedder, extractor=extractor
+            self.base_url, embedder=self.embedder, extractor=extractor
         )
 
     def _graph(self, conversation_id: str) -> int:
@@ -225,13 +258,7 @@ class FraiseMemory(Memory):
             )
 
     def recall_hits(
-        self,
-        conversation_id: str,
-        *,
-        query: str,
-        topics: list[str] | None = None,
-        entities: list[str] | None = None,
-        k: int = 10,
+        self, conversation_id: str, *, query: str, k: int = 10
     ) -> list[MemoryHit]:
         """Recall inside the conversation, with provenance restored.
 
@@ -240,33 +267,78 @@ class FraiseMemory(Memory):
         reserved words — and doubles as the embed text. `self.depth` bounds
         the graph hops a match may walk.
         """
-        recall_topics = [f"conv-{conversation_id}", *(topics or [])]
+        recall_topics = [f"conv-{conversation_id}"]
         graph = self._graph(conversation_id)
         try:
             result = self.client.recall(
                 query=query,
                 graph=graph,
                 topics=recall_topics,
-                entities=entities or None,
                 top=k,
                 depth=self.depth,
             )
         except Exception:
             # log the exact inputs — the benchmark log outlives the server
             logger.bind(scope="fraise").error(
-                "recall failed: graph={} query={!r} topics={!r} entities={!r}",
+                "recall failed: graph={} query={!r} topics={!r}",
                 graph,
                 query,
                 recall_topics,
-                entities,
             )
             raise
-        hits = []
-        for hit in result.hits:
+        return self._hits(conversation_id, result.hits)
+
+    def scope_query(
+        self, conversation_id: str, fql: str, *, k: int = 10
+    ) -> tuple[str, dict[str, list[float]] | None]:
+        """Scope an agent-written FQL recall to the conversation.
+
+        The graph selector, the `conv-<id>` anchor, `top:k` and the vector are
+        always the adapter's, so isolation and the k budget never rest on the
+        agent; `depth` too, unless the query names one. A leading `recall`
+        (with or without a selector) is optional.
+
+        Returns:
+            The query text to send and its vector parameters, if any.
+        """
+        body = _RECALL_VERB.sub("", fql, count=1).strip()
+        clauses = [f"topic:{_quote(f'conv-{conversation_id}')}", f"top:{k}"]
+        terms, keys = _scan(body)
+        if self.depth is not None and "depth" not in keys:
+            clauses.append(f"depth:{self.depth}")
+        parameters = None
+        if self.embedder is not None and terms:
+            parameters = {VECTOR_PARAM: list(self.embedder.embed(" ".join(terms)))}
+            clauses.append(f"vec:${VECTOR_PARAM}")
+        graph = self._graph(conversation_id)
+        return " ".join([f"recall@{graph}", body, *clauses]), parameters
+
+    def query_hits(
+        self,
+        conversation_id: str,
+        text: str,
+        parameters: dict[str, list[float]] | None = None,
+    ) -> tuple[list[MemoryHit], list[str]]:
+        """Send a scoped FQL recall; return its hits and the server's warnings.
+
+        A rejected query raises the SDK's FraiseAPIError, its message saying why.
+        """
+        from fraise_sdk.models import RecallResult
+
+        response = self.client.query(text, parameters=parameters)
+        result = RecallResult.from_json(
+            response.get("results") or {}, warnings=response.get("warnings")
+        )
+        return self._hits(conversation_id, result.hits), result.warnings
+
+    def _hits(self, conversation_id: str, hits: list["Hit"]) -> list[MemoryHit]:
+        """Map fraise hits to MemoryHits, provenance restored from the local map."""
+        memory_hits = []
+        for hit in hits:
             turn_ids, session_id = self._provenance.get(
                 (conversation_id, hit.value), ([], None)
             )
-            hits.append(
+            memory_hits.append(
                 MemoryHit(
                     content=hit.value,
                     score=hit.score,
@@ -274,7 +346,7 @@ class FraiseMemory(Memory):
                     session_ids=[session_id] if session_id else [],
                 )
             )
-        return hits
+        return memory_hits
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return the k best facts for the query, inside the conversation."""
