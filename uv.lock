@@ -1240,15 +1240,15 @@ wheels = [
 
 [[package]]
 name = "everalgo-boundary"
-version = "0.3.0"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asgiref" },
     { name = "everalgo-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/57/ba/8cd039fdc848d45ade53a5db47a01a5db34b4664d0505b23c4adefc97d92/everalgo_boundary-0.3.0.tar.gz", hash = "sha256:761c0ffdf4234bc641436db79d9211f809154580fb65178af3c9e64dd6bbd443", size = 23888, upload-time = "2026-08-19T07:16:14.851Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/6e/3c60e7c253948e42906108bff3f8227733804801c3ea96e04f7895366686/everalgo_boundary-0.2.1.tar.gz", hash = "sha256:23a93bb36b06251e5a85765f68640c55bcfe0f1faf8b025e44ef8857a5ce36f9", size = 21946, upload-time = "2026-06-15T06:14:36.962Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/27/fc7fc40581a0be93039764ef6e38de56fadd937bf93022ae10c179534c75/everalgo_boundary-0.3.0-py3-none-any.whl", hash = "sha256:a6a037bb3ecf36ce07db4ad168757cbc6e745f5d1acf427ff10e0d827402b5e5", size = 18009, upload-time = "2026-08-19T07:16:14Z" },
+    { url = "https://files.pythonhosted.org/packages/73/6f/6cb00d36ee007360ac0e2e62c44da782ef881f0f5def9f9d5a64142d88fb/everalgo_boundary-0.2.1-py3-none-any.whl", hash = "sha256:95ac8982291041b5641b13c915790ef20cca8c44018c2001ff608b13c7ae6b8d", size = 17192, upload-time = "2026-06-15T06:14:35.921Z" },
 ]
 
 [[package]]
@@ -1388,7 +1388,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "amb", editable = "." },
-    { name = "everalgo-boundary", specifier = ">=0.2,<0.4" },
+    { name = "everalgo-boundary", specifier = ">=0.2,<0.3" },
     { name = "everos", specifier = ">=1.2,<2" },
 ]
 
