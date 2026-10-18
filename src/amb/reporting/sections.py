@@ -200,20 +200,20 @@ class GroupCharts(Section):
         return [s for s in self.group.summaries if s.get("k") == k]
 
     def _category_sweep(self, category: str) -> Chart:
-        """One category's judge accuracy across k, a line per system.
+        """One category's retrieval recall across k, a line per system.
 
         The breakdown table says where a system stands at one k; this says
         whether a bigger budget is what it was missing.
         """
         return Chart(
             kind="lines",
-            stem=f"k_accuracy_{slug(category)}",
-            y=f"by_category.{category}.{HEADLINE}",
-            y_label=f"{category} accuracy",
+            stem=f"k_recall_{slug(category)}",
+            y=f"by_category.{category}.{RANKING}",
+            y_label=f"{category} recall",
             out_dir=self.group.plot_dir,
             summaries=self.group.summaries,
-            alt=f"Judge accuracy vs k for {category} questions",
-            title=headline(f"{category} accuracy vs k"),
+            alt=f"Retrieval recall vs k for {category} questions",
+            title=headline(f"{category} recall vs k"),
             subtitle=f"{self.group.label} · "
             f"newest run per system and k{freshness(self.group.summaries)}",
         )
@@ -305,7 +305,7 @@ class GroupCharts(Section):
             blocks.append(
                 Heading(
                     level=self.level + 1,
-                    text=f"{self.group.label}: accuracy vs k by question category",
+                    text=f"{self.group.label}: recall vs k by question category",
                 )
             )
             blocks.append(
