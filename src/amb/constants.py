@@ -117,6 +117,8 @@ SCORE_METRICS = (
     ("recall", "retrieval_recall"),
 )
 HEADLINE = "judge_accuracy"
+# what the summary and category tables rank by: did the agent find the evidence
+RANKING = "retrieval_recall"
 # where a binary metric's 95% interval lives: `<metric>_ci.low` / `.high`
 CI_SUFFIX = "_ci"
 

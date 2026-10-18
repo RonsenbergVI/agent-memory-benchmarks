@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from amb.base import Metric, Report
-from amb.constants import CI_SUFFIX, DEFAULT_RUNS_DIR, HEADLINE
+from amb.constants import CI_SUFFIX, DEFAULT_RUNS_DIR, HEADLINE, RANKING
 from amb.contracts import Run
 from amb.metrics import default_category_metrics, default_metrics
 
@@ -37,9 +37,9 @@ if TYPE_CHECKING:
 # the summary table's columns: (summary key, column label, format); an
 # interval column renders its `low–high` bounds
 SUMMARY_COLUMNS = (
+    ("retrieval_recall", "recall", "{:.3f}"),
     ("judge_accuracy", "accuracy", "{:.3f}"),
     ("judge_accuracy_ci", "95% CI", "{:.3f}"),
-    ("retrieval_recall", "recall", "{:.3f}"),
     ("hits_per_query", "hits/q", "{:.2f}"),
     ("sessions_per_query", "sessions/q", "{:.2f}"),
     ("memory_tokens_total", "memory tokens", "{:,.0f}"),
@@ -363,16 +363,16 @@ class ComparisonReport(Report):
     def summary_table(
         self, k: int = 10, dataset: str | None = None, variant: str | None = None
     ) -> tuple[list[str], list[list[str]]]:
-        """Build the compact table: newest run per system at one k, most accurate first.
+        """Build the compact table: newest run per system at one k, best recall first.
 
         `dataset` must scope to one dataset — ranking "newest per system"
         across several would mix unrelated exams. `variant` scopes further and
         is required whenever the dataset has more than one variant present.
 
         Returns:
-            The header labels and the formatted rows, most accurate first.
+            The header labels and the formatted rows, best recall first.
         """
-        ranked = self._ranked_at_k(k, dataset, variant)
+        ranked = self._ranked_at_k(k, dataset, variant, RANKING)
         header = ["system", "version", "last run"]
         header += [label for _, label, _ in SUMMARY_COLUMNS]
         header += ["p50 search (s)"]

@@ -23,7 +23,7 @@
 from dataclasses import dataclass, field
 
 from amb.base.reporting import Section
-from amb.constants import CI_SUFFIX, HEADLINE, LATENCY, TOKENS
+from amb.constants import CI_SUFFIX, HEADLINE, LATENCY, RANKING, TOKENS
 from amb.contracts import Block, Figure, Heading, Paragraph, Rule, Table
 from amb.reporting.chart import Chart
 from amb.reporting.helpers import headline, pretty, slug
@@ -59,6 +59,25 @@ def spend_sweep(group: RunGroup, stem: str, metric: str) -> Chart:
         title=headline(f"{pretty(metric)} vs hits returned"),
         subtitle=f"{group.label} · a point per k, "
         f"newest run per system and k{freshness(group.summaries)}",
+    )
+
+
+def category_breakdown(group: RunGroup, k: int) -> Chart:
+    """Retrieval recall per question category at `k`, a system per row.
+
+    One definition for both reports, since they share its image path.
+    """
+    return Chart(
+        kind="categories",
+        stem=f"categories_k{k}",
+        y=RANKING,
+        k=k,
+        out_dir=group.plot_dir,
+        summaries=group.summaries,
+        alt=f"Retrieval recall by question category at k={k}",
+        title=headline(f"recall by question category at k={k}"),
+        subtitle=f"{group.label} · newest run per system"
+        f"{freshness([s for s in group.summaries if s.get('k') == k])}",
     )
 
 
@@ -168,7 +187,7 @@ class GroupCharts(Section):
             bars = [c for c in bars if c.has_data()]
             scatters = [c for c in scatters if c.has_data()]
             self.skipped += planned - len(bars) - len(scatters)
-            breakdown = self._categories(k)
+            breakdown = category_breakdown(self.group, k)
             if breakdown.has_data():
                 self.breakdowns[k] = breakdown
             else:
@@ -197,21 +216,6 @@ class GroupCharts(Section):
             title=headline(f"{category} accuracy vs k"),
             subtitle=f"{self.group.label} · "
             f"newest run per system and k{freshness(self.group.summaries)}",
-        )
-
-    def _categories(self, k: int) -> Chart:
-        """The per-question-category breakdown at `k`."""
-        return Chart(
-            kind="categories",
-            stem=f"categories_k{k}",
-            y=HEADLINE,
-            k=k,
-            out_dir=self.group.plot_dir,
-            summaries=self.group.summaries,
-            alt=f"Judge accuracy by question category at k={k}",
-            title=headline(f"accuracy by question category at k={k}"),
-            subtitle=f"{self.group.label} · "
-            f"newest run per system{freshness(self._at_k(k))}",
         )
 
     def _bars(self, stem: str, metric: str, k: int) -> Chart:
@@ -324,8 +328,8 @@ class GroupCharts(Section):
                 )
                 blocks.append(
                     Paragraph(
-                        text="What each system is good at, not just how good it "
-                        "is overall. The best score in each column is bold."
+                        text="Where each system finds the evidence, not just how "
+                        "often overall. The best recall in each column is bold."
                     )
                 )
                 blocks.append(Figure(alt=chart.alt, path=chart.path))
@@ -387,7 +391,7 @@ class GroupSummary(Section):
         table = Chart(
             kind="table",
             stem=f"summary_k{self.k}",
-            y=HEADLINE,
+            y=RANKING,
             k=self.k,
             out_dir=self.group.plot_dir,
             summaries=self.group.summaries,
@@ -397,18 +401,7 @@ class GroupSummary(Section):
             f"newest run per system{freshness(self.group.summaries)}",
         )
         self.summary = table if table.has_data() else None
-        breakdown = Chart(
-            kind="categories",
-            stem=f"categories_k{self.k}",
-            y=HEADLINE,
-            k=self.k,
-            out_dir=self.group.plot_dir,
-            summaries=self.group.summaries,
-            alt=f"Judge accuracy by question category at k={self.k}",
-            title=headline(f"accuracy by question category at k={self.k}"),
-            subtitle=f"{self.group.label} · "
-            f"newest run per system{freshness(self.group.summaries)}",
-        )
+        breakdown = category_breakdown(self.group, self.k)
         # a dataset whose runs carry no question labels simply has no table
         self.categories = breakdown if breakdown.has_data() else None
         planned = [
