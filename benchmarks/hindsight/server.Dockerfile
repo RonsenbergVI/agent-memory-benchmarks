@@ -1,10 +1,11 @@
 # The Hindsight server itself — the system under test. Built from the
 # published `hindsight-api` distribution, not the project's own images:
 # those stop at 0.6.2, which predates the pg_search backend the project
-# itself recommends, while PyPI is at 0.9.x.
+# itself recommends, while PyPI tracks the source. The version is the
+# client's (benchmarks/hindsight/pyproject.toml); bump both together.
 FROM python:3.13-slim
 
-ARG HINDSIGHT_API_VERSION=0.9.2
+ARG HINDSIGHT_API_VERSION=1.0.0
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl \
