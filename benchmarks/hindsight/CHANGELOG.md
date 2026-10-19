@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/hindsight/v0.4.0...hindsight/v0.5.0) (2026-10-19)
+
+
+### Dependencies
+
+* **hindsight:** bump server and client together to 1.0.0 ([#257](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/257)) ([04a5b54](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/04a5b5402637e20369f301003fac491d5bc40cae))
+
 ## [0.4.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/hindsight/v0.3.0...hindsight/v0.4.0) (2026-10-18)
 
 
