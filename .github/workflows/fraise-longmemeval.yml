@@ -32,7 +32,7 @@ env:
 # longmemeval xs only: 151 questions over their own evidence, sized to
 # ingest in about locomo's time; locomo runs from fraise-locomo.yml
 jobs:
-  xs:
+  xs-shared:
     name: fraise / longmemeval xs / k${{ matrix.k }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -55,7 +55,7 @@ jobs:
 
       # pulled on the runner; the compose stack volume-mounts .data/
       - name: Pull the dataset
-        run: uv run amb datasets pull longmemeval --variant xs
+        run: uv run amb datasets pull longmemeval --variant xs-shared
 
       # the fraise image lives on ghcr; login makes the pull work whether
       # the package is public or private to this owner
@@ -73,7 +73,7 @@ jobs:
         run: |
           docker compose -f benchmarks/fraise/docker-compose.yaml \
             run --build --rm benchmark run --system fraise \
-            --dataset longmemeval --variant xs \
+            --dataset longmemeval --variant xs-shared \
             --llm "$LLM" --embedding "$EMBEDDING" \
             --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
             --workers 3 \
