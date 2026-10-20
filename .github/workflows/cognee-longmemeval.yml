@@ -32,7 +32,7 @@ env:
 # longmemeval xs only: 151 questions over their own evidence, sized to
 # ingest in about locomo's time; locomo runs from cognee-locomo.yml
 jobs:
-  xs:
+  xs-shared:
     name: cognee / longmemeval xs / k${{ matrix.k }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -55,7 +55,7 @@ jobs:
 
       # pulled on the runner; the compose stack volume-mounts .data/
       - name: Pull the dataset
-        run: uv run amb datasets pull longmemeval --variant xs
+        run: uv run amb datasets pull longmemeval --variant xs-shared
 
       - name: Run the benchmark
         env:
@@ -64,7 +64,7 @@ jobs:
         run: |
           docker compose -f benchmarks/cognee/docker-compose.yaml \
             run --build --rm benchmark run --system cognee \
-            --dataset longmemeval --variant xs \
+            --dataset longmemeval --variant xs-shared \
             --llm "$LLM" --embedding "$EMBEDDING" \
             --model "$ANSWER_MODEL" --judge --judge-model "$JUDGE_MODEL" \
             --workers 3 \
@@ -84,7 +84,7 @@ jobs:
 
   publish:
     name: publish results to main
-    needs: [xs]
+    needs: [xs-shared]
     # always: every cell that finished uploaded its artifact, so whatever
     # completed still lands and the documents regenerate even when some failed
     if: always()
