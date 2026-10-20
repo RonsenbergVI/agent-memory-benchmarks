@@ -88,7 +88,7 @@ jobs:
 
   publish:
     name: publish results to main
-    needs: [xs]
+    needs: [xs-shared]
     # always: every cell that finished uploaded its artifact, so whatever
     # completed still lands and the documents regenerate even when some failed
     if: always()
