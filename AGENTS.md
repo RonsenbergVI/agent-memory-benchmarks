@@ -37,6 +37,8 @@ They run in the per-framework benchmark workflows instead. `.github/workflows/fr
 
 **Commit messages must be [conventional commits](https://www.conventionalcommits.org)** (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, ...). Release-please derives the version bump from them, and ignores commits it cannot parse — a release of only unparseable commits produces no release PR at all. Use `feat!:` or a `BREAKING CHANGE:` footer for anything that breaks the CLI, the entry-point contract, or a data contract.
 
+**Every PR body is `.github/PULL_REQUEST_TEMPLATE.md`, filled in** — every section kept, only true boxes ticked, the exact test command and its output under Testing, and any box left unchecked on purpose explained. Pass it with `gh pr create --body-file`; never write a free-form body.
+
 ## Configuration: one source per value
 
 **Run parameters are CLI-only. Infrastructure is environment-only. Nothing is settable both ways.** A value with two sources means ambient state can silently change what a benchmark measures — a recipe for irreproducible results.
