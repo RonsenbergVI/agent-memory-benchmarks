@@ -26,10 +26,9 @@ Long-term interactive memory for chat assistants, distributed on HuggingFace.
 
 Each instance is one question over its own haystack of chat sessions. Variants:
 `s` (~115k-token haystacks, default), `m` (~500 sessions), `oracle` (evidence
-sessions only), and two cuts of `s` made at load time, sized to ingest in about
-LoCoMo's time: `xs` (a subset of questions, each over its own evidence) and
-`xs-shared` (the same questions dealt into a few synthetic users who each hold
-one history).
+sessions only), and `xs-shared`, a cut of `s` made at load time and sized to
+ingest in about LoCoMo's time: a subset of questions dealt into a few synthetic
+users who each hold one history.
 """
 
 import json
@@ -52,19 +51,20 @@ from amb.contracts import (
 DEFAULT_REPO = "xiaowu0162/longmemeval-cleaned"
 
 # variants cut at load time from a published file
-CUTS = {"xs": "s", "xs-shared": "s"}
+CUTS = {"xs-shared": "s"}
 # every question costs its evidence sessions to ingest, so size is set by count
 CUT_QUESTIONS = 150
-XS_FILLERS = 0
-SHARED_USERS = 10
-SHARED_FILLERS = 5
+# few users so a history dwarfs what one question retrieves, at the same cost
+SHARED_USERS = 3
+SHARED_FILLERS = 20
+ABSTENTION_FILLERS = 5
 
 
 class LongMemEvalLoader(DatasetLoader):
     """Loads LongMemEval questions with their haystack sessions."""
 
     name = Dataset.LONGMEMEVAL
-    variants = ("s", "m", "oracle", "xs", "xs-shared")
+    variants = ("s", "m", "oracle", "xs-shared")
     default_variant = "s"
 
     def __init__(self, cache_dir: Path | None = None, repo: str = DEFAULT_REPO) -> None:
@@ -116,16 +116,7 @@ class LongMemEvalLoader(DatasetLoader):
         raw = json.loads(self.pull(variant).read_text())
         if variant in CUTS:
             parsed = _subset([_parse(item) for item in raw], CUT_QUESTIONS)
-            if variant == "xs-shared":
-                return self._shared(parsed)[:limit]
-            return [
-                self._sample(
-                    qa.question_id,
-                    _cut(sessions, qa.evidence_session_ids, XS_FILLERS, qa.question_id),
-                    [qa],
-                )
-                for sessions, qa in parsed[:limit]
-            ]
+            return self._shared(parsed)[:limit]
         samples = []
         for item in raw[:limit]:
             sessions, qa = _parse(item)
@@ -135,8 +126,9 @@ class LongMemEvalLoader(DatasetLoader):
     def _shared(self, parsed: list[tuple[list[Session], QAPair]]) -> list[Sample]:
         """Deal the questions into synthetic users sharing one history each.
 
-        Abstention questions keep a history of their own, cut as in `xs`:
-        another question's evidence could answer what they ask about.
+        Abstention questions keep a history of their own, their evidence plus
+        `ABSTENTION_FILLERS` of their haystack: another question's evidence
+        could answer what they ask about.
 
         Raises:
             ValueError: if more than `SHARED_USERS` questions share a wording.
@@ -149,7 +141,10 @@ class LongMemEvalLoader(DatasetLoader):
         for sessions, qa in parsed:
             if qa.question_id.endswith("_abs"):
                 history = _cut(
-                    sessions, qa.evidence_session_ids, XS_FILLERS, qa.question_id
+                    sessions,
+                    qa.evidence_session_ids,
+                    ABSTENTION_FILLERS,
+                    qa.question_id,
                 )
                 alone.append(self._sample(qa.question_id, history, [qa]))
                 continue
