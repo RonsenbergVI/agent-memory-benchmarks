@@ -74,7 +74,7 @@ def _patch_hub(monkeypatch, files, calls):
 def test_loader_metadata(tmp_path):
     loader = LongMemEvalLoader(cache_dir=tmp_path)
     assert loader.name is Dataset.LONGMEMEVAL
-    assert loader.variants == ("s", "m", "oracle", "xs", "xs-shared")
+    assert loader.variants == ("s", "m", "oracle", "xs-shared")
     assert loader.default_variant == "s"
     assert loader.repo == DEFAULT_REPO
     assert loader.cache_dir == tmp_path / "longmemeval"
@@ -85,7 +85,7 @@ def test_resolve_variant_defaults_to_s(tmp_path):
     assert LongMemEvalLoader(cache_dir=tmp_path).resolve_variant(None) == "s"
 
 
-@pytest.mark.parametrize("variant", ["s", "m", "oracle", "xs", "xs-shared"])
+@pytest.mark.parametrize("variant", ["s", "m", "oracle", "xs-shared"])
 def test_resolve_variant_accepts_each_published_variant(tmp_path, variant):
     loader = LongMemEvalLoader(cache_dir=tmp_path)
     assert loader.resolve_variant(variant) == variant
@@ -299,12 +299,11 @@ def test_pull_rejects_unknown_variant_before_touching_the_hub(tmp_path, monkeypa
         loader.pull("nope")
 
 
-@pytest.mark.parametrize("variant", ["xs", "xs-shared"])
-def test_pull_cuts_download_the_s_file(tmp_path, monkeypatch, variant):
+def test_pull_xs_shared_downloads_the_s_file(tmp_path, monkeypatch):
     calls = []
     files = ["longmemeval_m.json", "longmemeval_oracle.json", "longmemeval_s.json"]
     _patch_hub(monkeypatch, files, calls)
-    result = LongMemEvalLoader(cache_dir=tmp_path).pull(variant)
+    result = LongMemEvalLoader(cache_dir=tmp_path).pull("xs-shared")
     assert result == Path("/hub-cache/longmemeval_s.json")
 
 
@@ -346,20 +345,6 @@ def _fillers(prefix, n, first_day=1):
     return [(first_day + i, f"{prefix}{i}") for i in range(n)]
 
 
-def test_xs_keeps_only_the_evidence_in_date_order(tmp_path):
-    record = _record("q", [(20, "ev_b"), (5, "ev_a")], _fillers("f", 9, first_day=6))
-    (sample,) = _loader_for(tmp_path, [record]).load("xs")
-    assert _session_ids(sample) == ["ev_a", "ev_b"]
-
-
-def test_xs_labels_survive_the_cut(tmp_path):
-    record = _record("q", [(5, "ev_a"), (20, "ev_b")], _fillers("f", 9, first_day=6))
-    (sample,) = _loader_for(tmp_path, [record]).load("xs")
-    (qa,) = sample.qa
-    assert qa.evidence_session_ids == ["ev_a", "ev_b"]
-    assert sorted(qa.evidence_turn_ids) == ["ev_a:0", "ev_b:0"]
-
-
 def _typed_records(n_multi, n_temporal, n_abs):
     kinds = (
         [("multi-session", "")] * n_multi
@@ -374,10 +359,9 @@ def _typed_records(n_multi, n_temporal, n_abs):
     return records
 
 
-@pytest.mark.parametrize("variant", ["xs", "xs-shared"])
-def test_cuts_draw_150_questions_stratified_by_type_and_abstention(tmp_path, variant):
+def test_xs_shared_draws_150_questions_stratified_by_type_and_abstention(tmp_path):
     loader = _loader_for(tmp_path, _typed_records(300, 180, 20))
-    qas = [qa for sample in loader.load(variant) for qa in sample.qa]
+    qas = [qa for sample in loader.load("xs-shared") for qa in sample.qa]
     kinds = Counter((qa.category, qa.question_id.endswith("_abs")) for qa in qas)
     assert kinds == {
         ("multi-session", False): 90,
@@ -386,13 +370,10 @@ def test_cuts_draw_150_questions_stratified_by_type_and_abstention(tmp_path, var
     }
 
 
-def test_cuts_share_one_question_set_in_file_order(tmp_path):
+def test_xs_shared_draws_the_same_questions_every_load(tmp_path):
     loader = _loader_for(tmp_path, _typed_records(300, 180, 20))
-    xs = [s.qa[0].question_id for s in loader.load("xs")]
-    shared = {qa.question_id for s in loader.load("xs-shared") for qa in s.qa}
-    assert set(xs) == shared
-    assert xs == sorted(xs, key=lambda q: int(q[1:].removesuffix("_abs")))
-    assert xs == [s.qa[0].question_id for s in loader.load("xs")]
+    first = [qa.question_id for s in loader.load("xs-shared") for qa in s.qa]
+    assert first == [qa.question_id for s in loader.load("xs-shared") for qa in s.qa]
 
 
 def _shared_records(n, wordings=None):
@@ -407,19 +388,19 @@ def _shared_records(n, wordings=None):
     ]
 
 
-def test_xs_shared_deals_questions_round_robin_into_ten_users(tmp_path):
+def test_xs_shared_deals_questions_round_robin_into_three_users(tmp_path):
     samples = _loader_for(tmp_path, _shared_records(25)).load("xs-shared")
-    assert [s.sample_id for s in samples] == [f"user_{n}" for n in range(10)]
-    assert [q.question_id for q in samples[0].qa] == ["q0", "q10", "q20"]
-    assert [len(s.qa) for s in samples] == [3] * 5 + [2] * 5
+    assert [s.sample_id for s in samples] == ["user_0", "user_1", "user_2"]
+    assert [q.question_id for q in samples[0].qa][:3] == ["q0", "q3", "q6"]
+    assert [len(s.qa) for s in samples] == [9, 8, 8]
     assert samples[0].conversation.conversation_id == "user_0"
 
 
-def test_xs_shared_history_is_evidence_plus_five_fillers(tmp_path):
+def test_xs_shared_history_is_evidence_plus_twenty_fillers(tmp_path):
     samples = _loader_for(tmp_path, _shared_records(25)).load("xs-shared")
     ids = _session_ids(samples[0])
-    assert {"ev0", "ev10", "ev20"} <= set(ids)
-    assert len(ids) == 8
+    assert {f"ev{i}" for i in range(0, 25, 3)} <= set(ids)
+    assert len(ids) == 9 + 20
     dates = [s.timestamp or "" for s in samples[0].conversation.sessions]
     assert dates == sorted(dates)
 
@@ -427,8 +408,8 @@ def test_xs_shared_history_is_evidence_plus_five_fillers(tmp_path):
 def test_xs_shared_keeps_each_questions_own_labels(tmp_path):
     samples = _loader_for(tmp_path, _shared_records(25)).load("xs-shared")
     qa = samples[0].qa[1]
-    assert qa.evidence_session_ids == ["ev10"]
-    assert qa.evidence_turn_ids == ["ev10:0"]
+    assert qa.evidence_session_ids == ["ev3"]
+    assert qa.evidence_turn_ids == ["ev3:0"]
 
 
 def test_xs_shared_deduplicates_sessions_across_questions(tmp_path):
@@ -436,7 +417,7 @@ def test_xs_shared_deduplicates_sessions_across_questions(tmp_path):
     records = [_record(f"q{i}", [(1, f"ev{i}")], shared) for i in range(20)]
     samples = _loader_for(tmp_path, records).load("xs-shared")
     ids = _session_ids(samples[0])
-    assert len(ids) == len(set(ids)) == 7
+    assert len(ids) == len(set(ids)) == 7 + 20
 
 
 def test_xs_shared_fillers_are_seeded_by_user(tmp_path):
@@ -451,32 +432,34 @@ def test_xs_shared_fillers_are_seeded_by_user(tmp_path):
 
 
 def test_xs_shared_never_puts_one_wording_twice_on_a_user(tmp_path):
-    records = _shared_records(12, {0: "same?", 10: "same?"})
+    records = _shared_records(6, {0: "same?", 3: "same?"})
     samples = _loader_for(tmp_path, records).load("xs-shared")
-    assert [q.question_id for q in samples[0].qa] == ["q0"]
-    assert [q.question_id for q in samples[1].qa] == ["q1", "q10"]
-    assert [q.question_id for q in samples[2].qa] == ["q2", "q11"]
+    assert [q.question_id for q in samples[0].qa] == ["q0", "q5"]
+    assert [q.question_id for q in samples[1].qa] == ["q1", "q3"]
+    assert [q.question_id for q in samples[2].qa] == ["q2", "q4"]
 
 
-def test_xs_shared_refuses_a_wording_asked_more_than_ten_times(tmp_path):
-    records = _shared_records(11, dict.fromkeys(range(11), "same?"))
+def test_xs_shared_refuses_a_wording_asked_more_than_three_times(tmp_path):
+    records = _shared_records(4, dict.fromkeys(range(4), "same?"))
     loader = _loader_for(tmp_path, records)
     with pytest.raises(ValueError, match="share the wording 'same\\?'"):
         loader.load("xs-shared")
 
 
-def test_xs_shared_abstention_questions_keep_their_own_xs_history(tmp_path):
+def test_xs_shared_abstention_questions_keep_their_own_history(tmp_path):
     records = _shared_records(3)
     records.insert(1, _record("q9_abs", [(3, "ev_abs")], _fillers("fa", 9, 6)))
     samples = _loader_for(tmp_path, records).load("xs-shared")
     assert [s.sample_id for s in samples] == ["user_0", "user_1", "user_2", "q9_abs"]
     alone = samples[-1]
     assert [q.question_id for q in alone.qa] == ["q9_abs"]
-    assert _session_ids(alone) == ["ev_abs"]
+    ids = _session_ids(alone)
+    assert "ev_abs" in ids
+    assert len(ids) == 1 + 5
     assert all("ev_abs" not in _session_ids(s) for s in samples[:-1])
 
 
 def test_xs_shared_limit_counts_histories(tmp_path):
     samples = _loader_for(tmp_path, _shared_records(25)).load("xs-shared", limit=2)
     assert [s.sample_id for s in samples] == ["user_0", "user_1"]
-    assert len(samples[0].qa) == 3
+    assert len(samples[0].qa) == 9

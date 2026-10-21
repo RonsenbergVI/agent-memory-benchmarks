@@ -75,7 +75,7 @@ There is no retrieval-only mode: earlier releases scored a harness-driven search
 | Dataset | Source | Variants |
 | --- | --- | --- |
 | LoCoMo | [snap-research/locomo](https://github.com/snap-research/locomo) (GitHub JSON) | default |
-| LongMemEval | [xiaowu0162/longmemeval-cleaned](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned) (HuggingFace) | s, m, oracle, xs, xs-shared |
+| LongMemEval | [xiaowu0162/longmemeval-cleaned](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned) (HuggingFace) | s, m, oracle, xs-shared |
 
 All are normalized into one schema (`Conversation` -> `Session` -> `Turn`, plus `QAPair` with evidence labels), so integrations only ever see one shape of data.
 
@@ -128,12 +128,13 @@ One record per **question**, each carrying its own haystack of sessions. Session
 
 Normalized: one `BenchmarkSample` per question, so `qa` always has exactly one entry — this is why `--questions` does nothing here. Turn ids are synthesised as `<session_id>:<index>`; `answer_session_ids` becomes `evidence_session_ids`, and any turn flagged `has_answer` also contributes `evidence_turn_ids`. The `oracle` variant ships only the evidence sessions (3 above), while `s` and `m` bury them in a much larger haystack.
 
-`xs` and `xs-shared` are not published files: the loader cuts them from `s` at load time, so they share its labels and need no extra download. They exist to put LongMemEval's question types in a run that ingests in about LoCoMo's time. Every question costs at least its evidence sessions — all 500 questions' evidence is the 940-session `oracle` corpus, 3–4× LoCoMo — so both cuts ask the same 151 questions, drawn from `s` per question type and abstention flag in proportion (seeded, kept in file order).
+`xs-shared` is not a published file: the loader cuts it from `s` at load time, so it shares its labels and needs no extra download. It exists to put LongMemEval's question types in a run that ingests in about LoCoMo's time. Every question costs at least its evidence sessions — all 500 questions' evidence is the 940-session `oracle` corpus, 3–4× LoCoMo — so the cut asks 151 questions, drawn from `s` per question type and abstention flag in proportion (seeded, kept in file order).
 
-- **`xs`** — one history per question, holding only its evidence sessions in timestamp order: the control. 151 histories, 293 sessions, 3,346 turns.
-- **`xs-shared`** — LoCoMo's shape on the same evidence. The questions are dealt round-robin into 10 synthetic users (`user_0`…`user_9`, 14–15 questions each); a user's history is its questions' evidence sessions plus 5 fillers drawn from their haystacks (seeded by the user id), deduplicated by session id and timestamp-ordered, so each question's distractors are mostly the other questions' evidence. Two questions with the same wording never share a user. The 10 abstention questions (`*_abs`) keep an `xs` history of their own instead, since another question's evidence could answer what they ask about. 20 histories, 343 sessions, 3,807 turns; a user holds 28–38 sessions and 300–434 turns (LoCoMo: 19–32 sessions, ~590 turns).
+The questions are dealt round-robin into 3 synthetic users (`user_0`…`user_2`, 47 each); a user's history is its questions' evidence sessions plus 20 fillers drawn from their haystacks (seeded by the user id), deduplicated by session id and timestamp-ordered, so each question's distractors are mostly the other questions' evidence. Two questions with the same wording never share a user. The 10 abstention questions (`*_abs`) keep a history of their own instead — their evidence plus 5 fillers from their own haystack — since another question's evidence could answer what they ask about. 13 histories, 403 sessions, 4,489 turns; a user holds 109–117 sessions and 1,205–1,315 turns, an abstention history 6–7 sessions.
 
-The gap between `xs` and `xs-shared` is what a shared history costs, on identical evidence. Every question keeps its own `question_date`, and a shared history spans all its questions' dates, so on `xs-shared` 131 of the 141 shared questions see sessions dated after the question is asked (76 of 500 on `s` itself). The answer agent is told the question's date, so it can discount them; the memory system is not.
+Few users is what makes retrieval a measurement: dealing the same evidence into fewer histories costs no more to ingest, but each history then dwarfs what one question retrieves. Non-evidence sessions are 96.6% of a question's history, against 95.2% on LoCoMo and 96.0% on `s`. The earlier 10-user cut held 28–38 sessions per user and left abstention histories evidence-only (87.8%), and at k=10 the agent touched about 12 distinct sessions per question — a third of the history — so 97% of questions scored a retrieval recall of 1.
+
+Every question keeps its own `question_date`, and a shared history spans all its questions' dates, so 137 of the 141 shared questions see sessions dated after the question is asked (76 of 500 on `s` itself). The answer agent is told the question's date, so it can discount them; the memory system is not.
 
 ## Models
 
@@ -195,8 +196,8 @@ A run is `for sample in samples: ingest every session, then ask every question`.
 | Dataset | One sample is | Sessions per sample | Questions per sample | Evidence labels |
 | --- | --- | --- | --- | --- |
 | LoCoMo | a conversation | 19–32 | 105–199 | turn + session |
-| LongMemEval | one question with its own haystack | many (`s` ≈115k tokens, `m` ≈500 sessions); `xs` 1–6 | exactly 1 | turn + session |
-| LongMemEval `xs-shared` | a synthetic user's history, or one abstention question's | 28–38 per user | 14–15 per user, 1 per abstention history | turn + session |
+| LongMemEval | one question with its own haystack | many (`s` ≈115k tokens, `m` ≈500 sessions) | exactly 1 | turn + session |
+| LongMemEval `xs-shared` | a synthetic user's history, or one abstention question's | 109–117 per user, 6–7 per abstention history | 47 per user, 1 per abstention history | turn + session |
 
 ## What `--turns N` costs on each dataset
 
@@ -211,7 +212,7 @@ The LoCoMo row is measured from the cached corpus and the LongMemEval row from i
 
 Consequences worth knowing before planning a run:
 
-- **`--questions` is a no-op on LongMemEval**, except on `xs-shared`. Each sample holds exactly one QA pair; use `--limit` to ask fewer questions. On `xs-shared` it caps questions per user as on LoCoMo, and `--limit` counts histories (the 10 users come first, then the 10 abstention histories), not questions.
+- **`--questions` is a no-op on LongMemEval**, except on `xs-shared`. Each sample holds exactly one QA pair; use `--limit` to ask fewer questions. On `xs-shared` it caps questions per user as on LoCoMo, and `--limit` counts histories (the 3 users come first, then the 10 abstention histories), not questions.
 - **Ingestion dominates cost for LLM-backed systems.** Mem0 makes one extraction LLM call per session, so cost scales with corpus size, not question count — see [Ingestion cost](#ingestion-cost) below. The `naive` baseline is BM25-only (the whole LoCoMo corpus ingests in 0.04 s), so use it to verify plumbing before spending on a real system.
 - **A turn budget makes the scores partial, so the run is marked.** Questions whose evidence falls outside the budget are skipped rather than scored — they are unanswerable by construction, and scoring them would blame the memory system for data it never received. The count lands in the report as `ingest.questions_dropped`. Truncated runs record `max_turns` and form a separate identity in `amb report --latest`, so a smoke run can never displace a real one.
 - **The two flags compose in that order: filter, then cap.** `--questions N` gives you N *answerable* questions, not N candidates of which some are dead. On one LoCoMo conversation, `--turns 100` leaves 59 of 199 questions answerable; adding `--questions 5` asks 5 of those 59.
@@ -229,14 +230,13 @@ Ingestion is serial within a sample and, for LLM-backed systems, is the dominant
 | LongMemEval `oracle` | 500 instances, 948 sessions (evidence only) | ~12 h | seconds |
 | LongMemEval `s` | 500 instances x ~115k tokens | ~7 weeks | seconds |
 | LongMemEval `m` | 500 instances x ~500 sessions | ~5 months | seconds |
-| LongMemEval `xs` | 151 histories, 293 sessions, 3,346 turns | ~3.5 h | seconds |
-| LongMemEval `xs-shared` | 20 histories, 343 sessions, 3,807 turns | ~4 h | seconds |
+| LongMemEval `xs-shared` | 13 histories, 403 sessions, 4,489 turns | ~5 h | seconds |
 
-The LoCoMo and `oracle` rows are measured end to end — `oracle` from the full 500-instance runs formerly in `runs/longmemeval/oracle/` (withdrawn with the retrieval-only results in #242, which did not change ingestion; still in git history), where Mem0 sums 11.2–11.9 h of ingestion across its four k values. The `s` and `m` rows extrapolate LoCoMo's throughput (~13.6 source tokens/s, ~2.5 s/turn) by corpus size, and their instance counts come from published sizes rather than a downloaded corpus. Treat those two as orders of magnitude, not schedules. The `xs` rows are extrapolated too, from the measured `oracle` row: their corpus sizes are measured from the cut, and `oracle`'s evidence sessions are those same ones (13.1M characters), so scaling `oracle`'s Mem0 time by sessions or by characters gives 31–37 h for `xs` and 15–16 h for `xs-shared`.
+The LoCoMo and `oracle` rows are measured end to end — `oracle` from the full 500-instance runs formerly in `runs/longmemeval/oracle/` (withdrawn with the retrieval-only results in #242, which did not change ingestion; still in git history), where Mem0 sums 11.2–11.9 h of ingestion across its four k values. The `s` and `m` rows extrapolate LoCoMo's throughput (~13.6 source tokens/s, ~2.5 s/turn) by corpus size, and their instance counts come from published sizes rather than a downloaded corpus. Treat those two as orders of magnitude, not schedules. The `xs-shared` row is extrapolated too, from the measured `oracle` row: its corpus size is measured from the cut (5.2M characters), and scaling `oracle`'s Mem0 time (948 sessions, 13.1M characters) by sessions or by characters gives 4.7–5.0 h.
 
 Every figure above is *summed* ingestion — the total across all conversations, which is what the reports record and which does not shrink with `--workers`. Wall clock does: `--workers 3` measures ~2.3x on LoCoMo (2.99 h summed, 1.28 h elapsed), the parallel speedup being sublinear because conversations differ in length and the run waits on the longest. Summed across `oracle`, Graphiti measures 4.1 h, Fraise 10.6 h and Mem0 11.8 h, which at that speedup puts Fraise near 4.6 h and Mem0 near 5.1 h of wall clock against CI's six-hour ceiling: past roughly 40 s/session there is no headroom left.
 
-The practical consequence: **LoCoMo, LongMemEval `oracle`, `xs` and `xs-shared` are whole-dataset runs today; `s` and `m` are not.** For those, scope the run with `--limit` and `--turns` and report what you scoped, or expect a multi-day job. Each LongMemEval instance carries its own haystack, so its cost is per question — halving `--limit` halves the run.
+The practical consequence: **LoCoMo, LongMemEval `oracle` and `xs-shared` are whole-dataset runs today; `s` and `m` are not.** For those, scope the run with `--limit` and `--turns` and report what you scoped, or expect a multi-day job. Each LongMemEval instance carries its own haystack, so its cost is per question — halving `--limit` halves the run.
 
 ### Persistent stores
 
