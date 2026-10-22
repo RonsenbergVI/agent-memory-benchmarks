@@ -34,8 +34,6 @@ class QuestionRecord(BaseModel):
     # retrieval observations
     search_s: float | None = None
     num_hits: int | None = None
-    retrieved_session_ids: list[str] | None = None
-    evidence_session_ids: list[str] | None = None
     retrieved_turn_ids: list[str] | None = None
     evidence_turn_ids: list[str] | None = None
     # answer observations (whenever an answer model ran)
@@ -75,6 +73,8 @@ class Run(BaseModel):
     embedding_model: str | None = None
     # "full" | "partial" | "none": how much of the system's spend this run accounts for
     usage_coverage: str = "full"
+    # the source unit turn-level retrieval attributes a hit to (Memory.turn_provenance)
+    turn_provenance: str | None = None
     system_params: dict = Field(default_factory=dict)
     variant: str | None = None
     k: int = 10
