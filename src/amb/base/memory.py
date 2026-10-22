@@ -44,6 +44,25 @@ def split_model(spec: str) -> tuple[str, str]:
     return provider, name
 
 
+def spanned_turns(session: Session, text: str) -> list[str]:
+    """Ids of the session's turns that a verbatim slice of its transcript covers.
+
+    The transcript is the `speaker: text` lines joined by newlines, as the
+    chunking systems ingest it. Returns [] when `text` is not a slice of it.
+    """
+    lines = [f"{turn.speaker}: {turn.text}" for turn in session.turns]
+    needle = text.strip()
+    start = "\n".join(lines).find(needle) if needle else -1
+    if start < 0:
+        return []
+    end, offset, spanned = start + len(needle), 0, []
+    for turn, line in zip(session.turns, lines, strict=True):
+        if offset < end and start < offset + len(line):
+            spanned.append(turn.turn_id)
+        offset += len(line) + 1
+    return spanned
+
+
 class Memory(ABC):
     """Contract every memory system integration implements.
 
@@ -65,6 +84,9 @@ class Memory(ABC):
     embedding_providers: ClassVar[tuple[str, ...]] = ()
     # the halves (`llm`, `embedding`) the system can run without, via `none`
     optional_models: ClassVar[tuple[str, ...]] = ()
+    # the finest source unit the system itself keeps for a memory, which
+    # resolve_turns attributes a hit to: turn, window, segment, chunk, session
+    turn_provenance: ClassVar[str] = "session"
 
     def __init__(self, **params: object) -> None:
         """Keep any `--param` overrides the CLI passed through.
@@ -143,6 +165,32 @@ class Memory(ABC):
     @abstractmethod
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return up to k pieces of remembered context relevant to query."""
+
+    def resolve_turns(
+        self, hits: list[MemoryHit], sessions: list[Session]
+    ) -> list[MemoryHit]:
+        """The hits with `turn_ids` filled from the provenance search returned.
+
+        Called once the agent has answered: outside the timed search, and
+        never seen by the agent. Overrides narrow a hit to the source unit
+        the system keeps (`turn_provenance`); a hit left without turn ids
+        is attributed to every ingested turn of its sessions.
+        """
+        turns = {s.session_id: [t.turn_id for t in s.turns] for s in sessions}
+        return [
+            hit
+            if hit.turn_ids
+            else hit.model_copy(
+                update={
+                    "turn_ids": [
+                        turn_id
+                        for session_id in dict.fromkeys(hit.session_ids)
+                        for turn_id in turns.get(session_id, [])
+                    ]
+                }
+            )
+            for hit in hits
+        ]
 
     def teardown(self) -> None:
         """Release resources / delete stored memories for this sample."""

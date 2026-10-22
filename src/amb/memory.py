@@ -49,6 +49,7 @@ class NaiveMemory(Memory):
     name: ClassVar[str] = "naive"
     description: ClassVar[str] = "BM25 over raw turns; the baseline to beat"
     sdk_dist: ClassVar[str | None] = "amb"
+    turn_provenance: ClassVar[str] = "turn"
 
     def __init__(self, k1: float = 1.5, b: float = 0.75, **params: object) -> None:
         """Set the BM25 term-saturation (k1) and length-normalization (b)."""

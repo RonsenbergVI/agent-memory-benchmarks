@@ -206,6 +206,7 @@ class Runner:
             ingestion_model=internal.get("ingestion_model"),
             embedding_model=internal.get("embedding_model"),
             usage_coverage=probe.coverage(),
+            turn_provenance=probe.turn_provenance,
             # the two model params are lifted into their own fields above
             system_params={
                 key: value
@@ -346,25 +347,26 @@ class Runner:
 
         Produces one raw data row per question.
         """
-        for qa in self.select_questions(sample, self.select_sessions(sample)):
+        sessions = self.select_sessions(sample)
+        for qa in self.select_questions(sample, sessions):
             self.callbacks.on_question_begin(sample, qa)
-            record = self._run_question(system, sample, qa)
+            record = self._run_question(system, sample, qa, sessions)
             self.callbacks.on_question_end(sample, qa, record)
             data.add_question(record)
 
     def _log_retrieval(self, qa: QAPair, hits: list, row: dict) -> None:
         """Trace one question's retrieval at debug level."""
         logger.bind(scope=self.name).debug(
-            "{}: {} hits, sessions {} vs {}, turns {} vs {}",
+            "{}: {} hits, turns {} vs {}",
             qa.question_id,
             len(hits),
-            len(row.get("retrieved_session_ids") or []),
-            row.get("evidence_session_ids"),
             len(row.get("retrieved_turn_ids") or []),
             row.get("evidence_turn_ids"),
         )
 
-    def _run_question(self, system: Memory, sample: Sample, qa: QAPair) -> dict:
+    def _run_question(
+        self, system: Memory, sample: Sample, qa: QAPair, sessions: list[Session]
+    ) -> dict:
         cfg = self.config
         row = {
             "sample_id": sample.sample_id,
@@ -384,28 +386,19 @@ class Runner:
                 qa.question, toolset, cfg.model, question_date=qa.question_date
             )
             row["answer_s"] = time.perf_counter() - t0
-            # retrieval is scored on everything the agent chose to look at
-            hits = toolset.retrieved
+            # retrieval is scored on everything the agent chose to look at;
+            # turns are attributed only now, outside the timed search
+            hits = system.resolve_turns(toolset.retrieved, sessions)
             row["search_s"] = toolset.search_s
             row["num_searches"] = toolset.num_searches
             row["num_hits"] = len(hits)
 
-            # session ids are the comparable headline; turn ids the stricter
-            # bonus for systems that store verbatim turns
-            scored = False
-            if qa.evidence_session_ids and (
-                not hits or any(h.session_ids for h in hits)
-            ):
-                row["retrieved_session_ids"] = [s for h in hits for s in h.session_ids]
-                row["evidence_session_ids"] = qa.evidence_session_ids
-                scored = True
+            # turn ids are as fine as each system's own provenance
             if qa.evidence_turn_ids and (not hits or any(h.turn_ids for h in hits)):
                 row["retrieved_turn_ids"] = [t for h in hits for t in h.turn_ids]
                 row["evidence_turn_ids"] = qa.evidence_turn_ids
-                scored = True
-            if scored:
                 self._log_retrieval(qa, hits, row)
-            elif hits and (qa.evidence_turn_ids or qa.evidence_session_ids):
+            elif hits and qa.evidence_turn_ids:
                 logger.bind(scope=self.name).warning(
                     "{} returned {} hits for {} with no usable provenance "
                     "(populate MemoryHit.turn_ids or session_ids); the "

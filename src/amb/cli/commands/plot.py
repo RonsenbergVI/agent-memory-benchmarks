@@ -262,10 +262,10 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
 @click.option(
     "--metric",
     "metric_filter",
-    type=click.Choice(["accuracy", "recall"]),
+    type=click.Choice(["accuracy", "f1"]),
     multiple=True,
     help="restrict to these scores (default: both — judge accuracy, the "
-    "headline, and retrieval recall). Repeatable",
+    "headline, and turn F1). Repeatable",
 )
 @click.option("--dark", is_flag=True, help="render on the dark chart surface")
 def draw_all(  # noqa: PLR0913 - one option per filter, all independent
@@ -281,7 +281,7 @@ def draw_all(  # noqa: PLR0913 - one option per filter, all independent
 
     `amb report`'s documents declare the figures; this draws exactly those
     into `plots/<dataset>[/<variant>]/`, so charts and documents cannot
-    drift apart. Per score: `<score>_k<k>` bars and `k_<score>`
+    drift apart. Per score: `<score>_by_k` columns and `k_<score>`
     sweep lines; cross metric: `tokens_<metric>_k<k>`,
     `latency_<metric>_k<k>`, and `tokens_latency_k<k>` scatters. Single-k
     sets are written for every k the runs used, each k in the filename.

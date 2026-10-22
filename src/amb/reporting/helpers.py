@@ -156,27 +156,28 @@ def hues(labels: list[str], c: dict) -> dict[str, str]:
     }
 
 
-def round_bars(fig: Any, ax: Any) -> None:
-    """Soften every bar's corners with a pixel-true ~5px radius.
+def round_columns(fig: Any, ax: Any) -> None:
+    """Round every column's data end with a pixel-true ~4px radius.
 
-    The limits must be final before this runs: the radius is converted
-    from pixels into each axis's data units through the live transform.
+    The baseline stays square: the rounded shape runs one radius below
+    zero, where the axes clip it. The limits must be final before this
+    runs, since the radius goes through the live transform.
     """
     from matplotlib.patches import FancyBboxPatch
 
     fig.canvas.draw()  # the transform is only trustworthy after a draw
     inverse = ax.transData.inverted()
-    (x0, y0), (x1, y1) = inverse.transform([(0, 0), (12, 12)])
+    (x0, y0), (x1, y1) = inverse.transform([(0, 0), (8, 8)])
     rx, ry = abs(x1 - x0), abs(y1 - y0)
     for rect in list(ax.patches):
-        width = rect.get_width()
-        if width <= 2 * rx:
-            continue  # too short to round without eating the bar
+        height = rect.get_height()
+        if height <= ry or rect.get_width() <= 2 * rx:
+            continue  # too small to round without eating the column
         ax.add_patch(
             FancyBboxPatch(
-                (rect.get_x(), rect.get_y()),
-                width,
-                rect.get_height(),
+                (rect.get_x(), rect.get_y() - ry),
+                rect.get_width(),
+                height + ry,
                 boxstyle=f"round,pad=0,rounding_size={rx}",
                 mutation_aspect=ry / rx,
                 facecolor=rect.get_facecolor(),
