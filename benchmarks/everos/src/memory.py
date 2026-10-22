@@ -530,6 +530,7 @@ class EverOSMemory(Memory):
             for fmt in (
                 "%Y-%m-%d %H:%M:%S",
                 "%Y-%m-%d",
+                "%Y/%m/%d (%a) %H:%M",
                 "%d %B %Y",
                 "%I:%M %p on %d %B, %Y",
             ):
@@ -538,8 +539,8 @@ class EverOSMemory(Memory):
                 except ValueError:
                     continue
                 return int(parsed.timestamp() * 1000)
-        # 2000-01-01, well clear of the > 0 floor and stable across runs
-        return 946684800000
+        # 2020-01-01: EverOS reads stamps below 1e12 as seconds, not ms
+        return 1577836800000
 
     def search(self, conversation_id: str, query: str, k: int = 10) -> list[MemoryHit]:
         """Return up to k episodes from this conversation's project."""
