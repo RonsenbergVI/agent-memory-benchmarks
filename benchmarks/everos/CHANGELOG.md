@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/everos/v0.4.0...everos/v0.5.0) (2026-10-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* score retrieval at the turn level for every system ([#284](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/284))
+
+### Features
+
+* score retrieval at the turn level for every system ([#284](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/284)) ([7d9cc9a](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/7d9cc9a16614b7389e1ad00f991f26b9026c3be4))
+
 ## [0.4.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/everos/v0.3.0...everos/v0.4.0) (2026-10-18)
 
 
