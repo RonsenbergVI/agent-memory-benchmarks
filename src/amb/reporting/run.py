@@ -39,9 +39,17 @@ if TYPE_CHECKING:
 SUMMARY_COLUMNS = (
     ("judge_accuracy", "accuracy", "{:.3f}"),
     ("judge_accuracy_ci", "95% CI", "{:.3f}"),
+    ("memory_lift", "lift", "{:.3f}"),
     ("hits_per_query", "hits/q", "{:.2f}"),
     ("memory_tokens_total", "memory tokens", "{:,.0f}"),
 )
+
+# the error-analysis pair: per branch, its rate field, its correct-share field,
+# and what the verdict columns mean on that branch
+ATTRIBUTION_BRANCHES = {
+    "found": ("found", "correct_when_found", "with evidence"),
+    "missed": ("missed", "correct_when_missed", "without evidence"),
+}
 
 
 def run_date(run_id: str | None) -> str:
@@ -472,6 +480,103 @@ class ComparisonReport(Report):
                 # `**` reads as bold in markdown and renders bold in the figure
                 cells.append(f"**{cell}**" if value == best[column] else cell)
             rows.append(cells)
+        return header, rows
+
+    def attribution_table(
+        self,
+        k: int = 10,
+        dataset: str | None = None,
+        variant: str | None = None,
+        branch: str = "found",
+    ) -> tuple[list[str], list[list[str]]]:
+        """Build one half of the error analysis: a branch's rate and its split.
+
+        `branch` is `found` or `missed` — whether every evidence session was
+        retrieved. The table prints how the agent then fared on that branch,
+        correct and wrong with (or without) the evidence as shares of it, and
+        the branch's own rate over every question last. The two halves share
+        one row order (most found first), so a system's line reads across the
+        pair. Runs scored before the metric existed are left out rather than
+        shown blank.
+
+        Returns:
+            The header labels and the formatted rows.
+
+        Raises:
+            ValueError: on a branch other than `found` or `missed`.
+        """
+        if branch not in ATTRIBUTION_BRANCHES:
+            raise ValueError(f"branch must be found or missed, not {branch!r}")
+        rate, correct, sense = ATTRIBUTION_BRANCHES[branch]
+        ranked = [
+            s
+            for s in self._ranked_at_k(k, dataset, variant)
+            if (s.get("attribution") or {}).get("n")
+        ]
+        if not ranked:
+            return [], []
+        ranked.sort(key=lambda s: (-s["attribution"]["found"], s.get("system", "")))
+        header = ["system", "version", f"correct {sense}", f"wrong {sense}", branch]
+        rows = []
+        for s in ranked:
+            cells = s["attribution"]
+            rows.append(
+                [
+                    str(s.get("system", "?")),
+                    str(s.get("system_version") or ""),
+                    f"{cells[correct]:.3f}",
+                    f"{1 - cells[correct]:.3f}",
+                    f"{cells[rate]:.3f}",
+                ]
+            )
+        return header, rows
+
+    def lift_table(
+        self, k: int = 10, dataset: str | None = None, variant: str | None = None
+    ) -> tuple[list[str], list[list[str]]]:
+        """Build the memory-lift table: a system per row, the lift and its factors.
+
+        Reads left to right as the multiplication: `found` times `gain` —
+        `correct with evidence` less `correct without evidence` — is `lift`,
+        the accuracy the memory added. Runs scored before the metric existed
+        are left out rather than shown blank.
+
+        Returns:
+            The header labels and the formatted rows, most lift first — the
+            rightmost column, so the table reads top-down.
+        """
+        ranked = [
+            s
+            for s in self._ranked_at_k(k, dataset, variant)
+            if (s.get("attribution") or {}).get("n")
+        ]
+        if not ranked:
+            return [], []
+        ranked.sort(key=lambda s: (-s["attribution"]["lift"], s.get("system", "")))
+        header = [
+            "system",
+            "version",
+            "found",
+            "correct with evidence",
+            "correct without evidence",
+            "gain",
+            "lift",
+        ]
+        rows = []
+        for s in ranked:
+            cells = s["attribution"]
+            with_, without = cells["correct_when_found"], cells["correct_when_missed"]
+            rows.append(
+                [
+                    str(s.get("system", "?")),
+                    str(s.get("system_version") or ""),
+                    f"{cells['found']:.3f}",
+                    f"{with_:.3f}",
+                    f"{without:.3f}",
+                    f"{with_ - without:.3f}",
+                    f"{cells['lift']:.3f}",
+                ]
+            )
         return header, rows
 
     @staticmethod

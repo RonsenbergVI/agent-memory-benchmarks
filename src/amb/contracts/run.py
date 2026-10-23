@@ -34,6 +34,9 @@ class QuestionRecord(BaseModel):
     # search observations
     search_s: float | None = None
     num_hits: int | None = None
+    # attribution observations: the hits' sessions against the evidence's
+    retrieved_session_ids: list[str] | None = None
+    evidence_session_ids: list[str] | None = None
     # answer observations (whenever an answer model ran)
     predicted_answer: str | None = None
     answer_s: float | None = None

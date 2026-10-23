@@ -116,7 +116,7 @@ One lockfile covers every member, so **one member's cap on a shared dependency i
 
 Logging is loguru, configured in `logs.py` and always to **stderr**, so the summary on stdout stays pipeable. `amb --log-level debug run ...` traces the turn budget and how many questions survived it.
 
-Retrieval is **not scored**: there are no session- or turn-level retrieval metrics, and rows carry no retrieved or evidence ids. Judge accuracy is the only quality score. `MemoryHit.session_ids`/`turn_ids` and the dataset evidence labels stay — the labels still decide which questions survive a turn budget.
+Retrieval is **not scored** as precision/recall/F1, at any level. Judge accuracy is the score; `attribution` and `memory_lift` split it by whether the agent's hits covered every evidence *session* — rows carry `retrieved_session_ids`/`evidence_session_ids` for that alone. Hits with no session provenance leave the question out of attribution with a warning, instead of counting as a miss. If you add a `Memory`, populate `MemoryHit.session_ids` (graphiti maps edge episodes to sessions; mem0 attaches session metadata).
 
 ## Conventions
 

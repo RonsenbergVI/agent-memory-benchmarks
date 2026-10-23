@@ -45,7 +45,7 @@ class SearchToolset(FunctionToolset):
         self.memory = memory
         self.conversation_id = conversation_id
         self.k = k
-        self.num_hits = 0
+        self.retrieved: list[MemoryHit] = []
         self.num_searches = 0
         self.search_s = 0.0
         self.callbacks = Callbacks()
@@ -69,7 +69,7 @@ class SearchToolset(FunctionToolset):
         """
         self.search_s += seconds
         self.num_searches += 1
-        self.num_hits += len(hits)
+        self.retrieved.extend(hits)
         # unbound (a toolset built directly, in a test) means no observers
         if self.sample is not None and self.qa is not None:
             self.callbacks.on_search(self.sample, self.qa, hits, seconds)

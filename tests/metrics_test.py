@@ -29,10 +29,12 @@ import pytest
 from amb.base.metric import Metric
 from amb.contracts.run import IngestionRecord, QuestionRecord
 from amb.metrics import (
+    Attribution,
     Count,
     DictSum,
     LatencyPercentiles,
     Mean,
+    MemoryLift,
     Sum,
     default_category_metrics,
     default_metrics,
@@ -263,24 +265,28 @@ def test_default_metrics_load_bearing_entries() -> None:
     assert hits.key == "num_hits"
 
 
-def test_default_metrics_score_judge_accuracy_only() -> None:
+def test_default_metrics_score_no_retrieval_or_overlap() -> None:
     names = {m.name for m in default_metrics()}
     assert "judge_accuracy" in names
     assert not any(
-        n.startswith(("retrieval_", "turn_"))
-        or n in {"attribution", "memory_lift", "answer_f1", "exact_match"}
+        n.startswith(("retrieval_", "turn_")) or n in {"answer_f1", "exact_match"}
         for n in names
     )
 
 
 def test_category_metrics_names() -> None:
     names = [m.name for m in default_category_metrics()]
-    assert names == ["judge_accuracy", "judge_accuracy_ci"]
+    assert names == [
+        "judge_accuracy",
+        "judge_accuracy_ci",
+        "attribution",
+        "memory_lift",
+    ]
 
 
 def test_category_metrics_are_fresh_instances_per_call() -> None:
     first = default_category_metrics()
-    first[-1].update_state(_q(judge_correct=True))
+    first[-1].update_state(_attributed(True, True))
     second = default_category_metrics()
     assert first[-1].count == 1
     assert second[-1].count == 0
@@ -312,3 +318,106 @@ def test_wilson_interval_brackets_the_rate_and_stays_in_bounds() -> None:
         )
     assert perfect.result()["high"] == 1.0
     assert perfect.result()["low"] < 0.75
+
+
+def _attributed(found: bool, correct: bool) -> QuestionRecord:
+    return _q(
+        retrieved_session_ids=["1", "2"] if found else ["2"],
+        evidence_session_ids=["1"],
+        judge_correct=correct,
+    )
+
+
+def test_attribution_cells_hand_computed() -> None:
+    metric = Attribution()
+    for found, correct, times in (
+        (True, True, 3),
+        (True, False, 1),
+        (False, True, 1),
+        (False, False, 3),
+    ):
+        for _ in range(times):
+            metric.update_state(_attributed(found, correct))
+    result = metric.result()
+    assert result["n"] == 8
+    assert result["correct"] == pytest.approx(3 / 8)
+    assert result["agent_fault"] == pytest.approx(1 / 8)
+    assert result["lucky"] == pytest.approx(1 / 8)
+    assert result["memory_fault"] == pytest.approx(3 / 8)
+    assert result["found"] == pytest.approx(0.5)
+    assert result["missed"] == pytest.approx(0.5)
+    assert result["correct_when_found"] == pytest.approx(0.75)
+    assert result["correct_when_missed"] == pytest.approx(0.25)
+    assert result["lift"] == pytest.approx(0.5 * (0.75 - 0.25))
+
+
+def test_attribution_found_means_every_evidence_session() -> None:
+    # half the chain retrieved is a miss: multi-hop fails on the missing hop
+    metric = Attribution()
+    metric.update_state(
+        _q(
+            retrieved_session_ids=["1", "9"],
+            evidence_session_ids=["1", "2"],
+            judge_correct=False,
+        )
+    )
+    assert metric.result()["found"] == 0.0
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"evidence_session_ids": ["1"], "judge_correct": True},
+        {
+            "retrieved_session_ids": ["1"],
+            "evidence_session_ids": [],
+            "judge_correct": True,
+        },
+        {"retrieved_session_ids": ["1"], "judge_correct": True},
+        {"retrieved_session_ids": ["1"], "evidence_session_ids": ["1"]},
+    ],
+)
+def test_attribution_skips_unlabelled_or_unjudged_rows(fields) -> None:
+    # an unlabelled or unjudged question is left out, never a miss
+    metric = Attribution()
+    metric.update_state(_q(**fields))
+    assert metric.count == 0
+    assert metric.result()["n"] == 0
+
+
+def test_attribution_empty_scope_reports_zero_rates() -> None:
+    result = Attribution().result()
+    assert result["found"] == 0.0
+    assert result["missed"] == 0.0
+    assert result["correct_when_found"] == 0.0
+    assert result["correct_when_missed"] == 0.0
+
+
+def test_attribution_reset_empties_every_cell() -> None:
+    metric = Attribution()
+    metric.update_state(_attributed(True, True))
+    metric.reset_state()
+    metric.update_state(_attributed(False, False))
+    result = metric.result()
+    assert result["n"] == 1
+    assert result["memory_fault"] == 1.0
+    assert result["correct"] == 0.0
+
+
+def test_memory_lift_is_attribution_lift_as_a_top_level_float() -> None:
+    lift, cells = MemoryLift(), Attribution()
+    for found, correct in ((True, True), (True, False), (False, False), (False, True)):
+        for metric in (lift, cells):
+            metric.update_state(_attributed(found, correct))
+    assert lift.count == 4
+    assert lift.result() == pytest.approx(cells.result()["lift"])
+    # undotted on purpose: top-level floats are what the tables pick up
+    assert "." not in lift.name
+    lift.reset_state()
+    assert lift.count == 0
+    assert lift.result() == 0.0
+
+
+def test_memory_lift_in_both_metric_sets() -> None:
+    assert any(isinstance(m, MemoryLift) for m in default_metrics())
+    assert any(isinstance(m, MemoryLift) for m in default_category_metrics())

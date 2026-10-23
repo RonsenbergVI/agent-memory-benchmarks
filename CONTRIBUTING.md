@@ -35,6 +35,7 @@ A framework is a workspace package under `benchmarks/<name>/` — no core change
 
 2. **`benchmarks/<name>/src/memory.py`** — subclass `amb.base.Memory`: set the `name`, `description`, and `sdk_dist` class attributes, take the system's own models as `model` / `embedding_model` `provider:name` ids defaulting to `amb.constants.DEFAULT_LLM` / `DEFAULT_EMBEDDING` (declare the providers the SDK runs natively in `llm_providers` / `embedding_providers` and validate with `self.model_name(...)` in `__init__`), and implement `ingest_session` and `search` (plus `setup`/`teardown` for connect/cleanup and `stats()` for footprint numbers). Two contracts matter more than they look:
 
+   - **Provenance.** Every `MemoryHit` must carry `session_ids`. Error attribution and memory lift are computed against these; hits without them drop the question from attribution rather than counting it as a miss.
    - **Spend.** LLM/embedding calls made in-process through the openai SDK are tracked automatically. Spend that happens inside the system's own server is invisible — count it yourself and report it through `usage_counters()`, with `TiktokenUsageTracker` in the benchmark's `callback_classes` to book the deltas.
 
    Models are identity: expose the ingestion/embedding models as `model` / `embedding_model` attributes (the default `models()` reads them) so runs with different models land as different rows.

@@ -69,6 +69,7 @@ def test_add_question_validates_and_stores_a_dict_row():
             "question": "Who moved to Paris?",
             "search_s": 0.25,
             "num_hits": 3,
+            "retrieved_session_ids": ["sess-1", "sess-2"],
             "judge_correct": True,
         }
     )
@@ -77,6 +78,7 @@ def test_add_question_validates_and_stores_a_dict_row():
     assert record.question_id == "q1"
     assert record.search_s == 0.25
     assert record.num_hits == 3
+    assert record.retrieved_session_ids == ["sess-1", "sess-2"]
     assert record.judge_correct is True
     assert run.question_records == [record]
 
@@ -86,6 +88,7 @@ def test_add_question_defaults_unset_observations_to_none():
     assert record.question is None
     assert record.gold_answer is None
     assert record.search_s is None
+    assert record.retrieved_session_ids is None
     assert record.predicted_answer is None
     assert record.judge_correct is None
     assert record.error is None
@@ -114,6 +117,7 @@ def test_add_question_appends_in_order():
         {"sample_id": "s1", "question_id": "q1", "search_s": "fast"},
         {"sample_id": "s1", "question_id": "q1", "num_hits": 2.5},
         {"sample_id": "s1", "question_id": "q1", "judge_correct": "definitely"},
+        {"sample_id": "s1", "question_id": "q1", "retrieved_session_ids": "sess-1"},
     ],
 )
 def test_add_question_invalid_rows_raise_and_do_not_land(row):

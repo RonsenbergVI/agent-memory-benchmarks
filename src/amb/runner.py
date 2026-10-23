@@ -372,9 +372,25 @@ class Runner:
                 qa.question, toolset, cfg.model, question_date=qa.question_date
             )
             row["answer_s"] = time.perf_counter() - t0
+            # attribution reads everything the agent chose to look at
+            hits = toolset.retrieved
             row["search_s"] = toolset.search_s
             row["num_searches"] = toolset.num_searches
-            row["num_hits"] = toolset.num_hits
+            row["num_hits"] = len(hits)
+            if qa.evidence_session_ids and (
+                not hits or any(h.session_ids for h in hits)
+            ):
+                row["retrieved_session_ids"] = [s for h in hits for s in h.session_ids]
+                row["evidence_session_ids"] = qa.evidence_session_ids
+            elif hits and qa.evidence_session_ids:
+                logger.bind(scope=self.name).warning(
+                    "{} returned {} hits for {} with no session provenance "
+                    "(populate MemoryHit.session_ids); the question is left out "
+                    "of attribution instead of counting as a miss",
+                    self.name,
+                    len(hits),
+                    qa.question_id,
+                )
 
             row["predicted_answer"] = generation.text
             row["input_tokens"] = generation.input_tokens

@@ -20,13 +20,19 @@ Did the agent, searching the system, answer correctly? `judge_accuracy` is the s
 
 ### Retrieval
 
-Not scored. The datasets' evidence labels are still loaded, and still decide which questions survive a turn budget, but no metric compares what the agent retrieved against them.
+Not scored as precision, recall or F1. Each row does record the sessions the agent's hits came from beside the evidence sessions, for [error attribution](#error-attribution) alone; the evidence labels also decide which questions survive a turn budget.
 
 ### k is a ceiling, not a quota
 
 `--k` is the most hits one search may return. It is never padded and never exceeded: a system that finds less returns less, and what came back is what gets scored. The harness does not truncate, so an adapter returning more than k is a bug in the adapter. k caps each *search*, not the question. The agent may search several times, and `hits_per_query` (the comparison table's `hits/q`) counts every hit across those searches, Measured on LoCoMo, mem0 2.0.20 at k=10 runs 1.84 searches/question, returns exactly 10 hits on each, and reports 18.42 hits/q. Each `results.jsonl` row records `num_searches`, so hits per search can be recovered from any run.
 
 So compare systems at matched hits/q, not matched k. Accuracy can rise with every hit the agent sees, so at the same k a system whose agent searched more often, or whose searches came back full, can look like it ranks better when the agent has only read more of it. The other direction is just as real. In the direct-mode runs withdrawn in #242 (still in git history), EverOS 1.2.3 returned 1.83, 2.93 and 5.57 hits per search at k = 3, 5 and 10, while every other system returned the full k. RESULTS.md's "scores vs hits returned" charts place each k at its measured hits/q for exactly this comparison.
+
+### Error attribution
+
+Who lost a question: the memory or the agent? `attribution` crosses "every evidence session retrieved" with the judge's verdict, so each judged, evidence-labelled question falls in one of four cells, reported as shares of `n`: `correct`, `agent_fault` (found, wrong), `memory_fault` (missed, wrong) and `lucky` (missed, right). Each branch also reports its rate and its split: `found` with `correct_when_found` (the agent's own rate) and `missed` with `correct_when_missed` (the agent's prior). Found is strict — half a multi-hop chain is a miss — and questions without evidence labels are left out rather than counted as misses. RESULTS.md prints this as two mirrored error-analysis tables per k, one per branch; it is also broken down by question category.
+
+The two rates collapse into one number, `memory_lift` = `found × (correct_when_found − correct_when_missed)`: the accuracy points the memory added over what the agent answers without the evidence. It credits a memory only for evidence it both found and returned in a usable form. The summary table carries it beside accuracy, RESULTS.md prints its factors per k, and the README breaks it down by question category. The rate without evidence is estimated from each system's own misses, not measured against a memoryless run.
 
 ### Latency
 
