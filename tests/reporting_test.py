@@ -225,7 +225,7 @@ def _attributed(system: str, k: int, found: float, when_found: float) -> dict:
             "correct": found * when_found,
             "agent_fault": found * (1 - when_found),
             "memory_fault": 1 - found,
-            "lucky": 0.0,
+            "correct_despite_miss": 0.0,
             "found": found,
             "missed": 1 - found,
             "correct_when_found": when_found,
@@ -391,9 +391,9 @@ def test_attribution_cells_table_bolds_the_best_per_column():
         "correct (found, right)",
         "agent fault (found, wrong)",
         "memory fault (missed, wrong)",
-        "lucky (missed, right)",
+        "correct despite miss (missed, right)",
     ]
-    # most correct first; correct is best high, both faults best low, lucky never bold
+    # most correct first; correct is best high, both faults best low, despite-miss never
     assert rows[0] == ["alpha", "1.0", "**0.540**", "**0.060**", "0.400", "0.000"]
     assert rows[1] == ["beta", "1.0", "0.400", "0.400", "**0.200**", "0.000"]
     assert report.attribution_cells_table(5) == ([], [])

@@ -319,7 +319,7 @@ def test_attribution_cells_hand_computed() -> None:
     assert result["n"] == 8
     assert result["correct"] == pytest.approx(3 / 8)
     assert result["agent_fault"] == pytest.approx(1 / 8)
-    assert result["lucky"] == pytest.approx(1 / 8)
+    assert result["correct_despite_miss"] == pytest.approx(1 / 8)
     assert result["memory_fault"] == pytest.approx(3 / 8)
     assert result["found"] == pytest.approx(0.5)
     assert result["missed"] == pytest.approx(0.5)

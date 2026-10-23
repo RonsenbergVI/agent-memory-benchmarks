@@ -49,13 +49,13 @@ ATTRIBUTION_BRANCHES = {
     "missed": ("missed", "correct_when_missed", "without evidence"),
 }
 
-# the attribution table's cells: (cell, column label, which way is best); lucky
-# is right without the evidence, no credit to the memory, so it is never bold
+# the attribution table's cells: (cell, column label, which way is best); a
+# right answer despite a miss is no credit to the memory, so it is never bold
 ATTRIBUTION_COLUMNS = (
     ("correct", "correct (found, right)", max),
     ("agent_fault", "agent fault (found, wrong)", min),
     ("memory_fault", "memory fault (missed, wrong)", min),
-    ("lucky", "lucky (missed, right)", None),
+    ("correct_despite_miss", "correct despite miss (missed, right)", None),
 )
 
 

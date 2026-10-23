@@ -149,7 +149,7 @@ class Attribution(Metric):
     Each judged question with evidence labels lands in one of four cells,
     crossing "every evidence session retrieved" with the judge's verdict:
     `correct`, `agent_fault` (found, wrong), `memory_fault` (missed, wrong)
-    and `lucky` (missed, right). Two rates factor them: `found` is the
+    and `correct_despite_miss` (missed, right). Two rates factor them: `found` is the
     memory's, `correct_when_found` the agent's — flat across systems unless
     a memory hands back evidence in a form the agent cannot use. Questions
     without evidence labels or a verdict are left out, never scored as misses.
@@ -159,7 +159,7 @@ class Attribution(Metric):
         "correct",
         "agent_fault",
         "memory_fault",
-        "lucky",
+        "correct_despite_miss",
     )
 
     def __init__(self, name: str = "attribution") -> None:
@@ -183,7 +183,7 @@ class Attribution(Metric):
         if found:
             self._cells["correct" if correct else "agent_fault"] += 1
         else:
-            self._cells["lucky" if correct else "memory_fault"] += 1
+            self._cells["correct_despite_miss" if correct else "memory_fault"] += 1
 
     def result(self) -> dict[str, float | int]:
         """Return each cell's share, each branch's rate and its split, and `n`."""
@@ -193,7 +193,7 @@ class Attribution(Metric):
         missed = n - found
         shares = {cell: (c[cell] / n if n else 0.0) for cell in self.CELLS}
         correct_when_found = c["correct"] / found if found else 0.0
-        correct_when_missed = c["lucky"] / missed if missed else 0.0
+        correct_when_missed = c["correct_despite_miss"] / missed if missed else 0.0
         return {
             **shares,
             "found": found / n if n else 0.0,
