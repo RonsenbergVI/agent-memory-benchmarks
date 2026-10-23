@@ -106,6 +106,22 @@ def lift_breakdown(group: RunGroup, k: int) -> Chart:
     )
 
 
+def attribution_breakdown(group: RunGroup, k: int) -> Chart:
+    """The four attribution cells at `k`, a system per row."""
+    return Chart(
+        kind="attribution",
+        stem=f"attribution_k{k}",
+        y="attribution",
+        k=k,
+        out_dir=group.plot_dir,
+        summaries=group.summaries,
+        alt=f"Error attribution at k={k}",
+        title=headline(f"attribution at k={k}"),
+        subtitle=f"{group.label} · newest run per system · shares of judged "
+        f"questions with evidence{freshness([s for s in group.summaries if s.get('k') == k])}",
+    )
+
+
 @dataclass
 class Prose(Section):
     """Static blocks — a title, an introduction, a closing note."""
@@ -433,6 +449,8 @@ class GroupSummary(Section):
     # the compact table at `k` rendered as a figure: the README embeds an image
     # from plots/, where CI blocks hand edits, not editable markdown numbers
     summary: Chart | None = field(default=None, init=False, repr=False)
+    # who lost each question at `k`, the memory or the agent
+    attribution: Chart | None = field(default=None, init=False, repr=False)
     # the same rows broken out by question category, when the runs label them
     categories: Chart | None = field(default=None, init=False, repr=False)
     # the memory's contribution per question category, likewise
@@ -454,6 +472,8 @@ class GroupSummary(Section):
             f"newest run per system{freshness(self.group.summaries)}",
         )
         self.summary = table if table.has_data() else None
+        attribution = attribution_breakdown(self.group, self.k)
+        self.attribution = attribution if attribution.has_data() else None
         breakdown = category_breakdown(self.group, self.k)
         # a dataset whose runs carry no question labels simply has no table
         self.categories = breakdown if breakdown.has_data() else None
@@ -484,7 +504,11 @@ class GroupSummary(Section):
 
     def charts(self) -> list[Chart]:
         """The group's summary tables, its k sweeps, and their spend twins."""
-        tables = [c for c in (self.summary, self.categories, self.lifts) if c]
+        tables = [
+            c
+            for c in (self.summary, self.attribution, self.categories, self.lifts)
+            if c
+        ]
         return tables + list(self.lines) + list(self.spends)
 
     def blocks(self) -> list[Block]:
@@ -498,6 +522,8 @@ class GroupSummary(Section):
                 self.k, dataset=self.group.dataset, variant=self.group.variant or None
             )
             blocks.append(Table(header=header, rows=rows))
+        if self.attribution:
+            blocks.append(Figure(alt=self.attribution.alt, path=self.attribution.path))
         if self.categories:
             blocks.append(Figure(alt=self.categories.alt, path=self.categories.path))
         if self.lifts:

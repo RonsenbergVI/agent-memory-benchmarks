@@ -373,3 +373,55 @@ def test_group_summary_breaks_the_lift_down_by_category():
     header, rows = section.lifts._category_table()
     assert header == ["system", "version", "temporal", "overall"]
     assert rows[0] == ["alpha", "1.0", "**0.200**", "**0.540**"]
+
+
+def test_attribution_cells_table_bolds_the_best_per_column():
+    from amb.reporting.run import ComparisonReport
+
+    report = ComparisonReport(
+        [
+            _attributed("alpha", 10, found=0.6, when_found=0.9),
+            _attributed("beta", 10, found=0.8, when_found=0.5),
+        ]
+    )
+    header, rows = report.attribution_cells_table(10)
+    assert header == [
+        "system",
+        "version",
+        "correct (found, right)",
+        "agent fault (found, wrong)",
+        "memory fault (missed, wrong)",
+        "lucky (missed, right)",
+        "n",
+    ]
+    # most correct first; correct is best high, both faults best low, lucky never bold
+    assert rows[0] == [
+        "alpha",
+        "1.0",
+        "**0.540**",
+        "**0.060**",
+        "0.400",
+        "0.000",
+        "100",
+    ]
+    assert rows[1] == ["beta", "1.0", "0.400", "0.400", "**0.200**", "0.000", "100"]
+    assert report.attribution_cells_table(5) == ([], [])
+
+
+def test_group_summary_shows_attribution_right_after_the_summary():
+    from amb.contracts import Figure
+    from amb.reporting.report import RunGroup
+    from amb.reporting.run import ComparisonReport
+    from amb.reporting.sections import GroupSummary
+
+    run = _attributed("alpha", 10, 0.6, 0.9)
+    section = GroupSummary(
+        RunGroup(key=(("dataset", "locomo"),), summaries=[run]),
+        ComparisonReport([run]),
+        k=10,
+    )
+    assert section.attribution is not None
+    assert section.attribution.path.name == "attribution_k10.png"
+    assert section.attribution in section.charts()
+    figures = [b.path.name for b in section.blocks() if isinstance(b, Figure)]
+    assert figures[:2] == ["summary_k10.png", "attribution_k10.png"]

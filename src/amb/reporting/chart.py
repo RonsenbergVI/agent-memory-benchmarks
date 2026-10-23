@@ -39,7 +39,7 @@ class Chart:
     `Section.charts()` declares, and `amb plot all` draws exactly those.
     """
 
-    kind: str  # bars | lines | scatter | table | categories
+    kind: str  # bars | lines | scatter | table | categories | attribution
     stem: str
     y: str
     out_dir: Path
@@ -92,6 +92,9 @@ class Chart:
             case "categories":
                 _, rows = self._category_table()
                 return rows
+            case "attribution":
+                _, rows = self._attribution_table()
+                return rows
             case _:
                 raise ValueError(f"unknown chart kind {self.kind!r}")
 
@@ -110,6 +113,12 @@ class Chart:
         return ComparisonReport(self.scoped()).category_table(
             self.k or 10, metric=self.y
         )
+
+    def _attribution_table(self) -> tuple[list[str], list[list[str]]]:
+        """The attribution table this chart renders, a system per row."""
+        from amb.reporting.run import ComparisonReport
+
+        return ComparisonReport(self.scoped()).attribution_cells_table(self.k or 10)
 
     def has_data(self) -> bool:
         """Whether any run in scope reports what this chart plots.
@@ -176,10 +185,12 @@ class Chart:
                     baseline=floor,
                     dark=dark,
                 )
-            case "table" | "categories":
-                header, rows = (
-                    self._table() if self.kind == "table" else self._category_table()
-                )
+            case "table" | "categories" | "attribution":
+                header, rows = {
+                    "table": self._table,
+                    "categories": self._category_table,
+                    "attribution": self._attribution_table,
+                }[self.kind]()
                 return plots.table(
                     header,
                     rows,

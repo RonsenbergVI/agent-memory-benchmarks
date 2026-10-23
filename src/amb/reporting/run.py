@@ -49,6 +49,15 @@ ATTRIBUTION_BRANCHES = {
     "missed": ("missed", "correct_when_missed", "without evidence"),
 }
 
+# the attribution table's cells: (cell, column label, which way is best); lucky
+# is right without the evidence, no credit to the memory, so it is never bold
+ATTRIBUTION_COLUMNS = (
+    ("correct", "correct (found, right)", max),
+    ("agent_fault", "agent fault (found, wrong)", min),
+    ("memory_fault", "memory fault (missed, wrong)", min),
+    ("lucky", "lucky (missed, right)", None),
+)
+
 
 def run_date(run_id: str | None) -> str:
     """A run's date, read off its timestamp id (YYYY-MM-DD, or '')."""
@@ -527,6 +536,44 @@ class ComparisonReport(Report):
                     f"{cells[rate]:.3f}",
                 ]
             )
+        return header, rows
+
+    def attribution_cells_table(
+        self, k: int = 10, dataset: str | None = None, variant: str | None = None
+    ) -> tuple[list[str], list[list[str]]]:
+        """Build the attribution table: a system per row, its four cells as shares.
+
+        Each row sums to 1 over the judged, evidence-labelled questions `n`.
+        The best value per column is bold; runs scored before the metric
+        existed are left out rather than shown blank.
+
+        Returns:
+            The header labels and the formatted rows, most correct first.
+        """
+        ranked = [
+            s
+            for s in self._ranked_at_k(k, dataset, variant)
+            if (s.get("attribution") or {}).get("n")
+        ]
+        if not ranked:
+            return [], []
+        ranked.sort(key=lambda s: (-s["attribution"]["correct"], s.get("system", "")))
+        best = {
+            cell: pick(s["attribution"][cell] for s in ranked)
+            for cell, _, pick in ATTRIBUTION_COLUMNS
+            if pick is not None
+        }
+        header = ["system", "version", *(label for _, label, _ in ATTRIBUTION_COLUMNS)]
+        header.append("n")
+        rows = []
+        for s in ranked:
+            cells = s["attribution"]
+            row = [str(s.get("system", "?")), str(s.get("system_version") or "")]
+            for cell, _, _ in ATTRIBUTION_COLUMNS:
+                text = f"{cells[cell]:.3f}"
+                row.append(f"**{text}**" if cells[cell] == best.get(cell) else text)
+            row.append(f"{cells['n']:,}")
+            rows.append(row)
         return header, rows
 
     def lift_table(
