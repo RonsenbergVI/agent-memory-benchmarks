@@ -392,19 +392,10 @@ def test_attribution_cells_table_bolds_the_best_per_column():
         "agent fault (found, wrong)",
         "memory fault (missed, wrong)",
         "lucky (missed, right)",
-        "n",
     ]
     # most correct first; correct is best high, both faults best low, lucky never bold
-    assert rows[0] == [
-        "alpha",
-        "1.0",
-        "**0.540**",
-        "**0.060**",
-        "0.400",
-        "0.000",
-        "100",
-    ]
-    assert rows[1] == ["beta", "1.0", "0.400", "0.400", "**0.200**", "0.000", "100"]
+    assert rows[0] == ["alpha", "1.0", "**0.540**", "**0.060**", "0.400", "0.000"]
+    assert rows[1] == ["beta", "1.0", "0.400", "0.400", "**0.200**", "0.000"]
     assert report.attribution_cells_table(5) == ([], [])
 
 

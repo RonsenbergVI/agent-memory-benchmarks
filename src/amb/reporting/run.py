@@ -543,7 +543,7 @@ class ComparisonReport(Report):
     ) -> tuple[list[str], list[list[str]]]:
         """Build the attribution table: a system per row, its four cells as shares.
 
-        Each row sums to 1 over the judged, evidence-labelled questions `n`.
+        Each row sums to 1 over the judged, evidence-labelled questions.
         The best value per column is bold; runs scored before the metric
         existed are left out rather than shown blank.
 
@@ -564,7 +564,6 @@ class ComparisonReport(Report):
             if pick is not None
         }
         header = ["system", "version", *(label for _, label, _ in ATTRIBUTION_COLUMNS)]
-        header.append("n")
         rows = []
         for s in ranked:
             cells = s["attribution"]
@@ -572,7 +571,6 @@ class ComparisonReport(Report):
             for cell, _, _ in ATTRIBUTION_COLUMNS:
                 text = f"{cells[cell]:.3f}"
                 row.append(f"**{text}**" if cells[cell] == best.get(cell) else text)
-            row.append(f"{cells['n']:,}")
             rows.append(row)
         return header, rows
 
