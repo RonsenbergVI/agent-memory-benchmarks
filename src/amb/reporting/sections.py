@@ -23,18 +23,7 @@
 from dataclasses import dataclass, field
 
 from amb.base.reporting import Section
-from amb.constants import (
-    ATTRIBUTION_FOUND,
-    ATTRIBUTION_INTRO,
-    ATTRIBUTION_MISSED,
-    CI_SUFFIX,
-    HEADLINE,
-    LATENCY,
-    LIFT,
-    LIFT_INTRO,
-    RANKING,
-    TOKENS,
-)
+from amb.constants import CI_SUFFIX, HEADLINE, LATENCY, TOKENS
 from amb.contracts import Block, Figure, Heading, Paragraph, Rule, Table
 from amb.reporting.chart import Chart
 from amb.reporting.helpers import headline, pretty, slug
@@ -74,35 +63,19 @@ def spend_sweep(group: RunGroup, stem: str, metric: str) -> Chart:
 
 
 def category_breakdown(group: RunGroup, k: int) -> Chart:
-    """Retrieval recall per question category at `k`, a system per row.
+    """Judge accuracy per question category at `k`, a system per row.
 
     One definition for both reports, since they share its image path.
     """
     return Chart(
         kind="categories",
         stem=f"categories_k{k}",
-        y=RANKING,
+        y=HEADLINE,
         k=k,
         out_dir=group.plot_dir,
         summaries=group.summaries,
-        alt=f"Retrieval recall by question category at k={k}",
-        title=headline(f"recall by question category at k={k}"),
-        subtitle=f"{group.label} · newest run per system"
-        f"{freshness([s for s in group.summaries if s.get('k') == k])}",
-    )
-
-
-def lift_breakdown(group: RunGroup, k: int) -> Chart:
-    """Memory lift per question category at `k`, a system per row."""
-    return Chart(
-        kind="categories",
-        stem=f"lift_categories_k{k}",
-        y=LIFT,
-        k=k,
-        out_dir=group.plot_dir,
-        summaries=group.summaries,
-        alt=f"Memory lift by question category at k={k}",
-        title=headline(f"memory lift by question category at k={k}"),
+        alt=f"Judge accuracy by question category at k={k}",
+        title=headline(f"accuracy by question category at k={k}"),
         subtitle=f"{group.label} · newest run per system"
         f"{freshness([s for s in group.summaries if s.get('k') == k])}",
     )
@@ -169,7 +142,7 @@ class GroupCharts(Section):
     sets: list[tuple[int, list[Chart], list[Chart]]] = field(
         default_factory=list, init=False, repr=False
     )
-    # one recall sweep per question category: the breakdown table over k
+    # one accuracy sweep per question category: the breakdown table over k
     category_sweeps: list[Chart] = field(default_factory=list, init=False, repr=False)
     # per k: the question-category breakdown, when the runs label questions
     breakdowns: dict[int, Chart] = field(default_factory=dict, init=False, repr=False)
@@ -228,20 +201,20 @@ class GroupCharts(Section):
         return [s for s in self.group.summaries if s.get("k") == k]
 
     def _category_sweep(self, category: str) -> Chart:
-        """One category's retrieval recall across k, a line per system.
+        """One category's judge accuracy across k, a line per system.
 
         The breakdown table says where a system stands at one k; this says
         whether a bigger budget is what it was missing.
         """
         return Chart(
             kind="lines",
-            stem=f"k_recall_{slug(category)}",
-            y=f"by_category.{category}.{RANKING}",
-            y_label=f"{category} recall",
+            stem=f"k_accuracy_{slug(category)}",
+            y=f"by_category.{category}.{HEADLINE}",
+            y_label=f"{category} accuracy",
             out_dir=self.group.plot_dir,
             summaries=self.group.summaries,
-            alt=f"Retrieval recall vs k for {category} questions",
-            title=headline(f"{category} recall vs k"),
+            alt=f"Judge accuracy vs k for {category} questions",
+            title=headline(f"{category} accuracy vs k"),
             subtitle=f"{self.group.label} · "
             f"newest run per system and k{freshness(self.group.summaries)}",
         )
@@ -333,7 +306,7 @@ class GroupCharts(Section):
             blocks.append(
                 Heading(
                     level=self.level + 1,
-                    text=f"{self.group.label}: recall vs k by question category",
+                    text=f"{self.group.label}: accuracy vs k by question category",
                 )
             )
             blocks.append(
@@ -356,44 +329,11 @@ class GroupCharts(Section):
                 )
                 blocks.append(
                     Paragraph(
-                        text="Where each system finds the evidence, not just how "
-                        "often overall. The best recall in each column is bold."
+                        text="Where each system answers correctly, not just how "
+                        "often overall. The best accuracy in each column is bold."
                     )
                 )
                 blocks.append(Figure(alt=chart.alt, path=chart.path))
-            found, missed = (
-                self.comparison.attribution_table(
-                    k,
-                    dataset=self.group.dataset,
-                    variant=self.group.variant or None,
-                    branch=branch,
-                )
-                for branch in ("found", "missed")
-            )
-            if found[1]:
-                blocks.append(
-                    Heading(
-                        level=self.level + 1,
-                        text=f"{self.group.label}: error analysis (k={k})",
-                    )
-                )
-                blocks.append(Paragraph(text=ATTRIBUTION_INTRO))
-                blocks.append(Paragraph(text=ATTRIBUTION_FOUND))
-                blocks.append(Table(header=found[0], rows=found[1]))
-                blocks.append(Paragraph(text=ATTRIBUTION_MISSED))
-                blocks.append(Table(header=missed[0], rows=missed[1]))
-            header, rows = self.comparison.lift_table(
-                k, dataset=self.group.dataset, variant=self.group.variant or None
-            )
-            if rows:
-                blocks.append(
-                    Heading(
-                        level=self.level + 1,
-                        text=f"{self.group.label}: memory lift (k={k})",
-                    )
-                )
-                blocks.append(Paragraph(text=LIFT_INTRO))
-                blocks.append(Table(header=header, rows=rows))
             if bars:
                 blocks.append(
                     Heading(
@@ -418,8 +358,8 @@ class GroupCharts(Section):
                 )
                 blocks.append(
                     Paragraph(
-                        text="Answer accuracy and retrieval recall against memory "
-                        "tokens spent and search latency."
+                        text="Answer accuracy against memory tokens spent and "
+                        "search latency."
                     )
                 )
                 blocks += [Figure(alt=c.alt, path=c.path) for c in scatters]
@@ -445,8 +385,6 @@ class GroupSummary(Section):
     summary: Chart | None = field(default=None, init=False, repr=False)
     # the same rows broken out by question category, when the runs label them
     categories: Chart | None = field(default=None, init=False, repr=False)
-    # the memory's contribution per question category, likewise
-    lifts: Chart | None = field(default=None, init=False, repr=False)
     skipped: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
@@ -454,7 +392,7 @@ class GroupSummary(Section):
         table = Chart(
             kind="table",
             stem=f"summary_k{self.k}",
-            y=RANKING,
+            y=HEADLINE,
             k=self.k,
             out_dir=self.group.plot_dir,
             summaries=self.group.summaries,
@@ -467,8 +405,6 @@ class GroupSummary(Section):
         breakdown = category_breakdown(self.group, self.k)
         # a dataset whose runs carry no question labels simply has no table
         self.categories = breakdown if breakdown.has_data() else None
-        lifts = lift_breakdown(self.group, self.k)
-        self.lifts = lifts if lifts.has_data() else None
         planned = [
             Chart(
                 kind="lines",
@@ -494,7 +430,7 @@ class GroupSummary(Section):
 
     def charts(self) -> list[Chart]:
         """The group's summary tables, its k sweeps, and their spend twins."""
-        tables = [c for c in (self.summary, self.categories, self.lifts) if c]
+        tables = [c for c in (self.summary, self.categories) if c]
         return tables + list(self.lines) + list(self.spends)
 
     def blocks(self) -> list[Block]:
@@ -510,8 +446,6 @@ class GroupSummary(Section):
             blocks.append(Table(header=header, rows=rows))
         if self.categories:
             blocks.append(Figure(alt=self.categories.alt, path=self.categories.path))
-        if self.lifts:
-            blocks.append(Figure(alt=self.lifts.alt, path=self.lifts.path))
         blocks += [Figure(alt=c.alt, path=c.path) for c in self.lines]
         blocks += [Figure(alt=c.alt, path=c.path) for c in self.spends]
         return blocks

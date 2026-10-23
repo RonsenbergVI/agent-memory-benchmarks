@@ -352,18 +352,6 @@ class Runner:
             self.callbacks.on_question_end(sample, qa, record)
             data.add_question(record)
 
-    def _log_retrieval(self, qa: QAPair, hits: list, row: dict) -> None:
-        """Trace one question's retrieval at debug level."""
-        logger.bind(scope=self.name).debug(
-            "{}: {} hits, sessions {} vs {}, turns {} vs {}",
-            qa.question_id,
-            len(hits),
-            len(row.get("retrieved_session_ids") or []),
-            row.get("evidence_session_ids"),
-            len(row.get("retrieved_turn_ids") or []),
-            row.get("evidence_turn_ids"),
-        )
-
     def _run_question(self, system: Memory, sample: Sample, qa: QAPair) -> dict:
         cfg = self.config
         row = {
@@ -384,37 +372,9 @@ class Runner:
                 qa.question, toolset, cfg.model, question_date=qa.question_date
             )
             row["answer_s"] = time.perf_counter() - t0
-            # retrieval is scored on everything the agent chose to look at
-            hits = toolset.retrieved
             row["search_s"] = toolset.search_s
             row["num_searches"] = toolset.num_searches
-            row["num_hits"] = len(hits)
-
-            # session ids are the comparable headline; turn ids the stricter
-            # bonus for systems that store verbatim turns
-            scored = False
-            if qa.evidence_session_ids and (
-                not hits or any(h.session_ids for h in hits)
-            ):
-                row["retrieved_session_ids"] = [s for h in hits for s in h.session_ids]
-                row["evidence_session_ids"] = qa.evidence_session_ids
-                scored = True
-            if qa.evidence_turn_ids and (not hits or any(h.turn_ids for h in hits)):
-                row["retrieved_turn_ids"] = [t for h in hits for t in h.turn_ids]
-                row["evidence_turn_ids"] = qa.evidence_turn_ids
-                scored = True
-            if scored:
-                self._log_retrieval(qa, hits, row)
-            elif hits and (qa.evidence_turn_ids or qa.evidence_session_ids):
-                logger.bind(scope=self.name).warning(
-                    "{} returned {} hits for {} with no usable provenance "
-                    "(populate MemoryHit.turn_ids or session_ids); the "
-                    "question is left out of retrieval metrics instead of "
-                    "scoring a false 0.0",
-                    self.name,
-                    len(hits),
-                    qa.question_id,
-                )
+            row["num_hits"] = toolset.num_hits
 
             row["predicted_answer"] = generation.text
             row["input_tokens"] = generation.input_tokens

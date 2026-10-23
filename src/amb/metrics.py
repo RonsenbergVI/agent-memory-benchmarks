@@ -27,7 +27,6 @@ from collections import Counter
 from typing import Any, ClassVar
 
 from amb.base import Metric, Scorer
-from amb.base.metric import Record
 
 
 def normalize_answer(text: str) -> str:
@@ -146,14 +145,6 @@ class Mean(Metric):
         self._total = 0.0
 
 
-class DistinctMean(Mean):
-    """Mean number of distinct values in list-valued observations."""
-
-    def accumulate(self, value: list) -> None:
-        """Add how many distinct values the observation carried."""
-        super().accumulate(len(set(value)))
-
-
 class WilsonInterval(Metric):
     """The 95% Wilson interval of a binary outcome's success rate.
 
@@ -258,201 +249,6 @@ class ExactMatch(Scorer, Mean):
         return float(normalize_answer(predicted) == normalize_answer(gold))
 
 
-class RetrievalMetric(Scorer, Mean):
-    """Macro-average of one scores() component at one evidence level.
-
-    Session-level (`retrieval_*`) is the comparable headline — every system
-    can attest a memory's session. Turn-level (`turn_*`) is a stricter bonus
-    for verbatim-turn stores. The Scorer guard skips rows missing the labels.
-    """
-
-    component: ClassVar[str]
-    name_: ClassVar[str]
-
-    def __init__(self) -> None:
-        """Report under the subclass's metric name."""
-        super().__init__(self.name_)
-
-    def score(self, predicted: list[str], gold: list[str]) -> float:
-        """Return this metric's component of the retrieval scores."""
-        return self.scores(predicted, gold)[self.component]
-
-    @staticmethod
-    def scores(retrieved_ids: list[str], evidence_ids: list[str]) -> dict[str, float]:
-        """Precision/recall/F1 of retrieved ids against ground-truth evidence.
-
-        Ids are turn- or session-level, whichever the dataset labels.
-        """
-        retrieved, evidence = set(retrieved_ids), set(evidence_ids)
-        hits = len(retrieved & evidence)
-        precision = hits / len(retrieved) if retrieved else 0.0
-        recall = hits / len(evidence) if evidence else 0.0
-        f1 = (
-            2 * precision * recall / (precision + recall) if precision + recall else 0.0
-        )
-        return {
-            "retrieval_precision": precision,
-            "retrieval_recall": recall,
-            "retrieval_f1": f1,
-        }
-
-
-class RetrievalPrecision(RetrievalMetric):
-    """Share of retrieved sessions that were evidence (all systems)."""
-
-    predicted_key = "retrieved_session_ids"
-    gold_key = "evidence_session_ids"
-    component = "retrieval_precision"
-    name_ = "retrieval_precision"
-
-
-class RetrievalRecall(RetrievalMetric):
-    """Share of evidence sessions that were retrieved (all systems)."""
-
-    predicted_key = "retrieved_session_ids"
-    gold_key = "evidence_session_ids"
-    component = "retrieval_recall"
-    name_ = "retrieval_recall"
-
-
-class RetrievalF1(RetrievalMetric):
-    """Harmonic mean of session precision and recall (all systems)."""
-
-    predicted_key = "retrieved_session_ids"
-    gold_key = "evidence_session_ids"
-    component = "retrieval_f1"
-    name_ = "retrieval_f1"
-
-
-class TurnPrecision(RetrievalMetric):
-    """Share of retrieved turns that were evidence (turn-storing systems)."""
-
-    predicted_key = "retrieved_turn_ids"
-    gold_key = "evidence_turn_ids"
-    component = "retrieval_precision"
-    name_ = "turn_precision"
-
-
-class TurnRecall(RetrievalMetric):
-    """Share of evidence turns that were retrieved (turn-storing systems)."""
-
-    predicted_key = "retrieved_turn_ids"
-    gold_key = "evidence_turn_ids"
-    component = "retrieval_recall"
-    name_ = "turn_recall"
-
-
-class TurnF1(RetrievalMetric):
-    """Harmonic mean of turn precision and recall (turn-storing systems)."""
-
-    predicted_key = "retrieved_turn_ids"
-    gold_key = "evidence_turn_ids"
-    component = "retrieval_f1"
-    name_ = "turn_f1"
-
-
-class Attribution(Metric):
-    """Who lost a question: the memory that missed, or the agent that fumbled.
-
-    Each judged question with evidence labels lands in one of four cells,
-    crossing "every evidence session retrieved" with the judge's verdict:
-    `correct`, `agent_fault` (found, wrong), `memory_fault` (missed, wrong)
-    and `lucky` (missed, right). Two rates factor them: `found` is the
-    memory's, `correct_when_found` the agent's — flat across systems unless
-    a memory hands back evidence in a form the agent cannot use. Questions
-    without evidence labels or a verdict are left out, never scored as misses.
-    """
-
-    CELLS: ClassVar[tuple[str, ...]] = (
-        "correct",
-        "agent_fault",
-        "memory_fault",
-        "lucky",
-    )
-
-    def __init__(self, name: str = "attribution") -> None:
-        """Start with every cell empty."""
-        super().__init__(name)
-        self._cells: dict[str, int] = dict.fromkeys(self.CELLS, 0)
-
-    def update_state(self, record: Record) -> None:
-        """Place the record in its cell when it carries labels and a verdict."""
-        retrieved = getattr(record, "retrieved_session_ids", None)
-        evidence = getattr(record, "evidence_session_ids", None)
-        verdict = getattr(record, "judge_correct", None)
-        if retrieved is None or not evidence or verdict is None:
-            return
-        self.accumulate((set(evidence) <= set(retrieved), bool(verdict)))
-        self.count += 1
-
-    def accumulate(self, value: tuple[bool, bool]) -> None:
-        """Count one (found, correct) pair in its cell."""
-        found, correct = value
-        if found:
-            self._cells["correct" if correct else "agent_fault"] += 1
-        else:
-            self._cells["lucky" if correct else "memory_fault"] += 1
-
-    def result(self) -> dict[str, float | int]:
-        """Return each cell's share, each branch's rate and its split, and `n`."""
-        n = self.count
-        c = self._cells
-        found = c["correct"] + c["agent_fault"]
-        missed = n - found
-        shares = {cell: (c[cell] / n if n else 0.0) for cell in self.CELLS}
-        correct_when_found = c["correct"] / found if found else 0.0
-        correct_when_missed = c["lucky"] / missed if missed else 0.0
-        return {
-            **shares,
-            "found": found / n if n else 0.0,
-            "missed": missed / n if n else 0.0,
-            "correct_when_found": correct_when_found,
-            "correct_when_missed": correct_when_missed,
-            # accuracy the memory added over the agent's rate without evidence
-            "lift": (found / n) * (correct_when_found - correct_when_missed)
-            if n
-            else 0.0,
-            "n": n,
-        }
-
-    def reset_state(self) -> None:
-        """Empty every cell."""
-        super().reset_state()
-        self._cells = dict.fromkeys(self.CELLS, 0)
-
-
-class MemoryLift(Metric):
-    """The memory's contribution as one top-level number: `Attribution`'s lift.
-
-    `found × (correct_when_found − correct_when_missed)`: the accuracy points
-    the memory added over what the agent answers without the evidence. A
-    memory that finds everything but returns it unusably earns little; so
-    does one that returns clean facts but misses half the questions.
-    """
-
-    def __init__(self, name: str = "memory_lift") -> None:
-        """Report under `memory_lift`, a top-level float the tables pick up."""
-        super().__init__(name)
-        self._cells = Attribution()
-
-    def update_state(self, record: Record) -> None:
-        """Place the record as `Attribution` does."""
-        self._cells.update_state(record)
-        self.count = self._cells.count
-
-    def accumulate(self, value: Any) -> None:
-        """Accumulation happens in update_state, so nothing to do."""
-
-    def result(self) -> float:
-        """Return the lift."""
-        return float(self._cells.result()["lift"])
-
-    def reset_state(self) -> None:
-        """Empty the cells."""
-        super().reset_state()
-        self._cells.reset_state()
-
-
 def default_metrics() -> list[Metric]:
     """The standard metric set a run is scored with when none is given.
 
@@ -465,21 +261,12 @@ def default_metrics() -> list[Metric]:
         Sum("ingest.total_sessions", "num_sessions"),
         Sum("ingest.questions_dropped", "questions_dropped"),
         Sum("conversation.total_s", "conversation_s"),
-        RetrievalPrecision(),
-        RetrievalRecall(),
-        RetrievalF1(),
-        TurnPrecision(),
-        TurnRecall(),
-        TurnF1(),
-        # k is the budget granted; these are what the system spent of it
+        # k is the budget granted; this is what the system spent of it
         Mean("hits_per_query", "num_hits"),
-        DistinctMean("sessions_per_query", "retrieved_session_ids"),
         AnswerF1(),
         ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),
         WilsonInterval("judge_accuracy_ci", "judge_correct"),
-        Attribution(),
-        MemoryLift(),
         LatencyPercentiles("search_latency", "search_s"),
         LatencyPercentiles("answer_latency", "answer_s"),
         Mean("tokens.input_per_question", "input_tokens"),
@@ -497,13 +284,8 @@ def default_category_metrics() -> list[Metric]:
     metrics only, since categories are a property of questions, not ingestion.
     """
     return [
-        RetrievalPrecision(),
-        RetrievalRecall(),
-        RetrievalF1(),
         AnswerF1(),
         ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),
         WilsonInterval("judge_accuracy_ci", "judge_correct"),
-        Attribution(),
-        MemoryLift(),
     ]

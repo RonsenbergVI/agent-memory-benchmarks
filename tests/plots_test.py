@@ -27,7 +27,7 @@ from pathlib import Path
 from amb.reporting.chart import Chart
 
 
-def _summary(system: str, accuracy: float, recall: float = 0.9) -> dict:
+def _summary(system: str, accuracy: float) -> dict:
     return {
         "run_id": "20260820T000000Z",
         "system": system,
@@ -40,7 +40,6 @@ def _summary(system: str, accuracy: float, recall: float = 0.9) -> dict:
             "high": accuracy + 0.05,
             "n": 300,
         },
-        "retrieval_recall": recall,
         "memory_tokens_total": 1000.0,
         "search_latency": {"p50_s": 0.1},
     }
@@ -50,7 +49,7 @@ def _table_chart(tmp_path: Path, summaries: list[dict], k: int = 10) -> Chart:
     return Chart(
         kind="table",
         stem=f"summary_k{k}",
-        y="retrieval_recall",
+        y="judge_accuracy",
         k=k,
         out_dir=tmp_path,
         summaries=summaries,
@@ -60,12 +59,9 @@ def _table_chart(tmp_path: Path, summaries: list[dict], k: int = 10) -> Chart:
 
 
 def test_table_chart_ranks_and_renders(tmp_path: Path) -> None:
-    chart = _table_chart(
-        tmp_path, [_summary("aaa", 0.6, recall=0.7), _summary("bbb", 0.5, recall=0.8)]
-    )
+    chart = _table_chart(tmp_path, [_summary("bbb", 0.5), _summary("aaa", 0.6)])
     assert chart.has_data()
-    # ranked by recall, not accuracy: the less accurate system leads
-    assert [row[0] for row in chart.data()] == ["bbb", "aaa"]
+    assert [row[0] for row in chart.data()] == ["aaa", "bbb"]
     path = chart.draw()
     assert path == tmp_path / "summary_k10.png"
     assert path is not None
@@ -164,7 +160,7 @@ def test_spend_sweep_is_dropped_for_runs_scored_before_it(tmp_path: Path) -> Non
 
     summaries = [_summary("aaa", 0.5)]
     group = RunGroup(key=(("dataset", "locomo"),), summaries=summaries)
-    assert not spend_sweep(group, "f1", "retrieval_f1").has_data()
+    assert not spend_sweep(group, "accuracy", "judge_accuracy").has_data()
     section = GroupSummary(group, ComparisonReport(summaries), k=10)
     assert section.spends == []
     assert not any(c.stem.startswith("hits_") for c in section.charts())

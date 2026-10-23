@@ -31,13 +31,9 @@ class QuestionRecord(BaseModel):
     question: str | None = None
     category: str | None = None
     gold_answer: str | None = None
-    # retrieval observations
+    # search observations
     search_s: float | None = None
     num_hits: int | None = None
-    retrieved_session_ids: list[str] | None = None
-    evidence_session_ids: list[str] | None = None
-    retrieved_turn_ids: list[str] | None = None
-    evidence_turn_ids: list[str] | None = None
     # answer observations (whenever an answer model ran)
     predicted_answer: str | None = None
     answer_s: float | None = None

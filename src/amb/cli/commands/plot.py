@@ -262,10 +262,10 @@ def plot_k(  # noqa: PLR0913 - one option per axis/filter, all independent
 @click.option(
     "--metric",
     "metric_filter",
-    type=click.Choice(["accuracy", "recall"]),
+    type=click.Choice(["accuracy"]),
     multiple=True,
-    help="restrict to these scores (default: both — judge accuracy, the "
-    "headline, and retrieval recall). Repeatable",
+    help="restrict to these scores (default: all — today only judge "
+    "accuracy). Repeatable",
 )
 @click.option("--dark", is_flag=True, help="render on the dark chart surface")
 def draw_all(  # noqa: PLR0913 - one option per filter, all independent
