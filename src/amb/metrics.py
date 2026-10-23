@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import math
 import re
 import string
 from collections import Counter
@@ -153,6 +154,42 @@ class DistinctMean(Mean):
         super().accumulate(len(set(value)))
 
 
+class WilsonInterval(Metric):
+    """The 95% Wilson interval of a binary outcome's success rate.
+
+    Accuracy over a few hundred verdicts is a few points of noise either
+    way; the interval travels with it so two systems inside each other's
+    band are never ranked as if they differed. Wilson rather than the
+    normal approximation: it stays inside 0–1 and honest near the ends.
+    """
+
+    Z: ClassVar[float] = 1.96
+
+    def __init__(self, name: str, key: str | None = None) -> None:
+        """Start with no verdicts."""
+        super().__init__(name, key)
+        self._successes = 0
+
+    def accumulate(self, value: Any) -> None:
+        """Count one verdict."""
+        self._successes += bool(value)
+
+    def result(self) -> dict[str, float]:
+        """Return the interval bounds and the number of verdicts behind them."""
+        n, z = self.count, self.Z
+        if not n:
+            return {"low": 0.0, "high": 0.0, "n": 0}
+        p = self._successes / n
+        centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+        half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+        return {"low": max(0.0, centre - half), "high": min(1.0, centre + half), "n": n}
+
+    def reset_state(self) -> None:
+        """Forget every verdict."""
+        super().reset_state()
+        self._successes = 0
+
+
 class LatencyPercentiles(Metric):
     """p50/p95/p99 over observed latencies, in seconds."""
 
@@ -222,14 +259,13 @@ class ExactMatch(Scorer, Mean):
 
 
 class RetrievalMetric(Scorer, Mean):
-    """Macro-average of one scores() component over the evidence turns.
+    """Macro-average of one scores() component at one evidence level.
 
-    Retrieved turns are as fine as the source unit each system keeps
-    (`turn_provenance`). The Scorer guard skips rows missing the labels.
+    Session-level (`retrieval_*`) is the comparable headline — every system
+    can attest a memory's session. Turn-level (`turn_*`) is a stricter bonus
+    for verbatim-turn stores. The Scorer guard skips rows missing the labels.
     """
 
-    predicted_key = "retrieved_turn_ids"
-    gold_key = "evidence_turn_ids"
     component: ClassVar[str]
     name_: ClassVar[str]
 
@@ -243,7 +279,10 @@ class RetrievalMetric(Scorer, Mean):
 
     @staticmethod
     def scores(retrieved_ids: list[str], evidence_ids: list[str]) -> dict[str, float]:
-        """Precision/recall/F1 of retrieved turn ids against the evidence turns."""
+        """Precision/recall/F1 of retrieved ids against ground-truth evidence.
+
+        Ids are turn- or session-level, whichever the dataset labels.
+        """
         retrieved, evidence = set(retrieved_ids), set(evidence_ids)
         hits = len(retrieved & evidence)
         precision = hits / len(retrieved) if retrieved else 0.0
@@ -251,27 +290,64 @@ class RetrievalMetric(Scorer, Mean):
         f1 = (
             2 * precision * recall / (precision + recall) if precision + recall else 0.0
         )
-        return {"precision": precision, "recall": recall, "f1": f1}
+        return {
+            "retrieval_precision": precision,
+            "retrieval_recall": recall,
+            "retrieval_f1": f1,
+        }
+
+
+class RetrievalPrecision(RetrievalMetric):
+    """Share of retrieved sessions that were evidence (all systems)."""
+
+    predicted_key = "retrieved_session_ids"
+    gold_key = "evidence_session_ids"
+    component = "retrieval_precision"
+    name_ = "retrieval_precision"
+
+
+class RetrievalRecall(RetrievalMetric):
+    """Share of evidence sessions that were retrieved (all systems)."""
+
+    predicted_key = "retrieved_session_ids"
+    gold_key = "evidence_session_ids"
+    component = "retrieval_recall"
+    name_ = "retrieval_recall"
+
+
+class RetrievalF1(RetrievalMetric):
+    """Harmonic mean of session precision and recall (all systems)."""
+
+    predicted_key = "retrieved_session_ids"
+    gold_key = "evidence_session_ids"
+    component = "retrieval_f1"
+    name_ = "retrieval_f1"
 
 
 class TurnPrecision(RetrievalMetric):
-    """Share of retrieved turns that were evidence."""
+    """Share of retrieved turns that were evidence (turn-storing systems)."""
 
-    component = "precision"
+    predicted_key = "retrieved_turn_ids"
+    gold_key = "evidence_turn_ids"
+    component = "retrieval_precision"
     name_ = "turn_precision"
 
 
 class TurnRecall(RetrievalMetric):
-    """Share of evidence turns that were retrieved."""
+    """Share of evidence turns that were retrieved (turn-storing systems)."""
 
-    component = "recall"
+    predicted_key = "retrieved_turn_ids"
+    gold_key = "evidence_turn_ids"
+    component = "retrieval_recall"
     name_ = "turn_recall"
 
 
 class TurnF1(RetrievalMetric):
-    """Harmonic mean of turn precision and recall."""
+    """Harmonic mean of turn precision and recall (turn-storing systems)."""
 
-    component = "f1"
+    predicted_key = "retrieved_turn_ids"
+    gold_key = "evidence_turn_ids"
+    component = "retrieval_f1"
     name_ = "turn_f1"
 
 
@@ -279,7 +355,7 @@ class Attribution(Metric):
     """Who lost a question: the memory that missed, or the agent that fumbled.
 
     Each judged question with evidence labels lands in one of four cells,
-    crossing "every evidence turn retrieved" with the judge's verdict:
+    crossing "every evidence session retrieved" with the judge's verdict:
     `correct`, `agent_fault` (found, wrong), `memory_fault` (missed, wrong)
     and `lucky` (missed, right). Two rates factor them: `found` is the
     memory's, `correct_when_found` the agent's — flat across systems unless
@@ -301,8 +377,8 @@ class Attribution(Metric):
 
     def update_state(self, record: Record) -> None:
         """Place the record in its cell when it carries labels and a verdict."""
-        retrieved = getattr(record, "retrieved_turn_ids", None)
-        evidence = getattr(record, "evidence_turn_ids", None)
+        retrieved = getattr(record, "retrieved_session_ids", None)
+        evidence = getattr(record, "evidence_session_ids", None)
         verdict = getattr(record, "judge_correct", None)
         if retrieved is None or not evidence or verdict is None:
             return
@@ -389,15 +465,19 @@ def default_metrics() -> list[Metric]:
         Sum("ingest.total_sessions", "num_sessions"),
         Sum("ingest.questions_dropped", "questions_dropped"),
         Sum("conversation.total_s", "conversation_s"),
+        RetrievalPrecision(),
+        RetrievalRecall(),
+        RetrievalF1(),
         TurnPrecision(),
         TurnRecall(),
         TurnF1(),
         # k is the budget granted; these are what the system spent of it
         Mean("hits_per_query", "num_hits"),
-        DistinctMean("turns_per_query", "retrieved_turn_ids"),
+        DistinctMean("sessions_per_query", "retrieved_session_ids"),
         AnswerF1(),
         ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),
+        WilsonInterval("judge_accuracy_ci", "judge_correct"),
         Attribution(),
         MemoryLift(),
         LatencyPercentiles("search_latency", "search_s"),
@@ -417,12 +497,13 @@ def default_category_metrics() -> list[Metric]:
     metrics only, since categories are a property of questions, not ingestion.
     """
     return [
-        TurnPrecision(),
-        TurnRecall(),
-        TurnF1(),
+        RetrievalPrecision(),
+        RetrievalRecall(),
+        RetrievalF1(),
         AnswerF1(),
         ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),
+        WilsonInterval("judge_accuracy_ci", "judge_correct"),
         Attribution(),
         MemoryLift(),
     ]

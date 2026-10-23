@@ -60,7 +60,7 @@ import threading
 from contextvars import ContextVar
 from typing import Any, ClassVar
 
-from amb.base import Memory, spanned_turns, split_model
+from amb.base import Memory, split_model
 from amb.constants import DEFAULT_EMBEDDING, DEFAULT_LLM, TOKEN_TRACKING_KEYS
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
@@ -181,7 +181,6 @@ class CogneeMemory(Memory):
     name: ClassVar[str] = "cognee"
     description: ClassVar[str] = "Cognee — embedded knowledge-graph memory"
     sdk_dist: ClassVar[str | None] = "cognee"
-    turn_provenance: ClassVar[str] = "chunk"
     # both through litellm, whose callback books the spend whatever the provider
     llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
     embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
@@ -416,24 +415,6 @@ class CogneeMemory(Memory):
                     )
                 )
         return hits[:k]
-
-    def resolve_turns(
-        self, hits: list[MemoryHit], sessions: list[Session]
-    ) -> list[MemoryHit]:
-        """Narrow each chunk to the turns its text spans.
-
-        A chunk is a verbatim slice of the session transcript
-        `ingest_session` added, so its text locates its turns exactly.
-        """
-        by_id = {session.session_id: session for session in sessions}
-        resolved = []
-        for hit in hits:
-            session = by_id.get(hit.session_ids[0]) if hit.session_ids else None
-            turn_ids = spanned_turns(session, hit.content) if session else []
-            resolved.append(
-                hit.model_copy(update={"turn_ids": turn_ids}) if turn_ids else hit
-            )
-        return super().resolve_turns(resolved, sessions)
 
     def teardown(self) -> None:
         """Empty this conversation's dataset, and only this one.

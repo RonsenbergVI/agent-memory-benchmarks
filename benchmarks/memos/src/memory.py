@@ -308,7 +308,6 @@ class MemOSMemory(Memory):
     name: ClassVar[str] = "memos"
     description: ClassVar[str] = "MemOS — MemCube memory, scheduled OS-style"
     sdk_dist: ClassVar[str | None] = "MemoryOS"
-    turn_provenance: ClassVar[str] = "window"
     # anthropic through `_anthropic_llm_class`: MemOS ships no backend for it
     llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
     embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
@@ -510,63 +509,17 @@ class MemOSMemory(Memory):
                         content=item.memory,
                         # the recall stage's similarity, kept by the reranker
                         score=getattr(metadata, "relativity", None),
-                        # a memory is an extraction over a window of a
-                        # session; resolve_turns narrows it to that window
+                        # session-level only: a memory is an extraction
+                        # over a window of a session, not a verbatim turn
                         session_ids=[session_id] if session_id else [],
                         metadata={
                             "memory_id": item.id,
                             "memory_type": getattr(metadata, "memory_type", None),
                             "key": getattr(metadata, "key", None),
-                            "sources": self._source_texts(metadata),
                         },
                     )
                 )
         return hits[:k]
-
-    @staticmethod
-    def _source_texts(metadata: Any) -> list[str]:
-        """The messages a memory was extracted from, as this adapter sent them."""
-        texts = []
-        for source in getattr(metadata, "sources", None) or []:
-            content = (
-                source.get("content")
-                if isinstance(source, dict)
-                else getattr(source, "content", None)
-            )
-            if content:
-                texts.append(str(content))
-        return texts
-
-    def resolve_turns(
-        self, hits: list[MemoryHit], sessions: list[Session]
-    ) -> list[MemoryHit]:
-        """Narrow each memory to the turns of the window MemOS extracted it from.
-
-        MemOS drops the `message_id` it is given but keeps each source
-        message's content verbatim, and that content is one turn's
-        `speaker: text` line within the memory's session.
-        """
-        index: dict[str, dict[str, list[str]]] = {}
-        for session in sessions:
-            lines = index.setdefault(session.session_id, {})
-            for turn in session.turns:
-                lines.setdefault(f"{turn.speaker}: {turn.text}", []).append(
-                    turn.turn_id
-                )
-        resolved = []
-        for hit in hits:
-            lines = index.get(hit.session_ids[0], {}) if hit.session_ids else {}
-            turn_ids = list(
-                dict.fromkeys(
-                    turn_id
-                    for text in hit.metadata.get("sources", [])
-                    for turn_id in lines.get(text, [])
-                )
-            )
-            resolved.append(
-                hit.model_copy(update={"turn_ids": turn_ids}) if turn_ids else hit
-            )
-        return super().resolve_turns(resolved, sessions)
 
     def _text_memory(self) -> Any:
         """This conversation's textual memory, or None if nothing was built."""

@@ -27,7 +27,7 @@ from pathlib import Path
 from amb.reporting.chart import Chart
 
 
-def _summary(system: str, accuracy: float, f1: float = 0.9) -> dict:
+def _summary(system: str, accuracy: float, recall: float = 0.9) -> dict:
     return {
         "run_id": "20260820T000000Z",
         "system": system,
@@ -35,7 +35,12 @@ def _summary(system: str, accuracy: float, f1: float = 0.9) -> dict:
         "dataset": "locomo",
         "k": 10,
         "judge_accuracy": accuracy,
-        "turn_f1": f1,
+        "judge_accuracy_ci": {
+            "low": accuracy - 0.05,
+            "high": accuracy + 0.05,
+            "n": 300,
+        },
+        "retrieval_recall": recall,
         "memory_tokens_total": 1000.0,
         "search_latency": {"p50_s": 0.1},
     }
@@ -45,7 +50,7 @@ def _table_chart(tmp_path: Path, summaries: list[dict], k: int = 10) -> Chart:
     return Chart(
         kind="table",
         stem=f"summary_k{k}",
-        y="turn_f1",
+        y="retrieval_recall",
         k=k,
         out_dir=tmp_path,
         summaries=summaries,
@@ -56,10 +61,10 @@ def _table_chart(tmp_path: Path, summaries: list[dict], k: int = 10) -> Chart:
 
 def test_table_chart_ranks_and_renders(tmp_path: Path) -> None:
     chart = _table_chart(
-        tmp_path, [_summary("aaa", 0.6, f1=0.7), _summary("bbb", 0.5, f1=0.8)]
+        tmp_path, [_summary("aaa", 0.6, recall=0.7), _summary("bbb", 0.5, recall=0.8)]
     )
     assert chart.has_data()
-    # ranked by turn F1, not accuracy: the less accurate system leads
+    # ranked by recall, not accuracy: the less accurate system leads
     assert [row[0] for row in chart.data()] == ["bbb", "aaa"]
     path = chart.draw()
     assert path == tmp_path / "summary_k10.png"
@@ -159,44 +164,29 @@ def test_spend_sweep_is_dropped_for_runs_scored_before_it(tmp_path: Path) -> Non
 
     summaries = [_summary("aaa", 0.5)]
     group = RunGroup(key=(("dataset", "locomo"),), summaries=summaries)
-    assert not spend_sweep(group, "f1", "turn_f1").has_data()
+    assert not spend_sweep(group, "f1", "retrieval_f1").has_data()
     section = GroupSummary(group, ComparisonReport(summaries), k=10)
     assert section.spends == []
     assert not any(c.stem.startswith("hits_") for c in section.charts())
 
 
-def test_columns_put_every_k_on_one_chart(tmp_path: Path) -> None:
-    summaries = [
-        {**_summary(system, accuracy), "k": k}
-        for k in (1, 5, 10)
-        for system, accuracy in (("aaa", 0.5), ("bbb", 0.62))
-    ]
+def test_table_prints_the_accuracy_interval(tmp_path: Path) -> None:
+    chart = _table_chart(tmp_path, [_summary("aaa", 0.5)])
+    header, rows = chart._table()
+    assert rows[0][header.index("95% CI")] == "0.450–0.550"
+
+
+def test_accuracy_bars_draw_with_their_interval(tmp_path: Path) -> None:
     chart = Chart(
-        kind="columns",
-        stem="accuracy_by_k",
+        kind="bars",
+        stem="accuracy_k10",
         y="judge_accuracy",
+        k=10,
         out_dir=tmp_path,
-        summaries=summaries,
+        summaries=[_summary("aaa", 0.5), _summary("bbb", 0.62)],
+        ci="judge_accuracy_ci",
     )
-    assert [(line.label, line.xs) for line in chart.data()] == [
-        ("aaa", [1, 5, 10]),
-        ("bbb", [1, 5, 10]),
-    ]
+    assert chart.intervals()["bbb"] == (0.57, 0.67)
     path = chart.draw()
-    assert path == tmp_path / "accuracy_by_k.png"
+    assert path is not None
     assert path.stat().st_size > 0
-
-
-def test_group_charts_draw_one_column_chart_per_score() -> None:
-    from amb.reporting.report import RunGroup
-    from amb.reporting.run import ComparisonReport
-    from amb.reporting.sections import GroupCharts
-
-    summaries = [{**_summary("aaa", 0.5), "k": k} for k in (1, 10)]
-    section = GroupCharts(
-        RunGroup(key=(("dataset", "locomo"),), summaries=summaries),
-        ComparisonReport(summaries),
-    )
-    stems = {c.stem for c in section.charts()}
-    assert {"accuracy_by_k", "f1_by_k"} <= stems
-    assert not stems & {"accuracy_k1", "accuracy_k10", "f1_k1", "f1_k10"}

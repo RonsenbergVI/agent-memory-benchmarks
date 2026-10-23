@@ -41,13 +41,12 @@ question the API is shaped around; ``--param max_tokens=N`` drives the
 budget directly.
 """
 
-import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, ClassVar
 
-from amb.base import Memory, spanned_turns
+from amb.base import Memory
 from amb.constants import TOKEN_TRACKING_KEYS
 from amb.contracts import MemoryHit, Session
 from amb.logs import logger
@@ -69,7 +68,6 @@ class HindsightMemory(Memory):
     name: ClassVar[str] = "hindsight"
     description: ClassVar[str] = "Hindsight — agent memory that learns"
     sdk_dist: ClassVar[str | None] = "hindsight-client"
-    turn_provenance: ClassVar[str] = "chunk"
     # `retain` reports the extraction spend, the expensive half; `recall`
     # reports nothing — its query embedding and rerank stay inside the server
     usage_coverage: ClassVar[str] = "partial"
@@ -133,7 +131,6 @@ class HindsightMemory(Memory):
         # document id -> session id. `retain` takes the document id, so
         # this is chosen rather than discovered, and a hit names it back.
         self._documents: dict[str, str] = {}
-        self._chunks: dict[str, Any] = {}
         self._conversation_id: str | None = None
         self._retained = 0
         # server-reported spend, read by TiktokenUsageTracker
@@ -306,16 +303,10 @@ class HindsightMemory(Memory):
                 MemoryHit(
                     content=result.text,
                     score=self._score(result),
-                    # a result is an extracted memory over a chunk of a
-                    # document; resolve_turns narrows it to that chunk
+                    # session-level only: a result is an extracted memory
+                    # over a document, not a verbatim turn
                     session_ids=self._sessions_of(result, response.source_facts or {}),
-                    metadata={
-                        "result_id": result.id,
-                        "type": result.type,
-                        "chunk_ids": self._chunks_of(
-                            result, response.source_facts or {}
-                        ),
-                    },
+                    metadata={"result_id": result.id, "type": result.type},
                 )
             )
         return hits
@@ -358,75 +349,6 @@ class HindsightMemory(Memory):
                 sessions.append(session_id)
         return sessions
 
-    @staticmethod
-    def _chunks_of(result: Any, source_facts: dict) -> list[str]:
-        """The chunks a recalled memory came from, by the same hop as `_sessions_of`."""
-        if chunk_id := getattr(result, "chunk_id", None):
-            return [str(chunk_id)]
-        chunks: list[str] = []
-        for fact_id in getattr(result, "source_fact_ids", None) or []:
-            fact = source_facts.get(str(fact_id))
-            chunk_id = getattr(fact, "chunk_id", None)
-            if chunk_id and str(chunk_id) not in chunks:
-                chunks.append(str(chunk_id))
-        return chunks
-
-    def _chunk(self, chunk_id: str) -> Any:
-        """One stored chunk, fetched once; chunks never change after retain."""
-        if chunk_id not in self._chunks:
-
-            def fetch() -> Any:
-                # the SDK's own sync pattern: this thread's loop, which the
-                # client's session is bound to
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                return loop.run_until_complete(
-                    self.client.documents.get_chunk(
-                        chunk_id=chunk_id, _request_timeout=self.timeout
-                    )
-                )
-
-            self._chunks[chunk_id] = self._thread.submit(fetch).result()
-        return self._chunks[chunk_id]
-
-    def resolve_turns(
-        self, hits: list[MemoryHit], sessions: list[Session]
-    ) -> list[MemoryHit]:
-        """Narrow each memory to the turns of the chunks it was extracted from.
-
-        `chunk_id` already rides on every recall result; the text is fetched
-        by id afterwards, because `include_chunks` would change the recall
-        request itself. A chunk is a verbatim slice of the session transcript
-        `ingest_session` retained. A hit with any chunk that cannot be placed
-        keeps its whole sessions instead.
-        """
-        by_id = {session.session_id: session for session in sessions}
-        resolved = []
-        for hit in hits:
-            turn_ids: list[str] = []
-            for chunk_id in hit.metadata.get("chunk_ids", []):
-                try:
-                    chunk = self._chunk(chunk_id)
-                except Exception:  # noqa: BLE001 - falls back to the hit's sessions
-                    logger.bind(scope="hindsight").warning(
-                        "could not fetch chunk {!r}", chunk_id
-                    )
-                    turn_ids = []
-                    break
-                session = by_id.get(self._documents.get(str(chunk.document_id), ""))
-                spanned = spanned_turns(session, chunk.chunk_text) if session else []
-                if not spanned:
-                    turn_ids = []
-                    break
-                turn_ids += [t for t in spanned if t not in turn_ids]
-            resolved.append(
-                hit.model_copy(update={"turn_ids": turn_ids}) if turn_ids else hit
-            )
-        return super().resolve_turns(resolved, sessions)
-
     def _session_of_one(self, item: Any) -> str | None:
         """One document-backed item's session: by document id, then metadata."""
         document_id = getattr(item, "document_id", None)
@@ -451,7 +373,6 @@ class HindsightMemory(Memory):
                     "could not delete bank {!r}", self._bank_id(self._conversation_id)
                 )
         self._documents.clear()
-        self._chunks.clear()
         if getattr(self, "client", None):
             self._call("close")
             self._thread.shutdown()

@@ -38,7 +38,10 @@ from amb.metrics import (
     LatencyPercentiles,
     Mean,
     MemoryLift,
+    RetrievalF1,
     RetrievalMetric,
+    RetrievalPrecision,
+    RetrievalRecall,
     Sum,
     TurnF1,
     TurnPrecision,
@@ -130,11 +133,11 @@ def test_mean_counts_falsy_but_present_booleans() -> None:
 
 
 def test_distinct_mean_counts_each_value_once_per_record() -> None:
-    # several hits can cite the same turn, so one turn can repeat in a row
-    metric = DistinctMean("turns_per_query", "retrieved_turn_ids")
-    metric.update_state(_q(retrieved_turn_ids=["s1", "s1", "s2"]))
-    metric.update_state(_q(retrieved_turn_ids=["s3"]))
-    metric.update_state(_q(retrieved_turn_ids=[]))
+    # graphiti edges cite several episodes, so one session can repeat in a row
+    metric = DistinctMean("sessions_per_query", "retrieved_session_ids")
+    metric.update_state(_q(retrieved_session_ids=["s1", "s1", "s2"]))
+    metric.update_state(_q(retrieved_session_ids=["s3"]))
+    metric.update_state(_q(retrieved_session_ids=[]))
     metric.update_state(_q())  # no provenance: not a zero, just absent
     assert metric.count == 3
     assert metric.result() == 1.0
@@ -354,81 +357,142 @@ def test_answer_f1_macro_averages_across_records() -> None:
 
 def test_retrieval_scores_hand_computed() -> None:
     scores = RetrievalMetric.scores(["s1", "s2", "s3", "s4"], ["s2", "s4", "s5"])
-    assert scores["precision"] == 0.5
-    assert scores["recall"] == pytest.approx(2 / 3)
-    assert scores["f1"] == pytest.approx(4 / 7)
+    assert scores["retrieval_precision"] == 0.5
+    assert scores["retrieval_recall"] == pytest.approx(2 / 3)
+    assert scores["retrieval_f1"] == pytest.approx(4 / 7)
 
 
 def test_retrieval_scores_empty_retrieved() -> None:
     scores = RetrievalMetric.scores([], ["s1"])
     assert scores == {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0,
+        "retrieval_precision": 0.0,
+        "retrieval_recall": 0.0,
+        "retrieval_f1": 0.0,
     }
 
 
 def test_retrieval_scores_empty_evidence() -> None:
     scores = RetrievalMetric.scores(["s1"], [])
     assert scores == {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0,
+        "retrieval_precision": 0.0,
+        "retrieval_recall": 0.0,
+        "retrieval_f1": 0.0,
     }
 
 
 def test_retrieval_scores_deduplicate_ids() -> None:
     # sets, not lists: a doubly-retrieved id counts once
     scores = RetrievalMetric.scores(["a", "a", "b"], ["a"])
-    assert scores["precision"] == 0.5
-    assert scores["recall"] == 1.0
+    assert scores["retrieval_precision"] == 0.5
+    assert scores["retrieval_recall"] == 1.0
 
 
-def test_turn_precision_macro_average_and_guards() -> None:
-    metric = TurnPrecision()
+def test_retrieval_precision_macro_average_and_guards() -> None:
+    metric = RetrievalPrecision()
     metric.update_state(
-        _q(retrieved_turn_ids=["s1", "s2"], evidence_turn_ids=["s2"])
+        _q(retrieved_session_ids=["s1", "s2"], evidence_session_ids=["s2"])
     )  # 0.5
-    metric.update_state(_q(retrieved_turn_ids=["s3"], evidence_turn_ids=["s3"]))  # 1.0
+    metric.update_state(
+        _q(retrieved_session_ids=["s3"], evidence_session_ids=["s3"])
+    )  # 1.0
     metric.update_state(_q())  # no retrieval fields: skipped
     metric.update_state(
-        _q(retrieved_turn_ids=["s9"], evidence_turn_ids=[])
+        _q(retrieved_session_ids=["s9"], evidence_session_ids=[])
     )  # empty gold: skipped
     assert metric.count == 2
     assert metric.result() == 0.75
 
 
-def test_turn_recall_counts_empty_retrieval_as_zero() -> None:
+def test_retrieval_recall_counts_empty_retrieval_as_zero() -> None:
     # [] is a (failed) retrieval, unlike a missing field: it scores 0.0
-    metric = TurnRecall()
-    metric.update_state(_q(retrieved_turn_ids=[], evidence_turn_ids=["s1"]))
+    metric = RetrievalRecall()
+    metric.update_state(_q(retrieved_session_ids=[], evidence_session_ids=["s1"]))
     assert metric.count == 1
     assert metric.result() == 0.0
 
 
-def test_turn_f1_single_record() -> None:
-    metric = TurnF1()
+def test_retrieval_f1_single_record() -> None:
+    metric = RetrievalF1()
     metric.update_state(
         _q(
-            retrieved_turn_ids=["s1", "s2", "s3", "s4"],
-            evidence_turn_ids=["s2", "s4", "s5"],
+            retrieved_session_ids=["s1", "s2", "s3", "s4"],
+            evidence_session_ids=["s2", "s4", "s5"],
         )
     )
     assert metric.result() == pytest.approx(4 / 7)
 
 
+def test_turn_precision_reads_turn_ids_not_session_ids() -> None:
+    metric = TurnPrecision()
+    metric.update_state(
+        _q(
+            retrieved_turn_ids=["t1", "t2", "t3"],
+            evidence_turn_ids=["t1"],
+            retrieved_session_ids=["s1"],  # would score 1.0 if wrongly read
+            evidence_session_ids=["s1"],
+        )
+    )
+    assert metric.result() == pytest.approx(1 / 3)
+
+
+def test_turn_metrics_skip_session_only_records() -> None:
+    metric = TurnRecall()
+    metric.update_state(_q(retrieved_session_ids=["s1"], evidence_session_ids=["s1"]))
+    assert metric.count == 0
+    assert metric.result() == 0.0
+
+
 @pytest.mark.parametrize(
-    "cls, name, component",
+    "cls, name, predicted_key, gold_key, component",
     [
-        (TurnPrecision, "turn_precision", "precision"),
-        (TurnRecall, "turn_recall", "recall"),
-        (TurnF1, "turn_f1", "f1"),
+        (
+            RetrievalPrecision,
+            "retrieval_precision",
+            "retrieved_session_ids",
+            "evidence_session_ids",
+            "retrieval_precision",
+        ),
+        (
+            RetrievalRecall,
+            "retrieval_recall",
+            "retrieved_session_ids",
+            "evidence_session_ids",
+            "retrieval_recall",
+        ),
+        (
+            RetrievalF1,
+            "retrieval_f1",
+            "retrieved_session_ids",
+            "evidence_session_ids",
+            "retrieval_f1",
+        ),
+        (
+            TurnPrecision,
+            "turn_precision",
+            "retrieved_turn_ids",
+            "evidence_turn_ids",
+            "retrieval_precision",
+        ),
+        (
+            TurnRecall,
+            "turn_recall",
+            "retrieved_turn_ids",
+            "evidence_turn_ids",
+            "retrieval_recall",
+        ),
+        (
+            TurnF1,
+            "turn_f1",
+            "retrieved_turn_ids",
+            "evidence_turn_ids",
+            "retrieval_f1",
+        ),
     ],
 )
-def test_retrieval_metric_wiring(cls, name, component) -> None:
+def test_retrieval_metric_wiring(cls, name, predicted_key, gold_key, component) -> None:
     assert cls().name == name
-    assert cls.predicted_key == "retrieved_turn_ids"
-    assert cls.gold_key == "evidence_turn_ids"
+    assert cls.predicted_key == predicted_key
+    assert cls.gold_key == gold_key
     assert cls.component == component
 
 
@@ -480,14 +544,14 @@ def test_default_metrics_load_bearing_entries() -> None:
     assert type(hits) is Mean
     assert hits.key == "num_hits"
 
-    turns = by_name["turns_per_query"]
-    assert isinstance(turns, DistinctMean)
-    assert turns.key == "retrieved_turn_ids"
+    sessions = by_name["sessions_per_query"]
+    assert isinstance(sessions, DistinctMean)
+    assert sessions.key == "retrieved_session_ids"
 
 
-def test_default_metrics_score_retrieval_by_turn_only() -> None:
+def test_default_metrics_cover_both_retrieval_levels() -> None:
     names = {m.name for m in default_metrics()}
-    assert not {n for n in names if n.startswith("retrieval_")}
+    assert {"retrieval_precision", "retrieval_recall", "retrieval_f1"} <= names
     assert {"turn_precision", "turn_recall", "turn_f1"} <= names
     assert {"answer_f1", "exact_match"} <= names
 
@@ -495,12 +559,13 @@ def test_default_metrics_score_retrieval_by_turn_only() -> None:
 def test_category_metrics_names() -> None:
     names = [m.name for m in default_category_metrics()]
     assert names == [
-        "turn_precision",
-        "turn_recall",
-        "turn_f1",
+        "retrieval_precision",
+        "retrieval_recall",
+        "retrieval_f1",
         "answer_f1",
         "exact_match",
         "judge_accuracy",
+        "judge_accuracy_ci",
         "attribution",
         "memory_lift",
     ]
@@ -520,10 +585,32 @@ def test_category_metrics_are_row_level_only() -> None:
         assert "." not in metric.name
 
 
+def test_wilson_interval_brackets_the_rate_and_stays_in_bounds() -> None:
+    from amb.contracts.run import QuestionRecord
+    from amb.metrics import WilsonInterval
+
+    metric = WilsonInterval("judge_accuracy_ci", "judge_correct")
+    for i in range(100):
+        metric.update_state(
+            QuestionRecord(sample_id="s", question_id=str(i), judge_correct=i < 80)
+        )
+    interval = metric.result()
+    assert interval["n"] == 100
+    assert 0.70 < interval["low"] < 0.80 < interval["high"] < 0.88
+    # all-correct still leaves room below 1.0 and never reaches past it
+    perfect = WilsonInterval("x", "judge_correct")
+    for i in range(10):
+        perfect.update_state(
+            QuestionRecord(sample_id="s", question_id=str(i), judge_correct=True)
+        )
+    assert perfect.result()["high"] == 1.0
+    assert perfect.result()["low"] < 0.75
+
+
 def _attributed(found: bool, correct: bool) -> QuestionRecord:
     return _q(
-        retrieved_turn_ids=["1", "2"] if found else ["2"],
-        evidence_turn_ids=["1"],
+        retrieved_session_ids=["1", "2"] if found else ["2"],
+        evidence_session_ids=["1"],
         judge_correct=correct,
     )
 
@@ -551,13 +638,13 @@ def test_attribution_cells_hand_computed() -> None:
     assert result["lift"] == pytest.approx(0.5 * (0.75 - 0.25))
 
 
-def test_attribution_found_means_every_evidence_turn() -> None:
+def test_attribution_found_means_every_evidence_session() -> None:
     # half the chain retrieved is a miss: multi-hop fails on the missing hop
     metric = Attribution()
     metric.update_state(
         _q(
-            retrieved_turn_ids=["1", "9"],
-            evidence_turn_ids=["1", "2"],
+            retrieved_session_ids=["1", "9"],
+            evidence_session_ids=["1", "2"],
             judge_correct=False,
         )
     )
@@ -567,14 +654,14 @@ def test_attribution_found_means_every_evidence_turn() -> None:
 @pytest.mark.parametrize(
     "fields",
     [
-        {"evidence_turn_ids": ["1"], "judge_correct": True},
+        {"evidence_session_ids": ["1"], "judge_correct": True},
         {
-            "retrieved_turn_ids": ["1"],
-            "evidence_turn_ids": [],
+            "retrieved_session_ids": ["1"],
+            "evidence_session_ids": [],
             "judge_correct": True,
         },
-        {"retrieved_turn_ids": ["1"], "judge_correct": True},
-        {"retrieved_turn_ids": ["1"], "evidence_turn_ids": ["1"]},
+        {"retrieved_session_ids": ["1"], "judge_correct": True},
+        {"retrieved_session_ids": ["1"], "evidence_session_ids": ["1"]},
     ],
 )
 def test_attribution_skips_unlabelled_or_unjudged_rows(fields) -> None:
