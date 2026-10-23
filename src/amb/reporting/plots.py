@@ -33,7 +33,7 @@ from amb.reporting.helpers import (
     pad_limits,
     place_labels,
     pretty,
-    round_columns,
+    round_bars,
     styled_axes,
     styles,
 )
@@ -170,79 +170,43 @@ def lines(
     return _finish(fig, ax, c, x_label, y_label, title, output, subtitle)
 
 
-def columns(
-    series: list[Series],
+def bars(
+    items: list[tuple[str, float]],
     x_label: str,
-    y_label: str,
     output: Path,
     title: str | None = None,
     subtitle: str | None = None,
     dark: bool = False,
 ) -> Path:
-    """Render one metric as a block of columns per k, one column per system.
+    """Render one metric as horizontal bars, one per system, largest on top.
 
-    Systems keep their sorted-name hue and their slot in every block; the
-    legend carries identity and only each block's best column wears its
-    value. Empty input is the caller's job to check. Returns the path written.
+    Identity sits on the axis, so every bar wears the single series hue with
+    its value at its end. Empty input is the caller's job to check. Returns
+    the path written.
     """
     fig, ax, c = styled_axes(dark)
-    ax.grid(False, axis="x")  # gridlines only along the value axis
+    ax.grid(False, axis="y")  # gridlines only along the value axis
 
-    ks = sorted({x for line in series for x in line.xs})
-    systems = sorted(series, key=lambda line: line.label)
-    colours = hues([line.label for line in systems], c)
-    slot = 0.8 / len(systems)
-    ax.set_xlim(-0.5, len(ks) - 0.5)
-    values = [y for line in systems for y in line.ys]
-    pad_axis(values, ax.set_ylim, ratio=is_ratio(y_label))
-    ax.set_ylim(bottom=0.0)  # columns grow from zero, so the axis does too
-    fig.canvas.draw()  # px-per-unit is only trustworthy after a draw
-    px = ax.transData.transform((1, 0))[0] - ax.transData.transform((0, 0))[0]
-    # the mark spec: at most 24px thick, a 2px surface gap between neighbours
-    width = min(slot - 2 / px, 24 / px)
-    best: dict[float, tuple[float, float]] = {}
-    for n, line in enumerate(systems):
-        offset = (n - (len(systems) - 1) / 2) * slot
-        xs = [ks.index(k) + offset for k in line.xs]
-        ax.bar(
-            xs,
-            line.ys,
-            width=width,
-            color=colours[line.label],
-            zorder=3,
-            label=line.label,
-        )
-        for x, k, y in zip(xs, line.xs, line.ys, strict=True):
-            if y > best.get(k, (0.0, float("-inf")))[1]:
-                best[k] = (x, y)
-    for x, y in best.values():
+    ordered = sorted(items, key=lambda item: item[1])
+    labels = [label for label, _ in ordered]
+    values = [value for _, value in ordered]
+    ax.barh(labels, values, height=0.55, color=c["series"], zorder=3)
+    for i, (_, value) in enumerate(ordered):
         ax.annotate(
-            f"{y:.3f}",
-            (x, y),
+            f"{value:.3f}",
+            (value, i),
             textcoords="offset points",
-            xytext=(0, 4),
-            ha="center",
+            xytext=(8, -3.5),
             color=c["text"],
-            fontsize=8.5,
+            fontsize=9.5,
             fontweight="medium",
             zorder=4,
         )
-    ax.set_xticks(range(len(ks)), [f"k={k:g}" for k in ks])
-    legend = ax.legend(
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.14),
-        # one row, so the keys read in the columns' own left-to-right order
-        ncol=len(systems),
-        frameon=False,
-        fontsize=8.5,
-        handlelength=0.8,
-        handletextpad=0.4,
-        columnspacing=1.0,
-    )
-    for text in legend.get_texts():
-        text.set_color(c["muted"])
-    round_columns(fig, ax)
-    return _finish(fig, ax, c, x_label, y_label, title, output, subtitle)
+    if values:
+        pad_axis(values, ax.set_xlim, ratio=is_ratio(x_label))
+        ax.set_xlim(left=0.0)  # bars are anchored at zero, so the axis is too
+        round_bars(fig, ax)
+    return _finish(fig, ax, c, x_label, "", title, output, subtitle)
 
 
 def _plain(cell: object) -> str:

@@ -33,8 +33,8 @@ class SearchToolset(FunctionToolset):
     """One conversation's memory, exposed to the answering agent as tools.
 
     Ships no tools of its own — subclasses add them with `add_function` and
-    report every search through `record`, so the harness can score retrieval
-    it no longer performs. Created fresh per question.
+    report every search through `record`, so the harness still sees each
+    search it no longer performs. Created fresh per question.
     """
 
     def __init__(
@@ -55,7 +55,7 @@ class SearchToolset(FunctionToolset):
     def observe(self, callbacks: Callbacks, sample: Sample, qa: QAPair) -> None:
         """Bind the run's callbacks, so each search the agent runs is seen.
 
-        The agent's searches are the harness's only view of retrieval, so
+        The agent's searches are the harness's only view of the memory, so
         each one reports through the run's callback hooks.
         """
         self.callbacks = callbacks
@@ -65,7 +65,7 @@ class SearchToolset(FunctionToolset):
     def record(self, hits: list[MemoryHit], seconds: float) -> list[dict]:
         """Book one search's results and render them as a tool result.
 
-        Provenance ids stay out of the result — they are retrieval's scoring labels.
+        Provenance ids stay out of the result: the agent sees only content and score.
         """
         self.search_s += seconds
         self.num_searches += 1

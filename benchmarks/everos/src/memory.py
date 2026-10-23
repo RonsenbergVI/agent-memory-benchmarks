@@ -65,7 +65,6 @@ conversations and teardown is a directory removal scoped to one id.
 """
 
 import asyncio
-import json
 import os
 import re
 import shutil
@@ -209,7 +208,6 @@ class EverOSMemory(Memory):
     name: ClassVar[str] = "everos"
     description: ClassVar[str] = "EverOS — local-first Markdown-native memory"
     sdk_dist: ClassVar[str | None] = "everos"
-    turn_provenance: ClassVar[str] = "segment"
     # anthropic through `_anthropic_client`: everalgo ships only openai_compat
     llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
     embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
@@ -575,62 +573,13 @@ class EverOSMemory(Memory):
                 MemoryHit(
                     content=self._content(episode),
                     score=episode.score,
-                    # an episode is an extraction over a segment of a
-                    # session; resolve_turns narrows it to that segment
+                    # session-level only: an episode is an extraction over
+                    # a session's messages, not a verbatim turn
                     session_ids=[episode.session_id] if episode.session_id else [],
                     metadata={"episode_id": episode.id, "subject": episode.subject},
                 )
             )
         return hits
-
-    def resolve_turns(
-        self, hits: list[MemoryHit], sessions: list[Session]
-    ) -> list[MemoryHit]:
-        """Narrow each episode to the turns of the memcell it was extracted from.
-
-        Read from EverOS's own store: the episode row names its memcell
-        (`parent_id`), and the memcell its message ids, whose
-        `m_<session>_<ms>_<idx>` suffix is the turn's index in the one batch
-        `ingest_session` sends per session.
-        """
-        from everos.infra.persistence.lancedb.repos.episode import episode_repo
-        from everos.infra.persistence.sqlite.repos.memcell import memcell_repo
-
-        async def _cells(episode_ids: list[str]) -> dict[str, Any]:
-            parents = {}
-            for episode_id in episode_ids:
-                row = await episode_repo.get_by_id(episode_id)
-                # a Reflection-merged episode points at a cluster, not a memcell
-                if row is not None and row.parent_type == "memcell":
-                    parents[episode_id] = row.parent_id
-            cells = await memcell_repo.find_by_ids(
-                list(dict.fromkeys(parents.values()))
-            )
-            by_id = {cell.memcell_id: cell for cell in cells}
-            return {e: by_id[m] for e, m in parents.items() if m in by_id}
-
-        episode_ids = list(
-            dict.fromkeys(
-                str(hit.metadata["episode_id"])
-                for hit in hits
-                if hit.metadata.get("episode_id")
-            )
-        )
-        cells = _await(_cells(episode_ids)) if episode_ids else {}
-        by_key = {self._slug(s.session_id): s for s in sessions}
-        resolved = []
-        for hit in hits:
-            cell = cells.get(str(hit.metadata.get("episode_id")))
-            turn_ids = []
-            if cell is not None and (session := by_key.get(cell.session_id)):
-                for message_id in json.loads(cell.message_ids_json):
-                    index = str(message_id).rsplit("_", 1)[-1]
-                    if index.isdigit() and int(index) < len(session.turns):
-                        turn_ids.append(session.turns[int(index)].turn_id)
-            resolved.append(
-                hit.model_copy(update={"turn_ids": turn_ids}) if turn_ids else hit
-            )
-        return super().resolve_turns(resolved, sessions)
 
     @staticmethod
     def _content(episode: Any) -> str:

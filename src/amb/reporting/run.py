@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from amb.base import Metric, Report
-from amb.constants import DEFAULT_RUNS_DIR, HEADLINE, RANKING
+from amb.constants import DEFAULT_RUNS_DIR, HEADLINE
 from amb.contracts import Run
 from amb.metrics import default_category_metrics, default_metrics
 
@@ -36,11 +36,9 @@ if TYPE_CHECKING:
 
 # the summary table's columns: (summary key, column label, format)
 SUMMARY_COLUMNS = (
-    ("turn_f1", "turn F1", "{:.3f}"),
     ("judge_accuracy", "accuracy", "{:.3f}"),
     ("memory_lift", "lift", "{:.3f}"),
     ("hits_per_query", "hits/q", "{:.2f}"),
-    ("turns_per_query", "turns/q", "{:.2f}"),
     ("memory_tokens_total", "memory tokens", "{:,.0f}"),
 )
 
@@ -50,6 +48,15 @@ ATTRIBUTION_BRANCHES = {
     "found": ("found", "correct_when_found", "with evidence"),
     "missed": ("missed", "correct_when_missed", "without evidence"),
 }
+
+# the attribution table's cells: (cell, column label, which way is best); a
+# right answer despite a miss is no credit to the memory, so it is never bold
+ATTRIBUTION_COLUMNS = (
+    ("correct", "correct (found, right)", max),
+    ("agent_fault", "agent fault (found, wrong)", min),
+    ("memory_fault", "memory fault (missed, wrong)", min),
+    ("correct_despite_miss", "correct despite miss (missed, right)", None),
+)
 
 
 def run_date(run_id: str | None) -> str:
@@ -130,8 +137,6 @@ class RunReport(Report):
             summary["embedding_model"] = self.run.embedding_model
         if self.run.usage_coverage != "full":
             summary["usage_coverage"] = self.run.usage_coverage
-        if self.run.turn_provenance:
-            summary["turn_provenance"] = self.run.turn_provenance
         if self.run.system_params:
             summary["system_params"] = self.run.system_params
         if self.run.max_turns is not None:
@@ -253,7 +258,6 @@ class RunReport(Report):
                 ingestion_model=summary.get("ingestion_model"),
                 embedding_model=summary.get("embedding_model"),
                 usage_coverage=summary.get("usage_coverage", "full"),
-                turn_provenance=summary.get("turn_provenance"),
                 system_params=summary.get("system_params") or {},
                 max_turns=summary.get("max_turns"),
                 sample_seed=summary.get("sample_seed"),
@@ -372,16 +376,16 @@ class ComparisonReport(Report):
     def summary_table(
         self, k: int = 10, dataset: str | None = None, variant: str | None = None
     ) -> tuple[list[str], list[list[str]]]:
-        """Build the compact table: newest run per system at one k, best turn F1 first.
+        """Build the compact table: newest run per system at one k, most accurate first.
 
         `dataset` must scope to one dataset — ranking "newest per system"
         across several would mix unrelated exams. `variant` scopes further and
         is required whenever the dataset has more than one variant present.
 
         Returns:
-            The header labels and the formatted rows, best turn F1 first.
+            The header labels and the formatted rows, most accurate first.
         """
-        ranked = self._ranked_at_k(k, dataset, variant, RANKING)
+        ranked = self._ranked_at_k(k, dataset, variant)
         header = ["system", "version", "last run"]
         header += [label for _, label, _ in SUMMARY_COLUMNS]
         header += ["p50 search (s)"]
@@ -494,7 +498,7 @@ class ComparisonReport(Report):
     ) -> tuple[list[str], list[list[str]]]:
         """Build one half of the error analysis: a branch's rate and its split.
 
-        `branch` is `found` or `missed` — whether every evidence turn was
+        `branch` is `found` or `missed` — whether every evidence session was
         retrieved. The table prints how the agent then fared on that branch,
         correct and wrong with (or without) the evidence as shares of it, and
         the branch's own rate over every question last. The two halves share
@@ -534,38 +538,40 @@ class ComparisonReport(Report):
             )
         return header, rows
 
-    def turn_table(
+    def attribution_cells_table(
         self, k: int = 10, dataset: str | None = None, variant: str | None = None
     ) -> tuple[list[str], list[list[str]]]:
-        """Build the turn-level retrieval table: a system per row.
+        """Build the attribution table: a system per row, its four cells as shares.
 
-        `provenance` names the source unit each system attributes a hit to,
-        which bounds its precision. Runs scored without turn-level metrics
-        are left out rather than shown blank.
+        Each row sums to 1 over the judged, evidence-labelled questions.
+        The best value per column is bold; runs scored before the metric
+        existed are left out rather than shown blank.
 
         Returns:
-            The header labels and the formatted rows, best turn F1 first.
+            The header labels and the formatted rows, most correct first.
         """
         ranked = [
             s
-            for s in self._ranked_at_k(k, dataset, variant, RANKING)
-            if isinstance(s.get(RANKING), int | float)
+            for s in self._ranked_at_k(k, dataset, variant)
+            if (s.get("attribution") or {}).get("n")
         ]
         if not ranked:
             return [], []
-        header = ["system", "version", "provenance", "recall", "precision", "F1"]
-        rows = [
-            [
-                str(s.get("system", "?")),
-                str(s.get("system_version") or ""),
-                str(s.get("turn_provenance") or ""),
-                *(
-                    self._cell(s, key, "{:.3f}")
-                    for key in ("turn_recall", "turn_precision", "turn_f1")
-                ),
-            ]
-            for s in ranked
-        ]
+        ranked.sort(key=lambda s: (-s["attribution"]["correct"], s.get("system", "")))
+        best = {
+            cell: pick(s["attribution"][cell] for s in ranked)
+            for cell, _, pick in ATTRIBUTION_COLUMNS
+            if pick is not None
+        }
+        header = ["system", "version", *(label for _, label, _ in ATTRIBUTION_COLUMNS)]
+        rows = []
+        for s in ranked:
+            cells = s["attribution"]
+            row = [str(s.get("system", "?")), str(s.get("system_version") or "")]
+            for cell, _, _ in ATTRIBUTION_COLUMNS:
+                text = f"{cells[cell]:.3f}"
+                row.append(f"**{text}**" if cells[cell] == best.get(cell) else text)
+            rows.append(row)
         return header, rows
 
     def lift_table(

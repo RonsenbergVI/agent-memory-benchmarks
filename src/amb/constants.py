@@ -109,15 +109,10 @@ GROUP_BY = ("dataset", "variant")
 # Must be uniform inside a group without splitting it; such a group is refused.
 GUARD: tuple[str, ...] = ()
 
-# What a chart set covers, headline first: (filename stem, summary key). The
-# two headlines: judge accuracy for the answer, turn F1 for the retrieval.
-SCORE_METRICS = (
-    ("accuracy", "judge_accuracy"),
-    ("f1", "turn_f1"),
-)
+# What a chart set covers: (filename stem, summary key). Each question is a
+# binary verdict, so judge accuracy is the one score.
+SCORE_METRICS = (("accuracy", "judge_accuracy"),)
 HEADLINE = "judge_accuracy"
-# what the summary and category tables rank by: the retrieval headline
-RANKING = "turn_f1"
 # the memory's contribution: accuracy added over the agent's rate without evidence
 LIFT = "memory_lift"
 
@@ -145,8 +140,8 @@ RESULTS_TABLE_INTRO = (
 
 RESULTS_PLOTS_INTRO = (
     "Every question is a binary verdict — the judge marks the agent's answer "
-    "correct or not — so the headline is judge accuracy, beside turn F1, "
-    "which scores what the agent retrieved against the evidence turns. Written by `amb plot all` into "
+    "correct or not — so the headline is judge accuracy. Written by "
+    "`amb plot all` into "
     "`plots/<dataset>/`, one directory per dataset (or "
     "`plots/<dataset>/<variant>/` for a dataset whose variants are separate "
     "experiments). Each section opens with its sweeps over k — the same "
@@ -156,7 +151,7 @@ RESULTS_PLOTS_INTRO = (
 
 ATTRIBUTION_INTRO = (
     "Who lost each question: the memory, or the agent it served. Each judged "
-    "question with evidence labels is split by whether every evidence turn "
+    "question with evidence labels is split by whether every evidence session "
     "was retrieved, then by the judge's verdict. The two tables mirror each "
     "other: the verdict columns are shares of the branch, the branch's own "
     "rate over every question closes the row, and both keep one row order, "
@@ -174,16 +169,6 @@ ATTRIBUTION_MISSED = (
     "**Missed.** The memory failed. `correct without evidence` is the agent "
     "right anyway, from prior knowledge or a guess; `wrong without evidence` "
     "is what this memory's misses actually cost."
-)
-
-TURN_INTRO = (
-    "Retrieval scored against the evidence turns, per question. A system can "
-    "only "
-    "attribute a memory to the source unit it keeps itself — the "
-    "`provenance` column: the verbatim turn, the extraction window, the topic "
-    "segment, the chunk, or the whole session — so a coarse unit reads as "
-    "high recall at low precision. Attribution happens after each question, "
-    "outside the timed search and out of the agent's sight."
 )
 
 LIFT_INTRO = (

@@ -28,7 +28,7 @@ class MemoryHit(BaseModel):
 
     content: str
     score: float | None = None
-    # provenance, when the system can report it — used for retrieval metrics
+    # provenance, when the system can report it; never shown to the agent
     turn_ids: list[str] = Field(default_factory=list)
     session_ids: list[str] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)

@@ -19,6 +19,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
 import pytest
 
 
@@ -143,19 +144,15 @@ def test_summary_table_shows_what_each_system_spent_of_k():
         "system": "alpha",
         "dataset": "locomo",
         "k": 10,
-        "turn_f1": 0.323,
+        "judge_accuracy": 0.5,
         "hits_per_query": 5.5745,
-        "turns_per_query": 5.452,
     }
     older = {"run_id": "20260801T000000Z", "system": "beta", "dataset": "locomo"}
     header, rows = ComparisonReport([spent, {**older, "k": 10}]).summary_table(10)
-    hits, turns = header.index("hits/q"), header.index("turns/q")
-    assert turns == hits + 1
+    hits = header.index("hits/q")
     assert rows[0][hits] == "5.57"
-    assert rows[0][turns] == "5.45"
-    # a run scored before the metrics existed is blank, not 0.00
+    # a run scored before the metric existed is blank, not 0.00
     assert rows[1][hits] == ""
-    assert rows[1][turns] == ""
 
 
 def test_variants_get_their_own_sections_and_plot_directories():
@@ -176,14 +173,44 @@ def test_variants_get_their_own_sections_and_plot_directories():
     ]
 
 
-def test_charted_scores_are_accuracy_then_turn_f1():
+def test_charted_score_is_judge_accuracy_alone():
     from amb.reporting.report import RunGroup
 
     group = RunGroup(key=(("dataset", "locomo"),), summaries=[])
-    assert group.metrics() == (
-        ("accuracy", "judge_accuracy"),
-        ("f1", "turn_f1"),
+    assert group.metrics() == (("accuracy", "judge_accuracy"),)
+
+
+def test_group_summary_breaks_accuracy_down_by_category():
+    from amb.contracts import Figure
+    from amb.reporting.report import RunGroup
+    from amb.reporting.run import ComparisonReport
+    from amb.reporting.sections import GroupSummary
+
+    run = {
+        "run_id": "20260901T000000Z",
+        "system": "alpha",
+        "system_version": "1.0",
+        "dataset": "locomo",
+        "k": 10,
+        "judge_accuracy": 0.54,
+        "by_category": {"temporal": {"judge_accuracy": 0.2}},
+    }
+    section = GroupSummary(
+        RunGroup(key=(("dataset", "locomo"),), summaries=[run]),
+        ComparisonReport([run]),
+        k=10,
     )
+    assert section.categories is not None
+    assert section.categories.path.name == "categories_k10.png"
+    # declared and linked from the same chart
+    assert section.categories in section.charts()
+    assert any(
+        isinstance(b, Figure) and b.path == section.categories.path
+        for b in section.blocks()
+    )
+    header, rows = section.categories._category_table()
+    assert header == ["system", "version", "temporal", "overall"]
+    assert rows[0] == ["alpha", "1.0", "**0.200**", "**0.540**"]
 
 
 def _attributed(system: str, k: int, found: float, when_found: float) -> dict:
@@ -198,7 +225,7 @@ def _attributed(system: str, k: int, found: float, when_found: float) -> dict:
             "correct": found * when_found,
             "agent_fault": found * (1 - when_found),
             "memory_fault": 1 - found,
-            "lucky": 0.0,
+            "correct_despite_miss": 0.0,
             "found": found,
             "missed": 1 - found,
             "correct_when_found": when_found,
@@ -330,7 +357,7 @@ def test_group_summary_breaks_the_lift_down_by_category():
     from amb.reporting.sections import GroupSummary
 
     run = _attributed("alpha", 10, 0.6, 0.9)
-    run["by_category"] = {"temporal": {"memory_lift": 0.2, "turn_f1": 0.5}}
+    run["by_category"] = {"temporal": {"memory_lift": 0.2, "judge_accuracy": 0.5}}
     section = GroupSummary(
         RunGroup(key=(("dataset", "locomo"),), summaries=[run]),
         ComparisonReport([run]),
@@ -348,62 +375,44 @@ def test_group_summary_breaks_the_lift_down_by_category():
     assert rows[0] == ["alpha", "1.0", "**0.200**", "**0.540**"]
 
 
-def _turn_scored(system, k, recall, precision, provenance):
-    return {
-        "run_id": "20261020T000000Z",
-        "system": system,
-        "system_version": "1.0",
-        "dataset": "locomo",
-        "k": k,
-        "turn_recall": recall,
-        "turn_precision": precision,
-        "turn_f1": 2 * recall * precision / (recall + precision),
-        "turn_provenance": provenance,
-    }
-
-
-def test_turn_table_names_each_systems_provenance():
+def test_attribution_cells_table_bolds_the_best_per_column():
     from amb.reporting.run import ComparisonReport
 
     report = ComparisonReport(
         [
-            _turn_scored("alpha", 10, 0.6, 0.4, "turn"),
-            _turn_scored("beta", 10, 0.9, 0.1, "session"),
-            {"run_id": "r", "system": "gamma", "dataset": "locomo", "k": 10},
+            _attributed("alpha", 10, found=0.6, when_found=0.9),
+            _attributed("beta", 10, found=0.8, when_found=0.5),
         ]
     )
-    header, rows = report.turn_table(10)
-    assert header == ["system", "version", "provenance", "recall", "precision", "F1"]
-    # best turn F1 first; a run scored before the metric is left out
-    assert rows == [
-        ["alpha", "1.0", "turn", "0.600", "0.400", "0.480"],
-        ["beta", "1.0", "session", "0.900", "0.100", "0.180"],
+    header, rows = report.attribution_cells_table(10)
+    assert header == [
+        "system",
+        "version",
+        "correct (found, right)",
+        "agent fault (found, wrong)",
+        "memory fault (missed, wrong)",
+        "correct despite miss (missed, right)",
     ]
-    assert report.turn_table(5) == ([], [])
+    # most correct first; correct is best high, both faults best low, despite-miss never
+    assert rows[0] == ["alpha", "1.0", "**0.540**", "**0.060**", "0.400", "0.000"]
+    assert rows[1] == ["beta", "1.0", "0.400", "0.400", "**0.200**", "0.000"]
+    assert report.attribution_cells_table(5) == ([], [])
 
 
-def test_group_charts_show_the_turn_table_per_k():
-    from amb.contracts import Heading, Table
+def test_group_summary_shows_attribution_right_after_the_summary():
+    from amb.contracts import Figure
     from amb.reporting.report import RunGroup
     from amb.reporting.run import ComparisonReport
-    from amb.reporting.sections import GroupCharts
+    from amb.reporting.sections import GroupSummary
 
-    summaries = [
-        {
-            **_attributed("alpha", 10, 0.6, 0.9),
-            **_turn_scored("alpha", 10, 0.6, 0.4, "turn"),
-        }
-    ]
-    section = GroupCharts(
-        RunGroup(key=(("dataset", "locomo"),), summaries=summaries),
-        ComparisonReport(summaries),
+    run = _attributed("alpha", 10, 0.6, 0.9)
+    section = GroupSummary(
+        RunGroup(key=(("dataset", "locomo"),), summaries=[run]),
+        ComparisonReport([run]),
+        k=10,
     )
-    blocks = section.blocks()
-    index = next(
-        i
-        for i, b in enumerate(blocks)
-        if isinstance(b, Heading) and b.text == "locomo: turn-level retrieval (k=10)"
-    )
-    table = blocks[index + 2]
-    assert isinstance(table, Table)
-    assert table.rows[0][:3] == ["alpha", "1.0", "turn"]
+    assert section.attribution is not None
+    assert section.attribution.path.name == "attribution_k10.png"
+    assert section.attribution in section.charts()
+    figures = [b.path.name for b in section.blocks() if isinstance(b, Figure)]
+    assert figures[:2] == ["summary_k10.png", "attribution_k10.png"]

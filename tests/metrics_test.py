@@ -26,27 +26,18 @@ from typing import Any
 
 import pytest
 
-from amb.base.metric import Metric, Scorer
+from amb.base.metric import Metric
 from amb.contracts.run import IngestionRecord, QuestionRecord
 from amb.metrics import (
-    AnswerF1,
     Attribution,
     Count,
     DictSum,
-    DistinctMean,
-    ExactMatch,
     LatencyPercentiles,
     Mean,
     MemoryLift,
-    RetrievalMetric,
     Sum,
-    TurnF1,
-    TurnPrecision,
-    TurnRecall,
-    ValueCounts,
     default_category_metrics,
     default_metrics,
-    normalize_answer,
 )
 
 
@@ -129,17 +120,6 @@ def test_mean_counts_falsy_but_present_booleans() -> None:
     assert metric.result() == pytest.approx(2 / 3)
 
 
-def test_distinct_mean_counts_each_value_once_per_record() -> None:
-    # several hits can cite the same turn, so one turn can repeat in a row
-    metric = DistinctMean("turns_per_query", "retrieved_turn_ids")
-    metric.update_state(_q(retrieved_turn_ids=["s1", "s1", "s2"]))
-    metric.update_state(_q(retrieved_turn_ids=["s3"]))
-    metric.update_state(_q(retrieved_turn_ids=[]))
-    metric.update_state(_q())  # no provenance: not a zero, just absent
-    assert metric.count == 3
-    assert metric.result() == 1.0
-
-
 def test_sum_hand_computed() -> None:
     metric = Sum("ingest.total_s", "ingest_s")
     metric.update_state(_ing(ingest_s=1.5))
@@ -204,29 +184,6 @@ def test_count_reset_returns_to_zero() -> None:
     assert metric.result() == 0
 
 
-def test_value_counts_per_distinct_value() -> None:
-    metric = ValueCounts("categories", "category")
-    for category in ("b", "a", "b"):
-        metric.update_state(_q(category=category))
-    assert metric.result() == {"a": 1, "b": 2}
-    assert list(metric.result()) == ["a", "b"]
-
-
-def test_value_counts_stringifies_values() -> None:
-    metric = ValueCounts("hits", "num_hits")
-    for hits in (1, 2, 1):
-        metric.update_state(_q(num_hits=hits))
-    assert metric.result() == {"1": 2, "2": 1}
-
-
-def test_value_counts_reset_forgets_everything() -> None:
-    metric = ValueCounts("categories", "category")
-    metric.update_state(_q(category="a"))
-    metric.reset_state()
-    assert metric.count == 0
-    assert metric.result() == {}
-
-
 def test_percentiles_nearest_rank_hand_computed() -> None:
     # sorted sample [0.1..0.5]: p50 -> index round(.5*4)=2, p95/p99 -> index 4
     metric = LatencyPercentiles("search_latency", "search_s")
@@ -257,179 +214,6 @@ def test_percentiles_reset_discards_sample() -> None:
 
 def test_percentile_static_empty_list_is_zero() -> None:
     assert LatencyPercentiles.percentile([], 50) == 0.0
-
-
-def test_normalize_answer_squad_convention() -> None:
-    assert normalize_answer("The Quick,  Brown Fox!") == "quick brown fox"
-
-
-def test_normalize_answer_strips_articles_after_punctuation() -> None:
-    # punctuation removal runs first, so "a.n" collapses to the article "an"
-    assert normalize_answer("a.n answer") == "answer"
-
-
-def test_normalize_answer_all_punctuation_is_empty() -> None:
-    assert normalize_answer("...") == ""
-
-
-def test_answer_f1_identical_after_normalization() -> None:
-    assert AnswerF1().score("The Ramen!", "ramen") == 1.0
-
-
-def test_answer_f1_disjoint_tokens() -> None:
-    assert AnswerF1().score("cat", "dog") == 0.0
-
-
-def test_answer_f1_partial_overlap() -> None:
-    # pred {cat, sat}: precision 2/2, recall 2/3 -> f1 0.8
-    assert AnswerF1().score("the cat sat", "cat sat down") == pytest.approx(0.8)
-
-
-def test_answer_f1_counts_token_multiplicity() -> None:
-    # overlap min(2,1)=1: precision 1/2, recall 1/1 -> f1 2/3
-    assert AnswerF1().score("dog dog", "dog") == pytest.approx(2 / 3)
-
-
-def test_answer_f1_both_sides_normalize_to_empty() -> None:
-    assert AnswerF1().score("the", "a") == 1.0
-
-
-def test_answer_f1_empty_prediction_nonempty_gold() -> None:
-    assert AnswerF1().score("", "cat") == 0.0
-
-
-def test_answer_f1_reports_under_its_dotted_free_name() -> None:
-    assert AnswerF1().name == "answer_f1"
-
-
-def test_exact_match_ignores_form() -> None:
-    metric = ExactMatch()
-    assert metric.name == "exact_match"
-    assert metric.score("The Answer!", "answer") == 1.0
-
-
-def test_exact_match_different_answers() -> None:
-    assert ExactMatch().score("42", "43") == 0.0
-
-
-def test_scorer_default_pair_keys() -> None:
-    assert Scorer.predicted_key == "predicted_answer"
-    assert Scorer.gold_key == "gold_answer"
-
-
-def test_scorer_skips_missing_prediction() -> None:
-    metric = AnswerF1()
-    metric.update_state(_q(gold_answer="ramen"))
-    assert metric.count == 0
-    assert metric.result() == 0.0
-
-
-@pytest.mark.parametrize("gold", [None, ""])
-def test_scorer_skips_empty_gold(gold) -> None:
-    metric = AnswerF1()
-    metric.update_state(_q(predicted_answer="ramen", gold_answer=gold))
-    assert metric.count == 0
-
-
-def test_scorer_counts_empty_prediction_as_zero() -> None:
-    # "" is a prediction (just a wrong one), unlike a missing one
-    metric = AnswerF1()
-    metric.update_state(_q(predicted_answer="", gold_answer="ramen"))
-    assert metric.count == 1
-    assert metric.result() == 0.0
-
-
-def test_answer_f1_macro_averages_across_records() -> None:
-    metric = AnswerF1()
-    metric.update_state(_q(predicted_answer="ramen", gold_answer="Ramen!"))  # 1.0
-    metric.update_state(
-        _q(predicted_answer="the cat sat", gold_answer="cat sat down")
-    )  # 0.8
-    assert metric.count == 2
-    assert metric.result() == pytest.approx(0.9)
-    metric.reset_state()
-    assert metric.count == 0
-    assert metric.result() == 0.0
-
-
-def test_retrieval_scores_hand_computed() -> None:
-    scores = RetrievalMetric.scores(["s1", "s2", "s3", "s4"], ["s2", "s4", "s5"])
-    assert scores["precision"] == 0.5
-    assert scores["recall"] == pytest.approx(2 / 3)
-    assert scores["f1"] == pytest.approx(4 / 7)
-
-
-def test_retrieval_scores_empty_retrieved() -> None:
-    scores = RetrievalMetric.scores([], ["s1"])
-    assert scores == {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0,
-    }
-
-
-def test_retrieval_scores_empty_evidence() -> None:
-    scores = RetrievalMetric.scores(["s1"], [])
-    assert scores == {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1": 0.0,
-    }
-
-
-def test_retrieval_scores_deduplicate_ids() -> None:
-    # sets, not lists: a doubly-retrieved id counts once
-    scores = RetrievalMetric.scores(["a", "a", "b"], ["a"])
-    assert scores["precision"] == 0.5
-    assert scores["recall"] == 1.0
-
-
-def test_turn_precision_macro_average_and_guards() -> None:
-    metric = TurnPrecision()
-    metric.update_state(
-        _q(retrieved_turn_ids=["s1", "s2"], evidence_turn_ids=["s2"])
-    )  # 0.5
-    metric.update_state(_q(retrieved_turn_ids=["s3"], evidence_turn_ids=["s3"]))  # 1.0
-    metric.update_state(_q())  # no retrieval fields: skipped
-    metric.update_state(
-        _q(retrieved_turn_ids=["s9"], evidence_turn_ids=[])
-    )  # empty gold: skipped
-    assert metric.count == 2
-    assert metric.result() == 0.75
-
-
-def test_turn_recall_counts_empty_retrieval_as_zero() -> None:
-    # [] is a (failed) retrieval, unlike a missing field: it scores 0.0
-    metric = TurnRecall()
-    metric.update_state(_q(retrieved_turn_ids=[], evidence_turn_ids=["s1"]))
-    assert metric.count == 1
-    assert metric.result() == 0.0
-
-
-def test_turn_f1_single_record() -> None:
-    metric = TurnF1()
-    metric.update_state(
-        _q(
-            retrieved_turn_ids=["s1", "s2", "s3", "s4"],
-            evidence_turn_ids=["s2", "s4", "s5"],
-        )
-    )
-    assert metric.result() == pytest.approx(4 / 7)
-
-
-@pytest.mark.parametrize(
-    "cls, name, component",
-    [
-        (TurnPrecision, "turn_precision", "precision"),
-        (TurnRecall, "turn_recall", "recall"),
-        (TurnF1, "turn_f1", "f1"),
-    ],
-)
-def test_retrieval_metric_wiring(cls, name, component) -> None:
-    assert cls().name == name
-    assert cls.predicted_key == "retrieved_turn_ids"
-    assert cls.gold_key == "evidence_turn_ids"
-    assert cls.component == component
 
 
 def test_default_metric_names_are_unique() -> None:
@@ -480,26 +264,19 @@ def test_default_metrics_load_bearing_entries() -> None:
     assert type(hits) is Mean
     assert hits.key == "num_hits"
 
-    turns = by_name["turns_per_query"]
-    assert isinstance(turns, DistinctMean)
-    assert turns.key == "retrieved_turn_ids"
 
-
-def test_default_metrics_score_retrieval_by_turn_only() -> None:
+def test_default_metrics_score_no_retrieval_or_overlap() -> None:
     names = {m.name for m in default_metrics()}
-    assert not {n for n in names if n.startswith("retrieval_")}
-    assert {"turn_precision", "turn_recall", "turn_f1"} <= names
-    assert {"answer_f1", "exact_match"} <= names
+    assert "judge_accuracy" in names
+    assert not any(
+        n.startswith(("retrieval_", "turn_")) or n in {"answer_f1", "exact_match"}
+        for n in names
+    )
 
 
 def test_category_metrics_names() -> None:
     names = [m.name for m in default_category_metrics()]
     assert names == [
-        "turn_precision",
-        "turn_recall",
-        "turn_f1",
-        "answer_f1",
-        "exact_match",
         "judge_accuracy",
         "attribution",
         "memory_lift",
@@ -508,10 +285,10 @@ def test_category_metrics_names() -> None:
 
 def test_category_metrics_are_fresh_instances_per_call() -> None:
     first = default_category_metrics()
-    first[-2].update_state(_attributed(True, True))
+    first[-1].update_state(_attributed(True, True))
     second = default_category_metrics()
-    assert first[-2].count == 1
-    assert second[-2].count == 0
+    assert first[-1].count == 1
+    assert second[-1].count == 0
 
 
 def test_category_metrics_are_row_level_only() -> None:
@@ -522,8 +299,8 @@ def test_category_metrics_are_row_level_only() -> None:
 
 def _attributed(found: bool, correct: bool) -> QuestionRecord:
     return _q(
-        retrieved_turn_ids=["1", "2"] if found else ["2"],
-        evidence_turn_ids=["1"],
+        retrieved_session_ids=["1", "2"] if found else ["2"],
+        evidence_session_ids=["1"],
         judge_correct=correct,
     )
 
@@ -542,7 +319,7 @@ def test_attribution_cells_hand_computed() -> None:
     assert result["n"] == 8
     assert result["correct"] == pytest.approx(3 / 8)
     assert result["agent_fault"] == pytest.approx(1 / 8)
-    assert result["lucky"] == pytest.approx(1 / 8)
+    assert result["correct_despite_miss"] == pytest.approx(1 / 8)
     assert result["memory_fault"] == pytest.approx(3 / 8)
     assert result["found"] == pytest.approx(0.5)
     assert result["missed"] == pytest.approx(0.5)
@@ -551,13 +328,13 @@ def test_attribution_cells_hand_computed() -> None:
     assert result["lift"] == pytest.approx(0.5 * (0.75 - 0.25))
 
 
-def test_attribution_found_means_every_evidence_turn() -> None:
+def test_attribution_found_means_every_evidence_session() -> None:
     # half the chain retrieved is a miss: multi-hop fails on the missing hop
     metric = Attribution()
     metric.update_state(
         _q(
-            retrieved_turn_ids=["1", "9"],
-            evidence_turn_ids=["1", "2"],
+            retrieved_session_ids=["1", "9"],
+            evidence_session_ids=["1", "2"],
             judge_correct=False,
         )
     )
@@ -567,14 +344,14 @@ def test_attribution_found_means_every_evidence_turn() -> None:
 @pytest.mark.parametrize(
     "fields",
     [
-        {"evidence_turn_ids": ["1"], "judge_correct": True},
+        {"evidence_session_ids": ["1"], "judge_correct": True},
         {
-            "retrieved_turn_ids": ["1"],
-            "evidence_turn_ids": [],
+            "retrieved_session_ids": ["1"],
+            "evidence_session_ids": [],
             "judge_correct": True,
         },
-        {"retrieved_turn_ids": ["1"], "judge_correct": True},
-        {"retrieved_turn_ids": ["1"], "evidence_turn_ids": ["1"]},
+        {"retrieved_session_ids": ["1"], "judge_correct": True},
+        {"retrieved_session_ids": ["1"], "evidence_session_ids": ["1"]},
     ],
 )
 def test_attribution_skips_unlabelled_or_unjudged_rows(fields) -> None:

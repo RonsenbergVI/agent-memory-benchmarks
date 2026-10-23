@@ -20,24 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import re
-import string
-from collections import Counter
 from typing import Any, ClassVar
 
-from amb.base import Metric, Scorer
+from amb.base import Metric
 from amb.base.metric import Record
-
-
-def normalize_answer(text: str) -> str:
-    """Normalize an answer for token comparison (the SQuAD convention).
-
-    Lowercase, strip punctuation and the articles a/an/the, collapse whitespace.
-    """
-    text = text.lower()
-    text = "".join(ch for ch in text if ch not in string.punctuation)
-    text = re.sub(r"\b(a|an|the)\b", " ", text)
-    return " ".join(text.split())
 
 
 class Count(Metric):
@@ -51,28 +37,6 @@ class Count(Metric):
     def result(self) -> int:
         """Return how many records carried the field."""
         return self.count
-
-
-class ValueCounts(Metric):
-    """How many records carried each distinct value of the field."""
-
-    def __init__(self, name: str, key: str | None = None) -> None:
-        """Start with no values seen."""
-        super().__init__(name, key)
-        self._counts: dict[str, int] = {}
-
-    def accumulate(self, value: Any) -> None:
-        """Count one occurrence of the observed value."""
-        self._counts[str(value)] = self._counts.get(str(value), 0) + 1
-
-    def result(self) -> dict[str, int]:
-        """Return occurrences per distinct value, key-sorted."""
-        return dict(sorted(self._counts.items()))
-
-    def reset_state(self) -> None:
-        """Forget every value seen."""
-        super().reset_state()
-        self._counts = {}
 
 
 class DictSum(Metric):
@@ -145,14 +109,6 @@ class Mean(Metric):
         self._total = 0.0
 
 
-class DistinctMean(Mean):
-    """Mean number of distinct values in list-valued observations."""
-
-    def accumulate(self, value: list) -> None:
-        """Add how many distinct values the observation carried."""
-        super().accumulate(len(set(value)))
-
-
 class LatencyPercentiles(Metric):
     """p50/p95/p99 over observed latencies, in seconds."""
 
@@ -187,101 +143,13 @@ class LatencyPercentiles(Metric):
         self._values = []
 
 
-class AnswerF1(Scorer, Mean):
-    """Macro-averaged token F1 of predicted vs gold answers."""
-
-    def __init__(self) -> None:
-        """Report under ``answer_f1``."""
-        super().__init__("answer_f1")
-
-    def score(self, predicted: str, gold: str) -> float:
-        """Token-level F1 between the predicted and gold answers."""
-        pred = normalize_answer(predicted).split()
-        truth = normalize_answer(gold).split()
-        if not pred or not truth:
-            return float(pred == truth)
-        common = Counter(pred) & Counter(truth)
-        overlap = sum(common.values())
-        if overlap == 0:
-            return 0.0
-        precision = overlap / len(pred)
-        recall = overlap / len(truth)
-        return 2 * precision * recall / (precision + recall)
-
-
-class ExactMatch(Scorer, Mean):
-    """Macro-averaged exact match of predicted vs gold answers."""
-
-    def __init__(self) -> None:
-        """Report under ``exact_match``."""
-        super().__init__("exact_match")
-
-    def score(self, predicted: str, gold: str) -> float:
-        """1.0 when the normalized answers are identical, else 0.0."""
-        return float(normalize_answer(predicted) == normalize_answer(gold))
-
-
-class RetrievalMetric(Scorer, Mean):
-    """Macro-average of one scores() component over the evidence turns.
-
-    Retrieved turns are as fine as the source unit each system keeps
-    (`turn_provenance`). The Scorer guard skips rows missing the labels.
-    """
-
-    predicted_key = "retrieved_turn_ids"
-    gold_key = "evidence_turn_ids"
-    component: ClassVar[str]
-    name_: ClassVar[str]
-
-    def __init__(self) -> None:
-        """Report under the subclass's metric name."""
-        super().__init__(self.name_)
-
-    def score(self, predicted: list[str], gold: list[str]) -> float:
-        """Return this metric's component of the retrieval scores."""
-        return self.scores(predicted, gold)[self.component]
-
-    @staticmethod
-    def scores(retrieved_ids: list[str], evidence_ids: list[str]) -> dict[str, float]:
-        """Precision/recall/F1 of retrieved turn ids against the evidence turns."""
-        retrieved, evidence = set(retrieved_ids), set(evidence_ids)
-        hits = len(retrieved & evidence)
-        precision = hits / len(retrieved) if retrieved else 0.0
-        recall = hits / len(evidence) if evidence else 0.0
-        f1 = (
-            2 * precision * recall / (precision + recall) if precision + recall else 0.0
-        )
-        return {"precision": precision, "recall": recall, "f1": f1}
-
-
-class TurnPrecision(RetrievalMetric):
-    """Share of retrieved turns that were evidence."""
-
-    component = "precision"
-    name_ = "turn_precision"
-
-
-class TurnRecall(RetrievalMetric):
-    """Share of evidence turns that were retrieved."""
-
-    component = "recall"
-    name_ = "turn_recall"
-
-
-class TurnF1(RetrievalMetric):
-    """Harmonic mean of turn precision and recall."""
-
-    component = "f1"
-    name_ = "turn_f1"
-
-
 class Attribution(Metric):
     """Who lost a question: the memory that missed, or the agent that fumbled.
 
     Each judged question with evidence labels lands in one of four cells,
-    crossing "every evidence turn retrieved" with the judge's verdict:
+    crossing "every evidence session retrieved" with the judge's verdict:
     `correct`, `agent_fault` (found, wrong), `memory_fault` (missed, wrong)
-    and `lucky` (missed, right). Two rates factor them: `found` is the
+    and `correct_despite_miss` (missed, right). Two rates factor them: `found` is the
     memory's, `correct_when_found` the agent's — flat across systems unless
     a memory hands back evidence in a form the agent cannot use. Questions
     without evidence labels or a verdict are left out, never scored as misses.
@@ -291,7 +159,7 @@ class Attribution(Metric):
         "correct",
         "agent_fault",
         "memory_fault",
-        "lucky",
+        "correct_despite_miss",
     )
 
     def __init__(self, name: str = "attribution") -> None:
@@ -301,8 +169,8 @@ class Attribution(Metric):
 
     def update_state(self, record: Record) -> None:
         """Place the record in its cell when it carries labels and a verdict."""
-        retrieved = getattr(record, "retrieved_turn_ids", None)
-        evidence = getattr(record, "evidence_turn_ids", None)
+        retrieved = getattr(record, "retrieved_session_ids", None)
+        evidence = getattr(record, "evidence_session_ids", None)
         verdict = getattr(record, "judge_correct", None)
         if retrieved is None or not evidence or verdict is None:
             return
@@ -315,7 +183,7 @@ class Attribution(Metric):
         if found:
             self._cells["correct" if correct else "agent_fault"] += 1
         else:
-            self._cells["lucky" if correct else "memory_fault"] += 1
+            self._cells["correct_despite_miss" if correct else "memory_fault"] += 1
 
     def result(self) -> dict[str, float | int]:
         """Return each cell's share, each branch's rate and its split, and `n`."""
@@ -325,7 +193,7 @@ class Attribution(Metric):
         missed = n - found
         shares = {cell: (c[cell] / n if n else 0.0) for cell in self.CELLS}
         correct_when_found = c["correct"] / found if found else 0.0
-        correct_when_missed = c["lucky"] / missed if missed else 0.0
+        correct_when_missed = c["correct_despite_miss"] / missed if missed else 0.0
         return {
             **shares,
             "found": found / n if n else 0.0,
@@ -389,14 +257,8 @@ def default_metrics() -> list[Metric]:
         Sum("ingest.total_sessions", "num_sessions"),
         Sum("ingest.questions_dropped", "questions_dropped"),
         Sum("conversation.total_s", "conversation_s"),
-        TurnPrecision(),
-        TurnRecall(),
-        TurnF1(),
-        # k is the budget granted; these are what the system spent of it
+        # k is the budget granted; this is what the system spent of it
         Mean("hits_per_query", "num_hits"),
-        DistinctMean("turns_per_query", "retrieved_turn_ids"),
-        AnswerF1(),
-        ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),
         Attribution(),
         MemoryLift(),
@@ -417,11 +279,6 @@ def default_category_metrics() -> list[Metric]:
     metrics only, since categories are a property of questions, not ingestion.
     """
     return [
-        TurnPrecision(),
-        TurnRecall(),
-        TurnF1(),
-        AnswerF1(),
-        ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),
         Attribution(),
         MemoryLift(),

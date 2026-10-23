@@ -103,7 +103,6 @@ class FraiseMemory(Memory):
     name: ClassVar[str] = "fraise"
     description: ClassVar[str] = "Fraise — hybrid full-text + graph memory database"
     sdk_dist: ClassVar[str | None] = "fraise-sdk"
-    turn_provenance: ClassVar[str] = "turn"
     llm_providers: ClassVar[tuple[str, ...]] = ("openai", "anthropic")
     embedding_providers: ClassVar[tuple[str, ...]] = ("openai",)
     optional_models: ClassVar[tuple[str, ...]] = ("llm", "embedding")

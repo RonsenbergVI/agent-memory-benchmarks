@@ -206,7 +206,6 @@ class Runner:
             ingestion_model=internal.get("ingestion_model"),
             embedding_model=internal.get("embedding_model"),
             usage_coverage=probe.coverage(),
-            turn_provenance=probe.turn_provenance,
             # the two model params are lifted into their own fields above
             system_params={
                 key: value
@@ -347,26 +346,13 @@ class Runner:
 
         Produces one raw data row per question.
         """
-        sessions = self.select_sessions(sample)
-        for qa in self.select_questions(sample, sessions):
+        for qa in self.select_questions(sample, self.select_sessions(sample)):
             self.callbacks.on_question_begin(sample, qa)
-            record = self._run_question(system, sample, qa, sessions)
+            record = self._run_question(system, sample, qa)
             self.callbacks.on_question_end(sample, qa, record)
             data.add_question(record)
 
-    def _log_retrieval(self, qa: QAPair, hits: list, row: dict) -> None:
-        """Trace one question's retrieval at debug level."""
-        logger.bind(scope=self.name).debug(
-            "{}: {} hits, turns {} vs {}",
-            qa.question_id,
-            len(hits),
-            len(row.get("retrieved_turn_ids") or []),
-            row.get("evidence_turn_ids"),
-        )
-
-    def _run_question(
-        self, system: Memory, sample: Sample, qa: QAPair, sessions: list[Session]
-    ) -> dict:
+    def _run_question(self, system: Memory, sample: Sample, qa: QAPair) -> dict:
         cfg = self.config
         row = {
             "sample_id": sample.sample_id,
@@ -386,24 +372,21 @@ class Runner:
                 qa.question, toolset, cfg.model, question_date=qa.question_date
             )
             row["answer_s"] = time.perf_counter() - t0
-            # retrieval is scored on everything the agent chose to look at;
-            # turns are attributed only now, outside the timed search
-            hits = system.resolve_turns(toolset.retrieved, sessions)
+            # attribution reads everything the agent chose to look at
+            hits = toolset.retrieved
             row["search_s"] = toolset.search_s
             row["num_searches"] = toolset.num_searches
             row["num_hits"] = len(hits)
-
-            # turn ids are as fine as each system's own provenance
-            if qa.evidence_turn_ids and (not hits or any(h.turn_ids for h in hits)):
-                row["retrieved_turn_ids"] = [t for h in hits for t in h.turn_ids]
-                row["evidence_turn_ids"] = qa.evidence_turn_ids
-                self._log_retrieval(qa, hits, row)
-            elif hits and qa.evidence_turn_ids:
+            if qa.evidence_session_ids and (
+                not hits or any(h.session_ids for h in hits)
+            ):
+                row["retrieved_session_ids"] = [s for h in hits for s in h.session_ids]
+                row["evidence_session_ids"] = qa.evidence_session_ids
+            elif hits and qa.evidence_session_ids:
                 logger.bind(scope=self.name).warning(
-                    "{} returned {} hits for {} with no usable provenance "
-                    "(populate MemoryHit.turn_ids or session_ids); the "
-                    "question is left out of retrieval metrics instead of "
-                    "scoring a false 0.0",
+                    "{} returned {} hits for {} with no session provenance "
+                    "(populate MemoryHit.session_ids); the question is left out "
+                    "of attribution instead of counting as a miss",
                     self.name,
                     len(hits),
                     qa.question_id,
