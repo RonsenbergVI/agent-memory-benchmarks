@@ -278,7 +278,6 @@ def test_category_metrics_names() -> None:
     names = [m.name for m in default_category_metrics()]
     assert names == [
         "judge_accuracy",
-        "judge_accuracy_ci",
         "attribution",
         "memory_lift",
     ]
@@ -296,28 +295,6 @@ def test_category_metrics_are_row_level_only() -> None:
     # categories are a property of questions, so no ingestion sections here
     for metric in default_category_metrics():
         assert "." not in metric.name
-
-
-def test_wilson_interval_brackets_the_rate_and_stays_in_bounds() -> None:
-    from amb.contracts.run import QuestionRecord
-    from amb.metrics import WilsonInterval
-
-    metric = WilsonInterval("judge_accuracy_ci", "judge_correct")
-    for i in range(100):
-        metric.update_state(
-            QuestionRecord(sample_id="s", question_id=str(i), judge_correct=i < 80)
-        )
-    interval = metric.result()
-    assert interval["n"] == 100
-    assert 0.70 < interval["low"] < 0.80 < interval["high"] < 0.88
-    # all-correct still leaves room below 1.0 and never reaches past it
-    perfect = WilsonInterval("x", "judge_correct")
-    for i in range(10):
-        perfect.update_state(
-            QuestionRecord(sample_id="s", question_id=str(i), judge_correct=True)
-        )
-    assert perfect.result()["high"] == 1.0
-    assert perfect.result()["low"] < 0.75
 
 
 def _attributed(found: bool, correct: bool) -> QuestionRecord:

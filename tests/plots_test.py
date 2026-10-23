@@ -35,11 +35,6 @@ def _summary(system: str, accuracy: float) -> dict:
         "dataset": "locomo",
         "k": 10,
         "judge_accuracy": accuracy,
-        "judge_accuracy_ci": {
-            "low": accuracy - 0.05,
-            "high": accuracy + 0.05,
-            "n": 300,
-        },
         "memory_tokens_total": 1000.0,
         "search_latency": {"p50_s": 0.1},
     }
@@ -166,13 +161,7 @@ def test_spend_sweep_is_dropped_for_runs_scored_before_it(tmp_path: Path) -> Non
     assert not any(c.stem.startswith("hits_") for c in section.charts())
 
 
-def test_table_prints_the_accuracy_interval(tmp_path: Path) -> None:
-    chart = _table_chart(tmp_path, [_summary("aaa", 0.5)])
-    header, rows = chart._table()
-    assert rows[0][header.index("95% CI")] == "0.450–0.550"
-
-
-def test_accuracy_bars_draw_with_their_interval(tmp_path: Path) -> None:
+def test_accuracy_bars_draw(tmp_path: Path) -> None:
     chart = Chart(
         kind="bars",
         stem="accuracy_k10",
@@ -180,9 +169,7 @@ def test_accuracy_bars_draw_with_their_interval(tmp_path: Path) -> None:
         k=10,
         out_dir=tmp_path,
         summaries=[_summary("aaa", 0.5), _summary("bbb", 0.62)],
-        ci="judge_accuracy_ci",
     )
-    assert chart.intervals()["bbb"] == (0.57, 0.67)
     path = chart.draw()
     assert path is not None
     assert path.stat().st_size > 0

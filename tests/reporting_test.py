@@ -346,7 +346,7 @@ def test_summary_table_carries_the_lift_beside_accuracy():
     header, rows = ComparisonReport([_attributed("alpha", 10, 0.6, 0.9)]).summary_table(
         10
     )
-    assert header.index("lift") == header.index("95% CI") + 1
+    assert header.index("lift") == header.index("accuracy") + 1
     assert rows[0][header.index("lift")] == "0.540"
 
 

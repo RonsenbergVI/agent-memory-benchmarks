@@ -22,11 +22,6 @@
   },
   "hits_per_query": 1.864551863041289,
   "judge_accuracy": 0.603112840466926,
-  "judge_accuracy_ci": {
-    "low": 0.5784655506932835,
-    "high": 0.6272476349267696,
-    "n": 1542
-  },
   "attribution": {
     "correct": 0.5377113133940182,
     "agent_fault": 0.11638491547464239,
@@ -69,11 +64,6 @@
   "by_category": {
     "adversarial": {
       "judge_accuracy": 1.0,
-      "judge_accuracy_ci": {
-        "low": 0.34237195288961925,
-        "high": 1.0,
-        "n": 2
-      },
       "attribution": {
         "correct": 1.0,
         "agent_fault": 0.0,
@@ -90,11 +80,6 @@
     },
     "multi-hop": {
       "judge_accuracy": 0.2624113475177305,
-      "judge_accuracy_ci": {
-        "low": 0.2145020534924042,
-        "high": 0.31670683982473363,
-        "n": 282
-      },
       "attribution": {
         "correct": 0.05673758865248227,
         "agent_fault": 0.024822695035460994,
@@ -111,11 +96,6 @@
     },
     "open-domain": {
       "judge_accuracy": 0.3229166666666667,
-      "judge_accuracy_ci": {
-        "low": 0.23775702086652156,
-        "high": 0.4217035647010175,
-        "n": 96
-      },
       "attribution": {
         "correct": 0.15217391304347827,
         "agent_fault": 0.2608695652173913,
@@ -132,11 +112,6 @@
     },
     "single-hop": {
       "judge_accuracy": 0.7051129607609988,
-      "judge_accuracy_ci": {
-        "low": 0.6734175256288629,
-        "high": 0.7349430475247317,
-        "n": 841
-      },
       "attribution": {
         "correct": 0.6825208085612366,
         "agent_fault": 0.13436385255648037,
@@ -153,11 +128,6 @@
     },
     "temporal": {
       "judge_accuracy": 0.7165109034267912,
-      "judge_accuracy_ci": {
-        "low": 0.6648718858785082,
-        "high": 0.7630289741098676,
-        "n": 321
-      },
       "attribution": {
         "correct": 0.6884735202492211,
         "agent_fault": 0.10903426791277258,

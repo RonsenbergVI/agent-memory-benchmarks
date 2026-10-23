@@ -115,8 +115,6 @@ SCORE_METRICS = (("accuracy", "judge_accuracy"),)
 HEADLINE = "judge_accuracy"
 # the memory's contribution: accuracy added over the agent's rate without evidence
 LIFT = "memory_lift"
-# where a binary metric's 95% interval lives: `<metric>_ci.low` / `.high`
-CI_SUFFIX = "_ci"
 
 # The two cost axes every score is traded off against.
 TOKENS = "memory_tokens_total"
@@ -142,8 +140,8 @@ RESULTS_TABLE_INTRO = (
 
 RESULTS_PLOTS_INTRO = (
     "Every question is a binary verdict — the judge marks the agent's answer "
-    "correct or not — so the headline is judge accuracy, drawn with its 95% "
-    "Wilson interval. Written by `amb plot all` into "
+    "correct or not — so the headline is judge accuracy. Written by "
+    "`amb plot all` into "
     "`plots/<dataset>/`, one directory per dataset (or "
     "`plots/<dataset>/<variant>/` for a dataset whose variants are separate "
     "experiments). Each section opens with its sweeps over k — the same "

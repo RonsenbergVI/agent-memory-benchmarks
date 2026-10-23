@@ -20,7 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import math
 from typing import Any, ClassVar
 
 from amb.base import Metric
@@ -108,42 +107,6 @@ class Mean(Metric):
         """Clear the running total."""
         super().reset_state()
         self._total = 0.0
-
-
-class WilsonInterval(Metric):
-    """The 95% Wilson interval of a binary outcome's success rate.
-
-    Accuracy over a few hundred verdicts is a few points of noise either
-    way; the interval travels with it so two systems inside each other's
-    band are never ranked as if they differed. Wilson rather than the
-    normal approximation: it stays inside 0–1 and honest near the ends.
-    """
-
-    Z: ClassVar[float] = 1.96
-
-    def __init__(self, name: str, key: str | None = None) -> None:
-        """Start with no verdicts."""
-        super().__init__(name, key)
-        self._successes = 0
-
-    def accumulate(self, value: Any) -> None:
-        """Count one verdict."""
-        self._successes += bool(value)
-
-    def result(self) -> dict[str, float]:
-        """Return the interval bounds and the number of verdicts behind them."""
-        n, z = self.count, self.Z
-        if not n:
-            return {"low": 0.0, "high": 0.0, "n": 0}
-        p = self._successes / n
-        centre = (p + z * z / (2 * n)) / (1 + z * z / n)
-        half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
-        return {"low": max(0.0, centre - half), "high": min(1.0, centre + half), "n": n}
-
-    def reset_state(self) -> None:
-        """Forget every verdict."""
-        super().reset_state()
-        self._successes = 0
 
 
 class LatencyPercentiles(Metric):
@@ -297,7 +260,6 @@ def default_metrics() -> list[Metric]:
         # k is the budget granted; this is what the system spent of it
         Mean("hits_per_query", "num_hits"),
         Mean("judge_accuracy", "judge_correct"),
-        WilsonInterval("judge_accuracy_ci", "judge_correct"),
         Attribution(),
         MemoryLift(),
         LatencyPercentiles("search_latency", "search_s"),
@@ -318,7 +280,6 @@ def default_category_metrics() -> list[Metric]:
     """
     return [
         Mean("judge_accuracy", "judge_correct"),
-        WilsonInterval("judge_accuracy_ci", "judge_correct"),
         Attribution(),
         MemoryLift(),
     ]

@@ -27,18 +27,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from amb.base import Metric, Report
-from amb.constants import CI_SUFFIX, DEFAULT_RUNS_DIR, HEADLINE
+from amb.constants import DEFAULT_RUNS_DIR, HEADLINE
 from amb.contracts import Run
 from amb.metrics import default_category_metrics, default_metrics
 
 if TYPE_CHECKING:
     from pydantic_ai.models import Model
 
-# the summary table's columns: (summary key, column label, format); an
-# interval column renders its `low–high` bounds
+# the summary table's columns: (summary key, column label, format)
 SUMMARY_COLUMNS = (
     ("judge_accuracy", "accuracy", "{:.3f}"),
-    ("judge_accuracy_ci", "95% CI", "{:.3f}"),
     ("memory_lift", "lift", "{:.3f}"),
     ("hits_per_query", "hits/q", "{:.2f}"),
     ("memory_tokens_total", "memory tokens", "{:,.0f}"),
@@ -588,11 +586,6 @@ class ComparisonReport(Report):
         says "n/a" — a blank would read as a missing datum, not a property.
         """
         coverage = summary.get("usage_coverage", "full")
-        if key.endswith(CI_SUFFIX):
-            bounds = summary.get(key) or {}
-            if not bounds.get("n"):
-                return ""
-            return f"{fmt.format(bounds['low'])}–{fmt.format(bounds['high'])}"
         if key in summary:
             cell = fmt.format(summary[key])
             if key == "memory_tokens_total" and coverage == "partial":

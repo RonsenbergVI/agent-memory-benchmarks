@@ -177,39 +177,24 @@ def bars(
     title: str | None = None,
     subtitle: str | None = None,
     dark: bool = False,
-    intervals: dict[str, tuple[float, float]] | None = None,
 ) -> Path:
     """Render one metric as horizontal bars, one per system, largest on top.
 
     Identity sits on the axis, so every bar wears the single series hue with
-    its value at its end. `intervals` (label -> low, high) adds a whisker
-    per bar in muted ink — an annotation, not a series — and moves the value
-    past it. Empty input is the caller's job to check. Returns the path
-    written.
+    its value at its end. Empty input is the caller's job to check. Returns
+    the path written.
     """
     fig, ax, c = styled_axes(dark)
     ax.grid(False, axis="y")  # gridlines only along the value axis
 
-    intervals = intervals or {}
     ordered = sorted(items, key=lambda item: item[1])
     labels = [label for label, _ in ordered]
     values = [value for _, value in ordered]
     ax.barh(labels, values, height=0.55, color=c["series"], zorder=3)
-    for i, (label, value) in enumerate(ordered):
-        low, high = intervals.get(label, (value, value))
-        if label in intervals:
-            ax.plot([low, high], [i, i], color=c["muted"], linewidth=1.5, zorder=5)
-            for end in (low, high):
-                ax.plot(
-                    [end, end],
-                    [i - 0.12, i + 0.12],
-                    color=c["muted"],
-                    linewidth=1.5,
-                    zorder=5,
-                )
+    for i, (_, value) in enumerate(ordered):
         ax.annotate(
             f"{value:.3f}",
-            (max(value, high), i),
+            (value, i),
             textcoords="offset points",
             xytext=(8, -3.5),
             color=c["text"],
@@ -218,8 +203,7 @@ def bars(
             zorder=4,
         )
     if values:
-        reach = [max(v, intervals.get(label, (v, v))[1]) for label, v in ordered]
-        pad_axis(reach, ax.set_xlim, ratio=is_ratio(x_label))
+        pad_axis(values, ax.set_xlim, ratio=is_ratio(x_label))
         ax.set_xlim(left=0.0)  # bars are anchored at zero, so the axis is too
         round_bars(fig, ax)
     return _finish(fig, ax, c, x_label, "", title, output, subtitle)

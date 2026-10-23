@@ -27,7 +27,6 @@ from amb.constants import (
     ATTRIBUTION_FOUND,
     ATTRIBUTION_INTRO,
     ATTRIBUTION_MISSED,
-    CI_SUFFIX,
     HEADLINE,
     LATENCY,
     LIFT,
@@ -246,7 +245,7 @@ class GroupCharts(Section):
         )
 
     def _bars(self, stem: str, metric: str, k: int) -> Chart:
-        """One score's system comparison at `k`, with its interval when binary."""
+        """One score's system comparison at `k`."""
         return Chart(
             kind="bars",
             stem=f"{stem}_k{k}",
@@ -257,9 +256,7 @@ class GroupCharts(Section):
             alt=f"{headline(pretty(metric))} by system",
             title=headline(f"{pretty(metric)} by system"),
             subtitle=f"{self.group.label} · k={k} · "
-            f"newest run per system{freshness(self._at_k(k))}"
-            + (" · whiskers: 95% Wilson interval" if metric == HEADLINE else ""),
-            ci=metric + CI_SUFFIX if metric == HEADLINE else None,
+            f"newest run per system{freshness(self._at_k(k))}",
         )
 
     def _scatter(self, x: str, y: str, stem: str, k: int) -> Chart:
@@ -400,13 +397,7 @@ class GroupCharts(Section):
                         text=f"{self.group.label}: system comparison (k={k})",
                     )
                 )
-                blocks.append(
-                    Paragraph(
-                        text="One bar per system, newest run. Accuracy bars carry "
-                        "their 95% Wilson interval: overlapping whiskers are not "
-                        "a ranking."
-                    )
-                )
+                blocks.append(Paragraph(text="One bar per system, newest run."))
                 blocks += [Figure(alt=c.alt, path=c.path) for c in bars]
             if scatters:
                 blocks.append(

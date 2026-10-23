@@ -16,7 +16,7 @@ Every run's summary reports these axes (the metric set is `default_metrics()` in
 
 ### Answer accuracy
 
-Did the agent, searching the system, answer correctly? `judge_accuracy` is the share of questions the judge grades correct, with its 95% Wilson interval (`judge_accuracy_ci`), also broken down by the dataset's question category (LoCoMo: single-hop, multi-hop, temporal, open-domain, adversarial; LongMemEval: its `question_type`s).
+Did the agent, searching the system, answer correctly? `judge_accuracy` is the share of questions the judge grades correct, also broken down by the dataset's question category (LoCoMo: single-hop, multi-hop, temporal, open-domain, adversarial; LongMemEval: its `question_type`s).
 
 ### Retrieval
 
@@ -64,7 +64,7 @@ Every experiment is the same pipeline — **ingest → qa → evaluation** — m
 
 - **Ingest:** each session goes through the adapter's `ingest_session`, i.e. the system's **own extractor** (mem0's fact extraction, graphiti's entity extraction, hindsight's server-side retain, ...), on the model set with `--llm`.
 - **QA:** amb's question agent (`--model`, required) searches through the system's *own* search tools (mem0's `search_memory`, hindsight's `recall`, fraise's `query` (raw FQL recalls, written from the language spec in its instructions), ... or the generic `search_memory`) as many times as it likes, then answers. Retrieval is recorded on everything it chose to look at.
-- **Evaluation:** the judge (`--judge-model`) gives each answer one binary verdict, correct or not. **Judge accuracy is the headline**, reported with its 95% Wilson interval — a few hundred verdicts per run leave a few points of noise, so systems inside each other's interval are not ranked as different. LoCoMo's adversarial questions are unanswerable; the judge counts a correct abstention ("I don't know") as correct there, so the verdict stays binary.
+- **Evaluation:** the judge (`--judge-model`) gives each answer one binary verdict, correct or not. **Judge accuracy is the headline.** LoCoMo's adversarial questions are unanswerable; the judge counts a correct abstention ("I don't know") as correct there, so the verdict stays binary.
 
 There is no retrieval-only mode: earlier releases scored a harness-driven search on retrieval F1, and those results were withdrawn — they measured a search engine, not memory in an agent.
 

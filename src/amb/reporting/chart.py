@@ -56,8 +56,6 @@ class Chart:
     better: str | None = None
     # floor system, drawn as a reference line; None on cost-vs-cost scatters
     baseline_system: str | None = None
-    # bars: the summary key holding each value's interval (`low`/`high`)
-    ci: str | None = None
 
     @property
     def path(self) -> Path:
@@ -113,21 +111,6 @@ class Chart:
             self.k or 10, metric=self.y
         )
 
-    def intervals(self) -> dict[str, tuple[float, float]]:
-        """Each system's (low, high) bounds on `ci`, newest run; empty without one."""
-        if self.ci is None:
-            return {}
-        lows = helpers.collect_series(self.scoped(), f"{self.ci}.low")
-        highs = {
-            line.label: line.ys[0]
-            for line in helpers.collect_series(self.scoped(), f"{self.ci}.high")
-        }
-        return {
-            line.label: (line.ys[0], highs[line.label])
-            for line in lows
-            if line.label in highs
-        }
-
     def has_data(self) -> bool:
         """Whether any run in scope reports what this chart plots.
 
@@ -165,7 +148,6 @@ class Chart:
                     title=self.title,
                     subtitle=self.subtitle,
                     dark=dark,
-                    intervals=self.intervals(),
                 )
             case "lines":
                 return plots.lines(
