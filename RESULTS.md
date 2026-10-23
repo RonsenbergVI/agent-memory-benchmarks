@@ -18,6 +18,10 @@ Latest run per system x dataset x models. Each row's full per-question output li
 | locomo |  | memos | 2.0.33 | 1 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 2.714 | 0.487 | 0.341 | 3261686.000 | 0.5208 | 1.5317 |
 | locomo |  | memos | 2.0.33 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 10.237 | 0.626 | 0.423 | 3128838.000 | 0.6132 | 1.5212 |
 | locomo |  | memos | 2.0.33 | 3 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 6.704 | 0.602 | 0.411 | 3211284.000 | 0.5147 | 1.3892 |
+| longmemeval | xs-shared | memos | 2.0.33 | 10 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 22.298 | 0.775 | 0.229 | 10826222.000 | 1.0177 | 2.4969 |
+| longmemeval | xs-shared | memos | 2.0.33 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 12.603 | 0.755 | 0.255 | 10831627.000 | 0.6419 | 1.6046 |
+| longmemeval | xs-shared | memos | 2.0.33 | 3 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 8.119 | 0.742 | 0.334 | 10827528.000 | 0.5827 | 1.7595 |
+| longmemeval | xs-shared | memos | 2.0.33 | 1 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 3.351 | 0.609 | 0.350 | 10837908.000 | 1.1003 | 3.2843 |
 
 ## Plots
 
@@ -254,5 +258,227 @@ Answer accuracy against memory tokens spent and search latency.
 ![Judge accuracy vs search latency p50 (s)](plots/locomo/latency_accuracy_k10.png)
 
 ![Search latency p50 (s) vs memory tokens total](plots/locomo/tokens_latency_k10.png)
+
+### longmemeval (xs-shared)
+
+#### longmemeval (xs-shared): scores vs k
+
+One line per system across the k sweep, newest run per system and k.
+
+![Judge accuracy vs k](plots/longmemeval/xs-shared/k_accuracy.png)
+
+#### longmemeval (xs-shared): scores vs hits returned
+
+The same sweep, placed at the hits each k actually returned: k is the budget granted, hits per query what a system spent of it. Compare systems at a matched spend, where returning fewer hits than allowed cannot pass for ranking better.
+
+![Judge accuracy vs hits returned per query](plots/longmemeval/xs-shared/hits_accuracy.png)
+
+#### longmemeval (xs-shared): accuracy vs k by question category
+
+The breakdown table at one k, swept: whether a system is weak on a question type, or simply needed a bigger budget.
+
+![Judge accuracy vs k for knowledge-update questions](plots/longmemeval/xs-shared/k_accuracy_knowledge-update.png)
+
+![Judge accuracy vs k for multi-session questions](plots/longmemeval/xs-shared/k_accuracy_multi-session.png)
+
+![Judge accuracy vs k for single-session-assistant questions](plots/longmemeval/xs-shared/k_accuracy_single-session-assistant.png)
+
+![Judge accuracy vs k for single-session-preference questions](plots/longmemeval/xs-shared/k_accuracy_single-session-preference.png)
+
+![Judge accuracy vs k for single-session-user questions](plots/longmemeval/xs-shared/k_accuracy_single-session-user.png)
+
+![Judge accuracy vs k for temporal-reasoning questions](plots/longmemeval/xs-shared/k_accuracy_temporal-reasoning.png)
+
+---
+
+#### longmemeval (xs-shared): by question category (k=1)
+
+Where each system answers correctly, not just how often overall. The best accuracy in each column is bold.
+
+![Judge accuracy by question category at k=1](plots/longmemeval/xs-shared/categories_k1.png)
+
+#### longmemeval (xs-shared): error analysis (k=1)
+
+Who lost each question: the memory, or the agent it served. Each judged question with evidence labels is split by whether every evidence session was retrieved, then by the judge's verdict. The two tables mirror each other: the verdict columns are shares of the branch, the branch's own rate over every question closes the row, and both keep one row order, most found first. Questions without evidence labels (LoCoMo's adversarial ones) are left out, not scored as misses.
+
+**Found.** The memory did its job. `correct with evidence` is the agent's own rate and should be flat across systems; where it is not, a memory is handing back evidence in a form the agent cannot use.
+
+| system | version | correct with evidence | wrong with evidence | found |
+| --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.804 | 0.196 | 0.642 |
+
+**Missed.** The memory failed. `correct without evidence` is the agent right anyway, from prior knowledge or a guess; `wrong without evidence` is what this memory's misses actually cost.
+
+| system | version | correct without evidence | wrong without evidence | missed |
+| --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.259 | 0.741 | 0.358 |
+
+#### longmemeval (xs-shared): memory lift (k=1)
+
+What the memory contributed, as one number. `lift` is the accuracy the memory added over what the agent answers without the evidence: `found × gain`, where `gain` is `correct with evidence` less `correct without evidence`. A memory that finds everything but returns it unusably earns little; so does one that returns clean facts but misses half the questions. The rate without evidence is estimated from each system's own misses.
+
+| system | version | found | correct with evidence | correct without evidence | gain | lift |
+| --- | --- | --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.642 | 0.804 | 0.259 | 0.545 | 0.350 |
+
+#### longmemeval (xs-shared): system comparison (k=1)
+
+One bar per system, newest run.
+
+![Judge accuracy by system](plots/longmemeval/xs-shared/accuracy_k1.png)
+
+#### longmemeval (xs-shared): cross-metric trade-offs (k=1)
+
+Answer accuracy against memory tokens spent and search latency.
+
+![Judge accuracy vs memory tokens total](plots/longmemeval/xs-shared/tokens_accuracy_k1.png)
+
+![Judge accuracy vs search latency p50 (s)](plots/longmemeval/xs-shared/latency_accuracy_k1.png)
+
+![Search latency p50 (s) vs memory tokens total](plots/longmemeval/xs-shared/tokens_latency_k1.png)
+
+---
+
+#### longmemeval (xs-shared): by question category (k=3)
+
+Where each system answers correctly, not just how often overall. The best accuracy in each column is bold.
+
+![Judge accuracy by question category at k=3](plots/longmemeval/xs-shared/categories_k3.png)
+
+#### longmemeval (xs-shared): error analysis (k=3)
+
+Who lost each question: the memory, or the agent it served. Each judged question with evidence labels is split by whether every evidence session was retrieved, then by the judge's verdict. The two tables mirror each other: the verdict columns are shares of the branch, the branch's own rate over every question closes the row, and both keep one row order, most found first. Questions without evidence labels (LoCoMo's adversarial ones) are left out, not scored as misses.
+
+**Found.** The memory did its job. `correct with evidence` is the agent's own rate and should be flat across systems; where it is not, a memory is handing back evidence in a form the agent cannot use.
+
+| system | version | correct with evidence | wrong with evidence | found |
+| --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.815 | 0.185 | 0.821 |
+
+**Missed.** The memory failed. `correct without evidence` is the agent right anyway, from prior knowledge or a guess; `wrong without evidence` is what this memory's misses actually cost.
+
+| system | version | correct without evidence | wrong without evidence | missed |
+| --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.407 | 0.593 | 0.179 |
+
+#### longmemeval (xs-shared): memory lift (k=3)
+
+What the memory contributed, as one number. `lift` is the accuracy the memory added over what the agent answers without the evidence: `found × gain`, where `gain` is `correct with evidence` less `correct without evidence`. A memory that finds everything but returns it unusably earns little; so does one that returns clean facts but misses half the questions. The rate without evidence is estimated from each system's own misses.
+
+| system | version | found | correct with evidence | correct without evidence | gain | lift |
+| --- | --- | --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.821 | 0.815 | 0.407 | 0.407 | 0.334 |
+
+#### longmemeval (xs-shared): system comparison (k=3)
+
+One bar per system, newest run.
+
+![Judge accuracy by system](plots/longmemeval/xs-shared/accuracy_k3.png)
+
+#### longmemeval (xs-shared): cross-metric trade-offs (k=3)
+
+Answer accuracy against memory tokens spent and search latency.
+
+![Judge accuracy vs memory tokens total](plots/longmemeval/xs-shared/tokens_accuracy_k3.png)
+
+![Judge accuracy vs search latency p50 (s)](plots/longmemeval/xs-shared/latency_accuracy_k3.png)
+
+![Search latency p50 (s) vs memory tokens total](plots/longmemeval/xs-shared/tokens_latency_k3.png)
+
+---
+
+#### longmemeval (xs-shared): by question category (k=5)
+
+Where each system answers correctly, not just how often overall. The best accuracy in each column is bold.
+
+![Judge accuracy by question category at k=5](plots/longmemeval/xs-shared/categories_k5.png)
+
+#### longmemeval (xs-shared): error analysis (k=5)
+
+Who lost each question: the memory, or the agent it served. Each judged question with evidence labels is split by whether every evidence session was retrieved, then by the judge's verdict. The two tables mirror each other: the verdict columns are shares of the branch, the branch's own rate over every question closes the row, and both keep one row order, most found first. Questions without evidence labels (LoCoMo's adversarial ones) are left out, not scored as misses.
+
+**Found.** The memory did its job. `correct with evidence` is the agent's own rate and should be flat across systems; where it is not, a memory is handing back evidence in a form the agent cannot use.
+
+| system | version | correct with evidence | wrong with evidence | found |
+| --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.794 | 0.206 | 0.868 |
+
+**Missed.** The memory failed. `correct without evidence` is the agent right anyway, from prior knowledge or a guess; `wrong without evidence` is what this memory's misses actually cost.
+
+| system | version | correct without evidence | wrong without evidence | missed |
+| --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.500 | 0.500 | 0.132 |
+
+#### longmemeval (xs-shared): memory lift (k=5)
+
+What the memory contributed, as one number. `lift` is the accuracy the memory added over what the agent answers without the evidence: `found × gain`, where `gain` is `correct with evidence` less `correct without evidence`. A memory that finds everything but returns it unusably earns little; so does one that returns clean facts but misses half the questions. The rate without evidence is estimated from each system's own misses.
+
+| system | version | found | correct with evidence | correct without evidence | gain | lift |
+| --- | --- | --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.868 | 0.794 | 0.500 | 0.294 | 0.255 |
+
+#### longmemeval (xs-shared): system comparison (k=5)
+
+One bar per system, newest run.
+
+![Judge accuracy by system](plots/longmemeval/xs-shared/accuracy_k5.png)
+
+#### longmemeval (xs-shared): cross-metric trade-offs (k=5)
+
+Answer accuracy against memory tokens spent and search latency.
+
+![Judge accuracy vs memory tokens total](plots/longmemeval/xs-shared/tokens_accuracy_k5.png)
+
+![Judge accuracy vs search latency p50 (s)](plots/longmemeval/xs-shared/latency_accuracy_k5.png)
+
+![Search latency p50 (s) vs memory tokens total](plots/longmemeval/xs-shared/tokens_latency_k5.png)
+
+---
+
+#### longmemeval (xs-shared): by question category (k=10)
+
+Where each system answers correctly, not just how often overall. The best accuracy in each column is bold.
+
+![Judge accuracy by question category at k=10](plots/longmemeval/xs-shared/categories_k10.png)
+
+#### longmemeval (xs-shared): error analysis (k=10)
+
+Who lost each question: the memory, or the agent it served. Each judged question with evidence labels is split by whether every evidence session was retrieved, then by the judge's verdict. The two tables mirror each other: the verdict columns are shares of the branch, the branch's own rate over every question closes the row, and both keep one row order, most found first. Questions without evidence labels (LoCoMo's adversarial ones) are left out, not scored as misses.
+
+**Found.** The memory did its job. `correct with evidence` is the agent's own rate and should be flat across systems; where it is not, a memory is handing back evidence in a form the agent cannot use.
+
+| system | version | correct with evidence | wrong with evidence | found |
+| --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.793 | 0.207 | 0.927 |
+
+**Missed.** The memory failed. `correct without evidence` is the agent right anyway, from prior knowledge or a guess; `wrong without evidence` is what this memory's misses actually cost.
+
+| system | version | correct without evidence | wrong without evidence | missed |
+| --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.545 | 0.455 | 0.073 |
+
+#### longmemeval (xs-shared): memory lift (k=10)
+
+What the memory contributed, as one number. `lift` is the accuracy the memory added over what the agent answers without the evidence: `found × gain`, where `gain` is `correct with evidence` less `correct without evidence`. A memory that finds everything but returns it unusably earns little; so does one that returns clean facts but misses half the questions. The rate without evidence is estimated from each system's own misses.
+
+| system | version | found | correct with evidence | correct without evidence | gain | lift |
+| --- | --- | --- | --- | --- | --- | --- |
+| memos | 2.0.33 | 0.927 | 0.793 | 0.545 | 0.247 | 0.229 |
+
+#### longmemeval (xs-shared): system comparison (k=10)
+
+One bar per system, newest run.
+
+![Judge accuracy by system](plots/longmemeval/xs-shared/accuracy_k10.png)
+
+#### longmemeval (xs-shared): cross-metric trade-offs (k=10)
+
+Answer accuracy against memory tokens spent and search latency.
+
+![Judge accuracy vs memory tokens total](plots/longmemeval/xs-shared/tokens_accuracy_k10.png)
+
+![Judge accuracy vs search latency p50 (s)](plots/longmemeval/xs-shared/latency_accuracy_k10.png)
+
+![Search latency p50 (s) vs memory tokens total](plots/longmemeval/xs-shared/tokens_latency_k10.png)
 
 Every chart above is also browsable directly in [`plots/`](plots/), regenerated by `amb plot all` from the same report definition that wrote this file — nothing there or here is drawn or written by hand.
