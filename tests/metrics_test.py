@@ -34,7 +34,6 @@ from amb.metrics import (
     LatencyPercentiles,
     Mean,
     Sum,
-    ValueCounts,
     default_category_metrics,
     default_metrics,
 )
@@ -181,29 +180,6 @@ def test_count_reset_returns_to_zero() -> None:
     metric.update_state(_q(error="boom"))
     metric.reset_state()
     assert metric.result() == 0
-
-
-def test_value_counts_per_distinct_value() -> None:
-    metric = ValueCounts("categories", "category")
-    for category in ("b", "a", "b"):
-        metric.update_state(_q(category=category))
-    assert metric.result() == {"a": 1, "b": 2}
-    assert list(metric.result()) == ["a", "b"]
-
-
-def test_value_counts_stringifies_values() -> None:
-    metric = ValueCounts("hits", "num_hits")
-    for hits in (1, 2, 1):
-        metric.update_state(_q(num_hits=hits))
-    assert metric.result() == {"1": 2, "2": 1}
-
-
-def test_value_counts_reset_forgets_everything() -> None:
-    metric = ValueCounts("categories", "category")
-    metric.update_state(_q(category="a"))
-    metric.reset_state()
-    assert metric.count == 0
-    assert metric.result() == {}
 
 
 def test_percentiles_nearest_rank_hand_computed() -> None:

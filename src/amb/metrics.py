@@ -39,28 +39,6 @@ class Count(Metric):
         return self.count
 
 
-class ValueCounts(Metric):
-    """How many records carried each distinct value of the field."""
-
-    def __init__(self, name: str, key: str | None = None) -> None:
-        """Start with no values seen."""
-        super().__init__(name, key)
-        self._counts: dict[str, int] = {}
-
-    def accumulate(self, value: Any) -> None:
-        """Count one occurrence of the observed value."""
-        self._counts[str(value)] = self._counts.get(str(value), 0) + 1
-
-    def result(self) -> dict[str, int]:
-        """Return occurrences per distinct value, key-sorted."""
-        return dict(sorted(self._counts.items()))
-
-    def reset_state(self) -> None:
-        """Forget every value seen."""
-        super().reset_state()
-        self._counts = {}
-
-
 class DictSum(Metric):
     """Key-wise sums over dict-valued observations.
 
