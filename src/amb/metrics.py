@@ -21,23 +21,9 @@
 # SOFTWARE.
 
 import math
-import re
-import string
-from collections import Counter
 from typing import Any, ClassVar
 
-from amb.base import Metric, Scorer
-
-
-def normalize_answer(text: str) -> str:
-    """Normalize an answer for token comparison (the SQuAD convention).
-
-    Lowercase, strip punctuation and the articles a/an/the, collapse whitespace.
-    """
-    text = text.lower()
-    text = "".join(ch for ch in text if ch not in string.punctuation)
-    text = re.sub(r"\b(a|an|the)\b", " ", text)
-    return " ".join(text.split())
+from amb.base import Metric
 
 
 class Count(Metric):
@@ -215,40 +201,6 @@ class LatencyPercentiles(Metric):
         self._values = []
 
 
-class AnswerF1(Scorer, Mean):
-    """Macro-averaged token F1 of predicted vs gold answers."""
-
-    def __init__(self) -> None:
-        """Report under ``answer_f1``."""
-        super().__init__("answer_f1")
-
-    def score(self, predicted: str, gold: str) -> float:
-        """Token-level F1 between the predicted and gold answers."""
-        pred = normalize_answer(predicted).split()
-        truth = normalize_answer(gold).split()
-        if not pred or not truth:
-            return float(pred == truth)
-        common = Counter(pred) & Counter(truth)
-        overlap = sum(common.values())
-        if overlap == 0:
-            return 0.0
-        precision = overlap / len(pred)
-        recall = overlap / len(truth)
-        return 2 * precision * recall / (precision + recall)
-
-
-class ExactMatch(Scorer, Mean):
-    """Macro-averaged exact match of predicted vs gold answers."""
-
-    def __init__(self) -> None:
-        """Report under ``exact_match``."""
-        super().__init__("exact_match")
-
-    def score(self, predicted: str, gold: str) -> float:
-        """1.0 when the normalized answers are identical, else 0.0."""
-        return float(normalize_answer(predicted) == normalize_answer(gold))
-
-
 def default_metrics() -> list[Metric]:
     """The standard metric set a run is scored with when none is given.
 
@@ -263,8 +215,6 @@ def default_metrics() -> list[Metric]:
         Sum("conversation.total_s", "conversation_s"),
         # k is the budget granted; this is what the system spent of it
         Mean("hits_per_query", "num_hits"),
-        AnswerF1(),
-        ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),
         WilsonInterval("judge_accuracy_ci", "judge_correct"),
         LatencyPercentiles("search_latency", "search_s"),
@@ -284,8 +234,6 @@ def default_category_metrics() -> list[Metric]:
     metrics only, since categories are a property of questions, not ingestion.
     """
     return [
-        AnswerF1(),
-        ExactMatch(),
         Mean("judge_accuracy", "judge_correct"),
         WilsonInterval("judge_accuracy_ci", "judge_correct"),
     ]

@@ -21,8 +21,6 @@
     "total_s": 5984.272703265
   },
   "hits_per_query": 2.9466263846928498,
-  "answer_f1": 0.47589011887699395,
-  "exact_match": 0.23994811932555124,
   "judge_accuracy": 0.6939040207522698,
   "judge_accuracy_ci": {
     "low": 0.6704422747814895,
@@ -57,8 +55,6 @@
   "memory_tokens_total": 9616397.0,
   "by_category": {
     "adversarial": {
-      "answer_f1": 1.0,
-      "exact_match": 1.0,
       "judge_accuracy": 1.0,
       "judge_accuracy_ci": {
         "low": 0.34237195288961925,
@@ -67,8 +63,6 @@
       }
     },
     "multi-hop": {
-      "answer_f1": 0.37183088635571704,
-      "exact_match": 0.10638297872340426,
       "judge_accuracy": 0.425531914893617,
       "judge_accuracy_ci": {
         "low": 0.36920582216868897,
@@ -77,8 +71,6 @@
       }
     },
     "open-domain": {
-      "answer_f1": 0.227940728358043,
-      "exact_match": 0.14583333333333334,
       "judge_accuracy": 0.3541666666666667,
       "judge_accuracy_ci": {
         "low": 0.265796935097103,
@@ -87,8 +79,6 @@
       }
     },
     "single-hop": {
-      "answer_f1": 0.5945509824341988,
-      "exact_match": 0.33174791914387636,
       "judge_accuracy": 0.8014268727705113,
       "judge_accuracy_ci": {
         "low": 0.773120835828453,
@@ -97,8 +87,6 @@
       }
     },
     "temporal": {
-      "answer_f1": 0.32731017821333575,
-      "exact_match": 0.14018691588785046,
       "judge_accuracy": 0.7476635514018691,
       "judge_accuracy_ci": {
         "low": 0.6974090082984515,

@@ -64,29 +64,3 @@ class Metric(ABC):
     def reset_state(self) -> None:
         """Clear the accumulated state, starting a new scope."""
         self.count = 0
-
-
-class Scorer(Metric):
-    """A metric that scores a (predicted, gold) pair per observation.
-
-    ``predicted_key``/``gold_key`` name the fields holding the pair;
-    accumulation comes from the mixed-in accumulator, e.g.
-    ``class AnswerF1(Scorer, Mean)``. Records missing the prediction or
-    with an empty gold value are ignored.
-    """
-
-    predicted_key: ClassVar[str] = "predicted_answer"
-    gold_key: ClassVar[str] = "gold_answer"
-
-    def update_state(self, record: Record) -> None:
-        """Score the record's (predicted, gold) pair and accumulate it."""
-        predicted = getattr(record, self.predicted_key, None)
-        gold = getattr(record, self.gold_key, None)
-        if predicted is None or not gold:
-            return
-        self.accumulate(self.score(predicted, gold))
-        self.count += 1
-
-    @abstractmethod
-    def score(self, predicted: Any, gold: Any) -> float:
-        """Score one prediction against its ground truth."""

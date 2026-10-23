@@ -26,20 +26,17 @@ from typing import Any
 
 import pytest
 
-from amb.base.metric import Metric, Scorer
+from amb.base.metric import Metric
 from amb.contracts.run import IngestionRecord, QuestionRecord
 from amb.metrics import (
-    AnswerF1,
     Count,
     DictSum,
-    ExactMatch,
     LatencyPercentiles,
     Mean,
     Sum,
     ValueCounts,
     default_category_metrics,
     default_metrics,
-    normalize_answer,
 )
 
 
@@ -241,99 +238,6 @@ def test_percentile_static_empty_list_is_zero() -> None:
     assert LatencyPercentiles.percentile([], 50) == 0.0
 
 
-def test_normalize_answer_squad_convention() -> None:
-    assert normalize_answer("The Quick,  Brown Fox!") == "quick brown fox"
-
-
-def test_normalize_answer_strips_articles_after_punctuation() -> None:
-    # punctuation removal runs first, so "a.n" collapses to the article "an"
-    assert normalize_answer("a.n answer") == "answer"
-
-
-def test_normalize_answer_all_punctuation_is_empty() -> None:
-    assert normalize_answer("...") == ""
-
-
-def test_answer_f1_identical_after_normalization() -> None:
-    assert AnswerF1().score("The Ramen!", "ramen") == 1.0
-
-
-def test_answer_f1_disjoint_tokens() -> None:
-    assert AnswerF1().score("cat", "dog") == 0.0
-
-
-def test_answer_f1_partial_overlap() -> None:
-    # pred {cat, sat}: precision 2/2, recall 2/3 -> f1 0.8
-    assert AnswerF1().score("the cat sat", "cat sat down") == pytest.approx(0.8)
-
-
-def test_answer_f1_counts_token_multiplicity() -> None:
-    # overlap min(2,1)=1: precision 1/2, recall 1/1 -> f1 2/3
-    assert AnswerF1().score("dog dog", "dog") == pytest.approx(2 / 3)
-
-
-def test_answer_f1_both_sides_normalize_to_empty() -> None:
-    assert AnswerF1().score("the", "a") == 1.0
-
-
-def test_answer_f1_empty_prediction_nonempty_gold() -> None:
-    assert AnswerF1().score("", "cat") == 0.0
-
-
-def test_answer_f1_reports_under_its_dotted_free_name() -> None:
-    assert AnswerF1().name == "answer_f1"
-
-
-def test_exact_match_ignores_form() -> None:
-    metric = ExactMatch()
-    assert metric.name == "exact_match"
-    assert metric.score("The Answer!", "answer") == 1.0
-
-
-def test_exact_match_different_answers() -> None:
-    assert ExactMatch().score("42", "43") == 0.0
-
-
-def test_scorer_default_pair_keys() -> None:
-    assert Scorer.predicted_key == "predicted_answer"
-    assert Scorer.gold_key == "gold_answer"
-
-
-def test_scorer_skips_missing_prediction() -> None:
-    metric = AnswerF1()
-    metric.update_state(_q(gold_answer="ramen"))
-    assert metric.count == 0
-    assert metric.result() == 0.0
-
-
-@pytest.mark.parametrize("gold", [None, ""])
-def test_scorer_skips_empty_gold(gold) -> None:
-    metric = AnswerF1()
-    metric.update_state(_q(predicted_answer="ramen", gold_answer=gold))
-    assert metric.count == 0
-
-
-def test_scorer_counts_empty_prediction_as_zero() -> None:
-    # "" is a prediction (just a wrong one), unlike a missing one
-    metric = AnswerF1()
-    metric.update_state(_q(predicted_answer="", gold_answer="ramen"))
-    assert metric.count == 1
-    assert metric.result() == 0.0
-
-
-def test_answer_f1_macro_averages_across_records() -> None:
-    metric = AnswerF1()
-    metric.update_state(_q(predicted_answer="ramen", gold_answer="Ramen!"))  # 1.0
-    metric.update_state(
-        _q(predicted_answer="the cat sat", gold_answer="cat sat down")
-    )  # 0.8
-    assert metric.count == 2
-    assert metric.result() == pytest.approx(0.9)
-    metric.reset_state()
-    assert metric.count == 0
-    assert metric.result() == 0.0
-
-
 def test_default_metric_names_are_unique() -> None:
     names = [m.name for m in default_metrics()]
     assert len(names) == len(set(names))
@@ -383,18 +287,19 @@ def test_default_metrics_load_bearing_entries() -> None:
     assert hits.key == "num_hits"
 
 
-def test_default_metrics_score_no_retrieval() -> None:
+def test_default_metrics_score_judge_accuracy_only() -> None:
     names = {m.name for m in default_metrics()}
-    assert {"answer_f1", "exact_match", "judge_accuracy"} <= names
+    assert "judge_accuracy" in names
     assert not any(
-        n.startswith(("retrieval_", "turn_")) or n in {"attribution", "memory_lift"}
+        n.startswith(("retrieval_", "turn_"))
+        or n in {"attribution", "memory_lift", "answer_f1", "exact_match"}
         for n in names
     )
 
 
 def test_category_metrics_names() -> None:
     names = [m.name for m in default_category_metrics()]
-    assert names == ["answer_f1", "exact_match", "judge_accuracy", "judge_accuracy_ci"]
+    assert names == ["judge_accuracy", "judge_accuracy_ci"]
 
 
 def test_category_metrics_are_fresh_instances_per_call() -> None:

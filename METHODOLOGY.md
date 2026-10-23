@@ -16,7 +16,7 @@ Every run's summary reports these axes (the metric set is `default_metrics()` in
 
 ### Answer accuracy
 
-Did the agent, searching the system, answer correctly? `judge_accuracy` is the share of questions the judge grades correct, with its 95% Wilson interval (`judge_accuracy_ci`), also broken down by the dataset's question category (LoCoMo: single-hop, multi-hop, temporal, open-domain, adversarial; LongMemEval: its `question_type`s). Token-overlap `answer_f1` and `exact_match` are computed too but never headlined.
+Did the agent, searching the system, answer correctly? `judge_accuracy` is the share of questions the judge grades correct, with its 95% Wilson interval (`judge_accuracy_ci`), also broken down by the dataset's question category (LoCoMo: single-hop, multi-hop, temporal, open-domain, adversarial; LongMemEval: its `question_type`s).
 
 ### Retrieval
 
