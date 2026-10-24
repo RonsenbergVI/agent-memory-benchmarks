@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.8.0...fraise/v0.9.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop retrieval metrics and score judge accuracy only ([#292](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/292))
+* score retrieval at the turn level for every system ([#284](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/284))
+
+### Features
+
+* drop retrieval metrics and score judge accuracy only ([#292](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/292)) ([08ee0df](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/08ee0dffdecee113052588887a79778873259629))
+* score retrieval at the turn level for every system ([#284](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/284)) ([7d9cc9a](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/7d9cc9a16614b7389e1ad00f991f26b9026c3be4))
+
 ## [0.8.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.7.0...fraise/v0.8.0) (2026-10-18)
 
 
