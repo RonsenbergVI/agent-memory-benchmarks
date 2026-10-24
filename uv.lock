@@ -1657,7 +1657,7 @@ wheels = [
 
 [[package]]
 name = "fraise"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "benchmarks/fraise" }
 dependencies = [
     { name = "amb" },
