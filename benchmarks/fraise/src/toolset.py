@@ -25,8 +25,8 @@
 The answering agent writes Fraise Query Language recalls itself, from the
 spec in the toolset's instructions, and reads the server's errors and
 warnings back to correct them. Ingestion stays the adapter's tagged
-per-message `remember`; the graph, the `conv-<id>` anchor, `top` and the
-vector are always the adapter's, so isolation and the k budget never rest
+per-message `remember`; the graph, `top` and the vector are always the
+adapter's, so isolation and the k budget never rest
 on the agent.
 """
 
@@ -39,7 +39,7 @@ from amb.agent.toolset import SearchToolset
 from amb.base import Memory
 from src.memory import FraiseMemory
 
-# condensed from the fraise v0.3.3 FQL docs (docs/query-language), recall only
+# condensed from the fraise v0.3.5 FQL docs (docs/query-language), recall only
 FQL_SPEC = """\
 You search this conversation's memory with the `query` tool, which runs one \
 Fraise Query Language (FQL) recall. Each stored fact is one conversation \
@@ -51,7 +51,7 @@ Grammar (EBNF; the tool's own clauses are marked):
     recall_body  = ( term+ field* ) | field+ ;  (* needs one seed *)
     term         = bare_word | phrase ;         (* soft ranking seed *)
     field        = anchor | modifier ;
-    anchor       = ( 'topic' | 'entity' ) ':' anchor_value ;  (* seed; repeatable *)
+    anchor       = ( 'topic' | 'entity' ) ':' anchor_value ;  (* lift; repeatable *)
     anchor_value = bare_word | phrase ;         (* folded to lower case *)
     modifier     = since_field | until_field | depth_field ;  (* never a seed *)
     since_field  = 'since' ':' time_value ;     (* lower time bound *)
@@ -68,9 +68,10 @@ Rules:
 interleave in any order; only anchors may repeat (a repeated modifier is a \
 duplicate-clause error).
 - Several terms are a union: any match seeds the search. There is no AND, OR \
-or NOT. An anchor beside terms is a hard filter: only facts filed under it \
-come back, so name one only when you are sure it was used at storage time; \
-an entity is a person or thing a message mentions, e.g. a speaker's name.
+or NOT. An anchor beside terms filters nothing: it lifts the facts filed \
+under it through the graph, and a match filed elsewhere still counts. Alone, \
+anchors seed the search with the facts filed under them. An entity is a \
+person or thing a message mentions, e.g. a speaker's name.
 - Reserved words are syntax wherever a term can stand: recall, remember, \
 forget, update, explain, describe, topic, entity, since, until, top, depth, \
 vec. Quote one to search for it ('top'). After a field's ':' a reserved \
@@ -83,7 +84,9 @@ text is also embedded for semantic search.
 of stop words is an error. Inside a phrase they are fine.
 - depth: 0 searches the text and vector indices only; 1 lets topics and \
 entities that concentrate the matches pull in facts filed under them; 2 \
-admits them at their fair share, for maximum recall. Omit it for the default.
+admits them at their fair share, for maximum recall. An anchor you name \
+always lifts, so a recall with terms and an anchor runs at depth 1 at least \
+(a written depth:0 warns). Omit it for the default.
 - since/until filter by when a fact was stored. Every fact here was stored \
 at ingestion, not when it was said, so they cannot narrow by conversation \
 date; search for dates as terms instead.

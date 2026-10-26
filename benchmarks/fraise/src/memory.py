@@ -41,11 +41,10 @@ Each conversation lives in its own graph — a stable hash of its id over
 the server's graph pool — so hub entities never bridge conversations
 during a walk. The compose file allocates 256 graphs (the SDK selector's
 uint8 ceiling); ``--param num_graphs=N`` matches the adapter to a server
-sized differently (stock is 8). A `conv-<id>` topic anchor backs that up
-(FQL anchors are hard filters): two ids hashing to the same graph just
-share it, isolated as before. A local value -> (turns, session) map
-restores provenance,
-since hits return only value/score/timestamp. The alpha SDK has no
+sized differently (stock is 8). The graph is the only isolation: FQL
+anchors lift rather than filter, so two ids hashing to the same graph
+would share recall. A local value -> (turns, session) map restores
+provenance, since hits return only value/score/timestamp. The alpha SDK has no
 delete, so teardown is a no-op — the server runs without a volume and
 each `up` starts empty.
 """
@@ -63,10 +62,12 @@ from amb.logs import logger
 if TYPE_CHECKING:
     from fraise_sdk.models import Hit
 
-# graph-walk hops from a match on recall
+# retrieval lane for a recall that names an anchor; without one it has no effect
 DEFAULT_RECALL_DEPTH = 2
 # must match the server's -num-graphs (the compose file sets 256)
 DEFAULT_NUM_GRAPHS = 256
+# fields that enter the graph, without which a depth has nothing to act through
+ANCHOR_KEYS = frozenset({"topic", "entity"})
 # the request-parameter name a query's `vec:$v` binds to
 VECTOR_PARAM = "v"
 
@@ -76,11 +77,6 @@ _TOKEN = re.compile(
     r"|'(?P<phrase>(?:[^']|'')*)'"
     r"|(?P<word>\S+)"
 )
-
-
-def _quote(value: str) -> str:
-    """Write a value as an FQL phrase; inside quotes only `'` needs escaping."""
-    return "'" + value.replace("'", "''") + "'"
 
 
 def _scan(body: str) -> tuple[list[str], set[str]]:
@@ -179,8 +175,7 @@ class FraiseMemory(Memory):
 
         Deterministic across runs and workers (the runner builds one memory
         instance per conversation, so no shared counter exists to consult).
-        Conversations beyond the pool size share graphs; the conv-<id>
-        anchor keeps them isolated regardless.
+        Conversations that hash to one graph share it, unisolated.
         """
         return zlib.crc32(conversation_id.encode()) % self.num_graphs
 
@@ -204,7 +199,6 @@ class FraiseMemory(Memory):
         # round-trips identically, which the provenance map relies on
         value = content.replace("'", "’")
         remember_topics = [
-            f"conv-{conversation_id}",
             f"session-{session_id}",
             *(t for t in topics or [] if t.strip()),
         ]
@@ -264,26 +258,20 @@ class FraiseMemory(Memory):
 
         `query` travels as one quoted phrase term, never bare keywords —
         literal inside its quotes, so it cannot collide with the grammar's
-        reserved words — and doubles as the embed text. `self.depth` bounds
-        the graph hops a match may walk.
+        reserved words — and doubles as the embed text. It names no anchor,
+        so it runs on the text and vector indices alone.
         """
-        recall_topics = [f"conv-{conversation_id}"]
         graph = self._graph(conversation_id)
         try:
             result = self.client.recall(
                 query=query,
                 graph=graph,
-                topics=recall_topics,
                 top=k,
-                depth=self.depth,
             )
         except Exception:
             # log the exact inputs — the benchmark log outlives the server
             logger.bind(scope="fraise").error(
-                "recall failed: graph={} query={!r} topics={!r}",
-                graph,
-                query,
-                recall_topics,
+                "recall failed: graph={} query={!r}", graph, query
             )
             raise
         return self._hits(conversation_id, result.hits)
@@ -293,18 +281,18 @@ class FraiseMemory(Memory):
     ) -> tuple[str, dict[str, list[float]] | None]:
         """Scope an agent-written FQL recall to the conversation.
 
-        The graph selector, the `conv-<id>` anchor, `top:k` and the vector are
-        always the adapter's, so isolation and the k budget never rest on the
-        agent; `depth` too, unless the query names one. A leading `recall`
-        (with or without a selector) is optional.
+        The graph selector, `top:k` and the vector are always the adapter's,
+        so isolation and the k budget never rest on the agent; `depth` too,
+        when the query names an anchor but no depth. A leading `recall` (with
+        or without a selector) is optional.
 
         Returns:
             The query text to send and its vector parameters, if any.
         """
         body = _RECALL_VERB.sub("", fql, count=1).strip()
-        clauses = [f"topic:{_quote(f'conv-{conversation_id}')}", f"top:{k}"]
+        clauses = [f"top:{k}"]
         terms, keys = _scan(body)
-        if self.depth is not None and "depth" not in keys:
+        if self.depth is not None and "depth" not in keys and keys & ANCHOR_KEYS:
             clauses.append(f"depth:{self.depth}")
         parameters = None
         if self.embedder is not None and terms:
