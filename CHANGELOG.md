@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.2.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/v0.1.0...v0.2.0) (2026-10-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop retrieval metrics and score judge accuracy only ([#292](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/292))
+* score retrieval at the turn level for every system ([#284](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/284))
+* drop LongMemEval xs and deal xs-shared into 3 users with 20 fillers ([#280](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/280))
+
+### Features
+
+* drop LongMemEval xs and deal xs-shared into 3 users with 20 fillers ([#280](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/280)) ([f21c439](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/f21c439b95329464bd703121229eb7304d494955))
+* drop retrieval metrics and score judge accuracy only ([#292](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/292)) ([08ee0df](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/08ee0dffdecee113052588887a79778873259629))
+* score retrieval at the turn level for every system ([#284](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/284)) ([7d9cc9a](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/7d9cc9a16614b7389e1ad00f991f26b9026c3be4))
+
+
+### Bug fixes
+
+* **everos:** parse LongMemEval session dates and keep the fallback in milliseconds ([#290](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/290)) ([d969a30](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/d969a30510969994a25f8f6836345dd8f78557f5))
+
+
+### Maintenance
+
+* **fraise:** move to server v0.3.5 and SDK 0.3.0 ([#293](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/293)) ([5c1c780](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/5c1c7802fede329f578de8de0b9b15ea30218af4))
+* **main:** release cognee 0.3.0 ([#288](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/288)) ([ca8668a](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/ca8668a8e2777c773a03c2df086281abd6511633))
+* **main:** release everos 0.5.0 ([#285](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/285)) ([fb77ee5](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/fb77ee5b0a0337ea975330ba687f0fb9bebeb3ed))
+* **main:** release memos 0.3.0 ([#289](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/289)) ([f4b7456](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/f4b745675253d1adc522c918d8dfedb3801f7034))
+
 ## [0.1.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/v0.0.1...v0.1.0) (2026-10-20)
 
 
