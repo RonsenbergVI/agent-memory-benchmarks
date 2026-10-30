@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "amb",
-    "fraise-sdk>=0.2.0,<0.3",
+    "fraise-sdk>=0.3.0,<0.4",
 ]
 
 # every integration ships its module as `src` — SDKs own the pretty names
