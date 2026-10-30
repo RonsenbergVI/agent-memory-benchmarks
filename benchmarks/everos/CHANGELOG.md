@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/everos/v0.5.0...everos/v0.6.0) (2026-10-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop retrieval metrics and score judge accuracy only ([#292](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/292))
+
+### Features
+
+* drop retrieval metrics and score judge accuracy only ([#292](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/292)) ([08ee0df](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/08ee0dffdecee113052588887a79778873259629))
+
+
+### Bug fixes
+
+* **everos:** parse LongMemEval session dates and keep the fallback in milliseconds ([#290](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/290)) ([d969a30](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/d969a30510969994a25f8f6836345dd8f78557f5))
+
 ## [0.5.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/everos/v0.4.0...everos/v0.5.0) (2026-10-22)
 
 
