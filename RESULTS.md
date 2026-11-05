@@ -18,6 +18,10 @@ Latest run per system x dataset x models. Each row's full per-question output li
 | locomo |  | everos | 1.4.2 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 4.437 | 0.707 | 0.444 | 9547505.000 | 0.2765 | 0.9737 |
 | locomo |  | everos | 1.4.2 | 1 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 1.865 | 0.603 | 0.415 | 9264234.000 | 0.2531 | 1.0384 |
 | locomo |  | everos | 1.4.2 | 3 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 2.947 | 0.694 | 0.448 | 9616397.000 | 0.2617 | 0.9776 |
+| locomo |  | hindsight | 1.0.0 | 10 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 14.364 | 0.661 | 0.410 | 992590.000 | 7.6171 | 26.5043 |
+| locomo |  | hindsight | 1.0.0 | 3 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 4.949 | 0.644 | 0.439 | 1001832.000 | 13.3765 | 56.3223 |
+| locomo |  | hindsight | 1.0.0 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 7.809 | 0.660 | 0.462 | 983141.000 | 7.3297 | 26.8835 |
+| locomo |  | hindsight | 1.0.0 | 1 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 1.923 | 0.535 | 0.405 | 990140.000 | 13.5269 | 41.4153 |
 | locomo |  | memos | 2.0.33 | 10 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 18.749 | 0.668 | 0.465 | 3212693.000 | 0.6281 | 1.5368 |
 | locomo |  | memos | 2.0.33 | 1 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 2.714 | 0.487 | 0.341 | 3261686.000 | 0.5208 | 1.5317 |
 | locomo |  | memos | 2.0.33 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 10.237 | 0.626 | 0.423 | 3128838.000 | 0.6132 | 1.5212 |
@@ -79,6 +83,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 
 | system | version | correct with evidence | wrong with evidence | found |
 | --- | --- | --- | --- | --- |
+| hindsight | 1.0.0 | 0.704 | 0.296 | 0.706 |
 | everos | 1.4.2 | 0.822 | 0.178 | 0.654 |
 | memos | 2.0.33 | 0.714 | 0.286 | 0.599 |
 | cognee | 1.5.4 | 0.689 | 0.311 | 0.347 |
@@ -87,6 +92,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 
 | system | version | correct without evidence | wrong without evidence | missed |
 | --- | --- | --- | --- | --- |
+| hindsight | 1.0.0 | 0.131 | 0.869 | 0.294 |
 | everos | 1.4.2 | 0.188 | 0.812 | 0.346 |
 | memos | 2.0.33 | 0.146 | 0.854 | 0.401 |
 | cognee | 1.5.4 | 0.094 | 0.906 | 0.653 |
@@ -98,6 +104,7 @@ What the memory contributed, as one number. `lift` is the accuracy the memory ad
 | system | version | found | correct with evidence | correct without evidence | gain | lift |
 | --- | --- | --- | --- | --- | --- | --- |
 | everos | 1.4.2 | 0.654 | 0.822 | 0.188 | 0.634 | 0.415 |
+| hindsight | 1.0.0 | 0.706 | 0.704 | 0.131 | 0.574 | 0.405 |
 | memos | 2.0.33 | 0.599 | 0.714 | 0.146 | 0.569 | 0.341 |
 | cognee | 1.5.4 | 0.347 | 0.689 | 0.094 | 0.595 | 0.207 |
 
@@ -133,6 +140,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 
 | system | version | correct with evidence | wrong with evidence | found |
 | --- | --- | --- | --- | --- |
+| hindsight | 1.0.0 | 0.743 | 0.257 | 0.816 |
 | everos | 1.4.2 | 0.824 | 0.176 | 0.775 |
 | memos | 2.0.33 | 0.770 | 0.230 | 0.711 |
 | cognee | 1.5.4 | 0.684 | 0.316 | 0.536 |
@@ -141,6 +149,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 
 | system | version | correct without evidence | wrong without evidence | missed |
 | --- | --- | --- | --- | --- |
+| hindsight | 1.0.0 | 0.205 | 0.795 | 0.184 |
 | everos | 1.4.2 | 0.246 | 0.754 | 0.225 |
 | memos | 2.0.33 | 0.192 | 0.808 | 0.289 |
 | cognee | 1.5.4 | 0.111 | 0.889 | 0.464 |
@@ -152,6 +161,7 @@ What the memory contributed, as one number. `lift` is the accuracy the memory ad
 | system | version | found | correct with evidence | correct without evidence | gain | lift |
 | --- | --- | --- | --- | --- | --- | --- |
 | everos | 1.4.2 | 0.775 | 0.824 | 0.246 | 0.578 | 0.448 |
+| hindsight | 1.0.0 | 0.816 | 0.743 | 0.205 | 0.538 | 0.439 |
 | memos | 2.0.33 | 0.711 | 0.770 | 0.192 | 0.578 | 0.411 |
 | cognee | 1.5.4 | 0.536 | 0.684 | 0.111 | 0.574 | 0.307 |
 
@@ -187,6 +197,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 
 | system | version | correct with evidence | wrong with evidence | found |
 | --- | --- | --- | --- | --- |
+| hindsight | 1.0.0 | 0.736 | 0.264 | 0.858 |
 | everos | 1.4.2 | 0.803 | 0.197 | 0.822 |
 | memos | 2.0.33 | 0.772 | 0.228 | 0.745 |
 | cognee | 1.5.4 | 0.651 | 0.349 | 0.631 |
@@ -195,6 +206,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 
 | system | version | correct without evidence | wrong without evidence | missed |
 | --- | --- | --- | --- | --- |
+| hindsight | 1.0.0 | 0.197 | 0.803 | 0.142 |
 | everos | 1.4.2 | 0.263 | 0.737 | 0.178 |
 | memos | 2.0.33 | 0.204 | 0.796 | 0.255 |
 | cognee | 1.5.4 | 0.125 | 0.875 | 0.369 |
@@ -205,6 +217,7 @@ What the memory contributed, as one number. `lift` is the accuracy the memory ad
 
 | system | version | found | correct with evidence | correct without evidence | gain | lift |
 | --- | --- | --- | --- | --- | --- | --- |
+| hindsight | 1.0.0 | 0.858 | 0.736 | 0.197 | 0.538 | 0.462 |
 | everos | 1.4.2 | 0.822 | 0.803 | 0.263 | 0.540 | 0.444 |
 | memos | 2.0.33 | 0.745 | 0.772 | 0.204 | 0.568 | 0.423 |
 | cognee | 1.5.4 | 0.631 | 0.651 | 0.125 | 0.526 | 0.331 |
@@ -241,6 +254,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 
 | system | version | correct with evidence | wrong with evidence | found |
 | --- | --- | --- | --- | --- |
+| hindsight | 1.0.0 | 0.707 | 0.293 | 0.899 |
 | everos | 1.4.2 | 0.772 | 0.228 | 0.878 |
 | memos | 2.0.33 | 0.767 | 0.233 | 0.825 |
 | cognee | 1.5.4 | 0.642 | 0.358 | 0.787 |
@@ -249,6 +263,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 
 | system | version | correct without evidence | wrong without evidence | missed |
 | --- | --- | --- | --- | --- |
+| hindsight | 1.0.0 | 0.252 | 0.748 | 0.101 |
 | everos | 1.4.2 | 0.234 | 0.766 | 0.122 |
 | memos | 2.0.33 | 0.203 | 0.797 | 0.175 |
 | cognee | 1.5.4 | 0.165 | 0.835 | 0.213 |
@@ -261,6 +276,7 @@ What the memory contributed, as one number. `lift` is the accuracy the memory ad
 | --- | --- | --- | --- | --- | --- | --- |
 | everos | 1.4.2 | 0.878 | 0.772 | 0.234 | 0.538 | 0.472 |
 | memos | 2.0.33 | 0.825 | 0.767 | 0.203 | 0.564 | 0.465 |
+| hindsight | 1.0.0 | 0.899 | 0.707 | 0.252 | 0.456 | 0.410 |
 | cognee | 1.5.4 | 0.787 | 0.642 | 0.165 | 0.477 | 0.376 |
 
 #### locomo: system comparison (k=10)
