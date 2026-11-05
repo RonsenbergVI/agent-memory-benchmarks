@@ -72,10 +72,12 @@ There is no retrieval-only mode: earlier releases scored a harness-driven search
 
 ## Datasets
 
-| Dataset | Source | Variants |
-| --- | --- | --- |
-| LoCoMo | [snap-research/locomo](https://github.com/snap-research/locomo) (GitHub JSON) | default |
-| LongMemEval | [xiaowu0162/longmemeval-cleaned](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned) (HuggingFace) | s, m, oracle, xs-shared |
+| Dataset | Source | Pinned revision | Variants |
+| --- | --- | --- | --- |
+| LoCoMo | [snap-research/locomo](https://github.com/snap-research/locomo) (GitHub JSON) | [`3eb6f2c`](https://github.com/snap-research/locomo/tree/3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376), SHA-256-checked | default |
+| LongMemEval | [xiaowu0162/longmemeval-cleaned](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned) (HuggingFace) | [`98d7416`](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/tree/98d7416c24c778c2fee6e6f3006e7a073259d48f) | s, m, oracle, xs-shared |
+
+Both sources are fetched at a fixed commit, never a branch (`REVISION` in each loader), so an upstream push cannot change what a run measures. The cached LoCoMo file is hashed on every load, because its cache path carries no revision. A bumped revision is a dataset change, made deliberately in its own commit.
 
 All are normalized into one schema (`Conversation` -> `Session` -> `Turn`, plus `QAPair` with evidence labels), so integrations only ever see one shape of data.
 

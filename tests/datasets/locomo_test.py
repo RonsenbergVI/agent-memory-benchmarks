@@ -20,12 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import hashlib
 import json
 from pathlib import Path
 
 import pytest
 
 from amb.contracts import Sample
+from amb.datasets import locomo
 from amb.datasets.locomo import LocomoLoader
 
 
@@ -83,8 +85,9 @@ def record() -> dict:
 
 def make_loader(tmp_path: Path, records: list[dict]) -> LocomoLoader:
     """A loader whose cache is pre-seeded so pull() never touches the network."""
-    loader = LocomoLoader(cache_dir=tmp_path)
-    (loader.cache_dir / "locomo10.json").write_text(json.dumps(records))
+    data = json.dumps(records).encode()
+    loader = LocomoLoader(cache_dir=tmp_path, sha256=hashlib.sha256(data).hexdigest())
+    (loader.cache_dir / "locomo10.json").write_bytes(data)
     return loader
 
 
@@ -306,11 +309,25 @@ def test_pull_downloads_into_cache_when_missing(tmp_path, monkeypatch):
 
     monkeypatch.setattr("urllib.request.urlretrieve", fake_urlretrieve)
     url = "https://example.invalid/locomo.json"
-    loader = LocomoLoader(cache_dir=tmp_path, url=url)
+    sha256 = hashlib.sha256(b"[]").hexdigest()
+    loader = LocomoLoader(cache_dir=tmp_path, url=url, sha256=sha256)
     path = loader.pull()
     assert path == loader.cache_dir / "locomo10.json"
     assert calls == [(url, path)]
     assert path.read_text() == "[]"
+
+
+def test_default_url_is_pinned_to_a_commit(tmp_path):
+    loader = LocomoLoader(cache_dir=tmp_path)
+    assert f"/{locomo.REVISION}/" in loader.url
+    assert "/main/" not in loader.url
+
+
+def test_pull_rejects_a_cached_file_with_the_wrong_hash(tmp_path):
+    loader = LocomoLoader(cache_dir=tmp_path)
+    (loader.cache_dir / "locomo10.json").write_text("[]")
+    with pytest.raises(ValueError, match="delete it to re-download"):
+        loader.pull()
 
 
 def test_unknown_variant_is_rejected(tmp_path):

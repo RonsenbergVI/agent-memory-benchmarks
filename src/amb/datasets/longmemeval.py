@@ -36,7 +36,7 @@ import random
 from collections.abc import Collection
 from pathlib import Path
 
-from huggingface_hub import HfApi, hf_hub_download
+from huggingface_hub import hf_hub_download
 
 from amb.base.dataset import Dataset, DatasetLoader
 from amb.contracts import (
@@ -49,6 +49,13 @@ from amb.contracts import (
 
 # upstream deprecated xiaowu0162/longmemeval; -cleaned removes noisy history sessions
 DEFAULT_REPO = "xiaowu0162/longmemeval-cleaned"
+# a commit, not a branch, so a re-upload upstream cannot change what a run measures
+REVISION = "98d7416c24c778c2fee6e6f3006e7a073259d48f"
+FILES = {
+    "s": "longmemeval_s_cleaned.json",
+    "m": "longmemeval_m_cleaned.json",
+    "oracle": "longmemeval_oracle.json",
+}
 
 # variants cut at load time from a published file
 CUTS = {"xs-shared": "s"}
@@ -67,39 +74,29 @@ class LongMemEvalLoader(DatasetLoader):
     variants = ("s", "m", "oracle", "xs-shared")
     default_variant = "s"
 
-    def __init__(self, cache_dir: Path | None = None, repo: str = DEFAULT_REPO) -> None:
-        """Point the loader at its cache and the HuggingFace source repo."""
+    def __init__(
+        self,
+        cache_dir: Path | None = None,
+        repo: str = DEFAULT_REPO,
+        revision: str = REVISION,
+    ) -> None:
+        """Point the loader at its cache and the HuggingFace repo at one commit."""
         super().__init__(cache_dir)
         self.repo = repo
+        self.revision = revision
 
     def pull(self, variant: str | None = None) -> Path:
-        """Download the variant's file from HuggingFace into the cache.
+        """Download the variant's file at the pinned revision into the cache.
 
         A cut variant downloads the published file it is cut from.
-
-        Raises:
-            FileNotFoundError: if the repo has no file for that variant.
         """
         variant = self.resolve_variant(variant)
-        variant = CUTS.get(variant, variant)
-        repo = self.repo
-        # file names differ across repo revisions; match by variant token, not filename
-        token = "oracle" if variant == "oracle" else f"_{variant}"
-        files = HfApi().list_repo_files(repo, repo_type="dataset")
-        candidates = [
-            f
-            for f in files
-            if f.startswith("longmemeval") and token in f and not f.endswith(".md")
-        ]
-        if not candidates:
-            raise FileNotFoundError(
-                f"no longmemeval file matching variant {variant!r} in {repo}: {files}"
-            )
         return Path(
             hf_hub_download(
-                repo,
-                sorted(candidates)[0],
+                self.repo,
+                FILES[CUTS.get(variant, variant)],
                 repo_type="dataset",
+                revision=self.revision,
                 cache_dir=self.cache_dir,
             )
         )
