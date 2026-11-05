@@ -23,12 +23,15 @@
 import json
 from collections import defaultdict
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from loguru import logger
+
 from amb.base import Metric, Report
 from amb.constants import DEFAULT_RUNS_DIR, HEADLINE
-from amb.contracts import Run
+from amb.contracts import Judgment, QuestionRecord, Run
 from amb.metrics import default_category_metrics, default_metrics
 
 if TYPE_CHECKING:
@@ -179,28 +182,57 @@ class RunReport(Report):
 
     # -- evaluation ------------------------------------------------------
 
-    def judge(self, model: "str | Model", force: bool = False) -> int:
+    def judge(self, model: "str | Model", force: bool = False, workers: int = 1) -> int:
         """Grade predicted answers against gold, writing onto the rows.
 
         Outside the run loop so a saved run can be re-judged without re-running
         the memory system. Returns rows judged; rows missing a prediction or
-        gold answer are skipped, already-judged rows kept unless `force`.
+        gold answer are skipped, already-judged rows kept unless `force`. A
+        row the judge fails on is left unjudged (`judge_correct` stays null,
+        so a later pass picks it up) and the others go on. Verdicts land on
+        the rows as they arrive, so an interrupted pass keeps what it graded.
         """
         # imported lazily so judging is the only path that needs LLM deps
         from amb.agent import judge_answer
 
+        log = logger.bind(scope=self.run.system)
+        rows = [
+            row
+            for row in self.run.question_records
+            if row.predicted_answer
+            and row.gold_answer
+            and (force or row.judge_correct is None)
+        ]
+
+        def grade(row: QuestionRecord) -> Judgment | None:
+            try:
+                return judge_answer(
+                    row.question or "",
+                    row.predicted_answer or "",
+                    row.gold_answer or "",
+                    model,
+                )
+            except Exception as exc:
+                log.warning(
+                    "{}: no verdict, left unjudged: {}: {}",
+                    row.question_id,
+                    type(exc).__name__,
+                    exc,
+                )
+                return None
+
         judged = 0
-        for row in self.run.question_records:
-            if not row.predicted_answer or not row.gold_answer:
-                continue
-            if row.judge_correct is not None and not force:
-                continue
-            judgment = judge_answer(
-                row.question or "", row.predicted_answer, row.gold_answer, model
-            )
-            row.judge_correct = judgment.correct
-            row.judge_reasoning = judgment.reasoning
-            judged += 1
+        pool = ThreadPoolExecutor(max_workers=max(1, workers))
+        try:
+            for row, judgment in zip(rows, pool.map(grade, rows), strict=True):
+                if judgment is None:
+                    continue
+                row.judge_correct = judgment.correct
+                row.judge_reasoning = judgment.reasoning
+                judged += 1
+        finally:
+            # an interrupt drops the rows not yet started, not the verdicts in
+            pool.shutdown(cancel_futures=True)
         if judged:
             self.run.judge_model = str(model)
         return judged

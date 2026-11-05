@@ -25,7 +25,7 @@ from pydantic_ai.models import Model, infer_model
 
 from amb.agent.prompts import ANSWER_SYSTEM_PROMPT, JUDGE_SYSTEM_PROMPT
 from amb.agent.toolset import SearchToolset
-from amb.constants import HARNESS_CLIENT_ATTR
+from amb.constants import HARNESS_CLIENT_ATTR, HARNESS_MAX_RETRIES
 from amb.contracts import GenerationResult, Judgment
 
 
@@ -33,11 +33,17 @@ def harness_model(model: str | Model) -> Model:
     """Resolve an agent model and mark its SDK client as amb's own.
 
     The usage tracker skips marked clients: the agent's tokens are reported
-    on the row (`input_tokens`/`output_tokens`), never as memory spend.
+    on the row (`input_tokens`/`output_tokens`), never as memory spend. The
+    client retries rate limits and server errors `HARNESS_MAX_RETRIES` times
+    with the SDK's own backoff, so a congested minute slows a run instead of
+    erroring its questions.
     """
     resolved = infer_model(model) if isinstance(model, str) else model
     client = getattr(resolved, "client", None)
     if client is not None:
+        if hasattr(client, "max_retries"):
+            # in place: the model exposes its client read-only
+            client.max_retries = HARNESS_MAX_RETRIES
         setattr(client, HARNESS_CLIENT_ATTR, True)
     return resolved
 

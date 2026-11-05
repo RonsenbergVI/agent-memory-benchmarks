@@ -190,6 +190,9 @@ class Runner:
         """Run every sample and return the raw observations.
 
         Computes no scores and writes no files — that is the report's job.
+        A sample that fails is recorded with its error and skipped; an
+        interrupt marks what never finished. Either way the data comes back
+        worth saving.
         """
         cfg = self.config
         # probe reports what will be measured: system version, internal models
@@ -225,33 +228,81 @@ class Runner:
         )
         self.callbacks.on_run_begin(cfg, data)
         samples = self.load_samples()
-        if cfg.workers <= 1:
-            for sample in samples:
-                self._run_sample(sample, data)
-        else:
-            # samples are independent and parallelize; sessions within one stay
-            # ordered. Shards merge in dataset order, so output is deterministic.
-            with ThreadPoolExecutor(max_workers=cfg.workers) as pool:
-                shards = [
-                    data.model_copy(
-                        update={"question_records": [], "ingestion_records": []}
-                    )
-                    for _ in samples
-                ]
-                futures = [
-                    pool.submit(self._run_sample, sample, shard)
-                    for sample, shard in zip(samples, shards, strict=True)
-                ]
-                for future in futures:
-                    future.result()
-            for shard in shards:
-                data.question_records.extend(shard.question_records)
-                data.ingestion_records.extend(shard.ingestion_records)
+        done: set[str] = set()
+        try:
+            if cfg.workers <= 1:
+                for sample in samples:
+                    self._run_sample(sample, data)
+                    done.add(sample.sample_id)
+            else:
+                self._run_parallel(samples, data, done)
+        except KeyboardInterrupt:
+            self._abandon([s for s in samples if s.sample_id not in done], data)
         self.callbacks.on_run_end(data)
         return data
 
+    def _run_parallel(self, samples: list[Sample], data: Run, done: set[str]) -> None:
+        """Run the samples on `workers` threads, merging shards in dataset order.
+
+        Samples are independent; sessions within one stay ordered. An
+        interrupt stops handing out samples, and the ones in flight finish
+        on their own threads without being merged.
+
+        Raises:
+            KeyboardInterrupt: re-raised once the pool stops handing out samples.
+        """
+        pool = ThreadPoolExecutor(max_workers=self.config.workers)
+        shards = [
+            data.model_copy(update={"question_records": [], "ingestion_records": []})
+            for _ in samples
+        ]
+        futures = [
+            pool.submit(self._run_sample, sample, shard)
+            for sample, shard in zip(samples, shards, strict=True)
+        ]
+        try:
+            for future in futures:
+                future.result()
+        except KeyboardInterrupt:
+            pool.shutdown(wait=False, cancel_futures=True)
+            raise
+        else:
+            pool.shutdown()
+        finally:
+            for sample, shard, future in zip(samples, shards, futures, strict=True):
+                if future.done() and not future.cancelled() and not future.exception():
+                    data.question_records.extend(shard.question_records)
+                    data.ingestion_records.extend(shard.ingestion_records)
+                    done.add(sample.sample_id)
+
+    def _abandon(self, samples: list[Sample], data: Run) -> None:
+        """Record the samples an interrupted run never finished.
+
+        Each lands as an errored ingestion record, so the saved run reads as
+        partial (`errors` is nonzero) rather than as a smaller dataset.
+        """
+        records = {record.sample_id: record for record in data.ingestion_records}
+        for sample in samples:
+            record = records.get(sample.sample_id)
+            if record is None:
+                data.add_ingestion(
+                    {
+                        "sample_id": sample.sample_id,
+                        "ingest_s": 0.0,
+                        "num_turns": 0,
+                        "error": "KeyboardInterrupt: stopped before this sample finished",
+                    }
+                )
+            elif record.error is None:
+                record.error = "KeyboardInterrupt: stopped before this sample finished"
+        logger.bind(scope=self.name).warning(
+            "interrupted: {} sample(s) unfinished, keeping what completed",
+            len(samples),
+        )
+
     def _run_sample(self, sample: Sample, data: Run) -> None:
         system = self.benchmark.create_system()
+        stats: IngestionRecord | None = None
         try:
             system.setup()
             self.benchmark.before_sample(system, sample)
@@ -261,6 +312,26 @@ class Runner:
             self.conversation(system, sample, data)
             stats.conversation_s = time.perf_counter() - t0
             self.benchmark.after_sample(system, sample)
+        except Exception as exc:
+            # one conversation's failure is recorded, never spread to the rest
+            message = f"{type(exc).__name__}: {exc}"
+            logger.bind(scope=self.name).error(
+                "{}: sample failed, skipping its questions: {}",
+                sample.sample_id,
+                message,
+            )
+            traceback.print_exc()
+            if stats is None:
+                data.add_ingestion(
+                    {
+                        "sample_id": sample.sample_id,
+                        "ingest_s": 0.0,
+                        "num_turns": 0,
+                        "error": message,
+                    }
+                )
+            else:
+                stats.error = message
         finally:
             try:
                 self.callbacks.on_sample_end(sample, system)

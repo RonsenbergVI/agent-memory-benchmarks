@@ -45,6 +45,9 @@ class Dataset(StrEnum):
 # set on the SDK clients of amb's own agents (answer, judge), so the usage
 # tracker never books the harness's spend as the memory system's
 HARNESS_CLIENT_ATTR = "_amb_harness"
+# the SDKs' default of 2 retries was exhausted under 12 concurrent cells: a
+# congested minute errored dozens of questions per run instead of slowing it
+HARNESS_MAX_RETRIES = 10
 
 TOKEN_TRACKING_KEYS: tuple[str, ...] = (
     "llm_input_tokens",

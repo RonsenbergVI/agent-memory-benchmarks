@@ -628,3 +628,16 @@ def test_harness_model_marks_its_sdk_client():
     model = AnthropicModel("claude-haiku-5-5", provider=AnthropicProvider(api_key="x"))
     assert harness_model(model) is model
     assert getattr(model.client, HARNESS_CLIENT_ATTR) is True
+
+
+def test_harness_model_retries_through_the_sdk():
+    from pydantic_ai.models.anthropic import AnthropicModel
+    from pydantic_ai.providers.anthropic import AnthropicProvider
+
+    from amb.agent.agent import harness_model
+    from amb.constants import HARNESS_CLIENT_ATTR, HARNESS_MAX_RETRIES
+
+    model = AnthropicModel("claude-haiku-5-5", provider=AnthropicProvider(api_key="x"))
+    harness_model(model)
+    assert model.client.max_retries == HARNESS_MAX_RETRIES
+    assert getattr(model.client, HARNESS_CLIENT_ATTR) is True

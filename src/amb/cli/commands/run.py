@@ -188,8 +188,8 @@ def run(
     """Run one system against one dataset.
 
     Raises:
-        click.ClickException: with --judge but no judge model to use, or a
-            model set through --param instead of --llm/--embedding.
+        click.ClickException: a model set through --param instead of
+            --llm/--embedding.
     """
     system_params = dict(params)
     if clash := [key for key in MODEL_PARAMS if key in system_params]:
@@ -203,13 +203,13 @@ def run(
     # --param belongs to the system under test; the rest is run execution
     benchmark = get_benchmark(system).benchmark_class()(params=system_params)
     config = RunConfig(**options)
-    data = Runner(benchmark, config).run()
-    report = RunReport(data)
-    if config.judge:
-        # the same evaluation step as `amb judge`, applied before saving
-        judge_model = config.judge_model or config.model
-        if not judge_model:
-            raise click.ClickException("--judge needs --judge-model or --model")
-        report.judge(judge_model)
+    report = RunReport(Runner(benchmark, config).run())
+    # saved before judging: the run is hours of spend, the verdicts minutes
     report.save(config.out)
+    if config.judge:
+        # the same evaluation step as `amb judge`; saved again whatever happens
+        try:
+            report.judge(config.judge_model or config.model, workers=config.workers)
+        finally:
+            report.save(config.out)
     click.echo(json.dumps(report.summary(), indent=2))

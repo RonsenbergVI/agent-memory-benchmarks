@@ -37,7 +37,14 @@ from amb.reporting import RunReport
 @click.option(
     "--force", is_flag=True, help="re-judge rows that already carry a judgment"
 )
-def judge(run_dir: Path, model: str | None, force: bool) -> None:
+@click.option(
+    "--workers",
+    type=click.IntRange(min=1),
+    default=1,
+    show_default=True,
+    help="answers graded in parallel",
+)
+def judge(run_dir: Path, model: str | None, force: bool, workers: int) -> None:
     """Grade a saved run's answers with an LLM judge, updating it in place.
 
     RUN_DIR is a run's data directory
@@ -55,11 +62,14 @@ def judge(run_dir: Path, model: str | None, force: bool) -> None:
         raise click.ClickException(
             "this run recorded no answer model; pass --model to pick the judge"
         )
-    judged = report.judge(judge_model, force=force)
+    try:
+        judged = report.judge(judge_model, force=force, workers=workers)
+    finally:
+        # verdicts land as they arrive, so an interrupted pass still saves them;
+        # variant runs nest one level deeper, so the runs root is one more parent up
+        report.save(run_dir.parents[3 if report.run.variant else 2])
     if not judged and not any(r.predicted_answer for r in report.run.question_records):
         raise click.ClickException(
             "no predicted answers to grade: every question in this run errored"
         )
-    # variant runs nest one level deeper, so the runs root is one more parent up
-    report.save(run_dir.parents[3 if report.run.variant else 2])
     click.echo(f"judged {judged} answers with {judge_model} -> {run_dir}")

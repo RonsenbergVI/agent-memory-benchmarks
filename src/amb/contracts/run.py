@@ -61,6 +61,8 @@ class IngestionRecord(BaseModel):
     questions_dropped: int | None = None
     reused: bool | None = None
     token_usage: dict | None = None
+    # set when the sample did not finish: its questions were not all asked
+    error: str | None = None
 
 
 class Run(BaseModel):
