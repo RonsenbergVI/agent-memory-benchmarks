@@ -104,6 +104,8 @@ class GraphitiMemory(Memory):
         self.model_name(embedding_model, "embedding")
         # episode uuid -> session_id: edges cite episodes = our provenance channel
         self._episodes: dict[str, str] = {}
+        # the group_ids this instance touched: what teardown deletes
+        self._groups: set[str] = set()
 
     def setup(self) -> None:
         """Connect to Neo4j and build the graph indices."""
@@ -161,6 +163,7 @@ class GraphitiMemory(Memory):
         """Add the session to the graph as one episode."""
         from graphiti_core.nodes import EpisodeType
 
+        self._groups.add(conversation_id)
         result = self._await(
             self.client.add_episode(
                 name=f"{conversation_id}:{session.session_id}",
@@ -187,6 +190,7 @@ class GraphitiMemory(Memory):
 
         config = COMBINED_HYBRID_SEARCH_RRF.model_copy(deep=True)
         config.limit = k
+        self._groups.add(conversation_id)
         results = self._await(
             self.client.search_(query, config=config, group_ids=[conversation_id])
         )
@@ -207,7 +211,7 @@ class GraphitiMemory(Memory):
         return hits
 
     def teardown(self) -> None:
-        """Close the graphiti client and its event loop.
+        """Delete this instance's conversations from the graph, then close.
 
         Deliberately leaves graphiti's AsyncOpenAI clients open: closing
         them per sample was the prime suspect in SIGSEGV/SIGABRT crashes
@@ -215,8 +219,16 @@ class GraphitiMemory(Memory):
         harmless "Event loop is closed" from GC finalizers; revisit only
         with a faulthandler-attributed stack.
         """
+        from graphiti_core.utils.maintenance.graph_data_operations import clear_data
+
         self._episodes.clear()
         try:
-            self._await(self.client.close())
+            # scoped to the group_ids seen here: `None` would wipe the database
+            if self._groups:
+                self._await(clear_data(self.client.driver, sorted(self._groups)))
+                self._groups.clear()
         finally:
-            self._loop.close()
+            try:
+                self._await(self.client.close())
+            finally:
+                self._loop.close()

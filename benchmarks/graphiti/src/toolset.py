@@ -43,7 +43,9 @@ class GraphitiSearchToolset(SearchToolset):
     ) -> None:
         """Bind the toolset to one conversation and expose search."""
         super().__init__(memory, conversation_id, k=k, **kwargs)
-        self.add_function(self.search_graph, name="search_graph")
+        # the adapter drives one event loop per sample; pydantic-ai runs a
+        # turn's tool calls in parallel, which would re-enter it
+        self.add_function(self.search_graph, name="search_graph", sequential=True)
 
     def search_graph(self, query: str) -> list[dict]:
         """Search the knowledge graph for facts.
