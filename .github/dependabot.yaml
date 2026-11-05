@@ -14,9 +14,8 @@
 # changelog section so the bumps show up in release notes.
 #
 # The github-actions entry sets `labels` to mirror what .github/labeler.yaml
-# would apply — dependabot PRs skip the labeler job (their runs get a
-# read-only token), and the labels must already exist in the repo. The uv
-# entry keeps dependabot's default labels.
+# would apply — dependabot PRs skip the labeler job, and the labels must
+# already exist in the repo. The uv entry keeps dependabot's default labels.
 
 version: 2
 updates:

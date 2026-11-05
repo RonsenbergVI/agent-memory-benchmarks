@@ -24,7 +24,7 @@
 
 No network: load() is exercised through a subclass whose pull() returns a
 handcrafted local JSON file, and pull() itself is exercised against fake
-HfApi / hf_hub_download stand-ins patched into the module.
+hf_hub_download stand-in patched into the module.
 """
 
 import json
@@ -35,7 +35,7 @@ import pytest
 
 from amb.constants import Dataset
 from amb.datasets import longmemeval
-from amb.datasets.longmemeval import DEFAULT_REPO, LongMemEvalLoader
+from amb.datasets.longmemeval import DEFAULT_REPO, REVISION, LongMemEvalLoader
 
 
 class _OfflineLoader(LongMemEvalLoader):
@@ -57,17 +57,11 @@ def _loader_for(tmp_path: Path, records: list[dict]) -> _OfflineLoader:
     return _OfflineLoader(data, cache_dir=tmp_path / "cache")
 
 
-def _patch_hub(monkeypatch, files, calls):
-    class _FakeApi:
-        def list_repo_files(self, repo, repo_type=None):
-            calls.append(("list", repo, repo_type))
-            return list(files)
-
-    def _fake_download(repo, filename, repo_type=None, cache_dir=None):
-        calls.append(("download", repo, filename, repo_type, cache_dir))
+def _patch_hub(monkeypatch, calls):
+    def _fake_download(repo, filename, repo_type=None, revision=None, cache_dir=None):
+        calls.append((repo, filename, repo_type, revision, cache_dir))
         return f"/hub-cache/{filename}"
 
-    monkeypatch.setattr(longmemeval, "HfApi", _FakeApi)
     monkeypatch.setattr(longmemeval, "hf_hub_download", _fake_download)
 
 
@@ -77,6 +71,7 @@ def test_loader_metadata(tmp_path):
     assert loader.variants == ("s", "m", "oracle", "xs-shared")
     assert loader.default_variant == "s"
     assert loader.repo == DEFAULT_REPO
+    assert loader.revision == REVISION
     assert loader.cache_dir == tmp_path / "longmemeval"
     assert loader.cache_dir.is_dir()
 
@@ -249,62 +244,46 @@ def test_load_forwards_variant_to_pull(tmp_path, longmemeval_rich_record):
     assert loader.pulled_variants == ["s", "oracle"]
 
 
-def test_pull_matches_variant_token_and_downloads_first_sorted(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    ("variant", "filename"),
+    [
+        ("s", "longmemeval_s_cleaned.json"),
+        ("m", "longmemeval_m_cleaned.json"),
+        ("oracle", "longmemeval_oracle.json"),
+        ("xs-shared", "longmemeval_s_cleaned.json"),
+    ],
+)
+def test_pull_downloads_the_variant_file_at_the_pinned_revision(
+    tmp_path, monkeypatch, variant, filename
+):
     calls = []
-    files = [
-        "README.md",
-        "longmemeval_m.json",
-        "longmemeval_oracle.json",
-        "longmemeval_s.json",
-        "longmemeval_s",
+    _patch_hub(monkeypatch, calls)
+    result = LongMemEvalLoader(cache_dir=tmp_path).pull(variant)
+    assert result == Path(f"/hub-cache/{filename}")
+    assert calls == [
+        (DEFAULT_REPO, filename, "dataset", REVISION, tmp_path / "longmemeval")
     ]
-    _patch_hub(monkeypatch, files, calls)
-    loader = LongMemEvalLoader(cache_dir=tmp_path, repo="someone/custom-repo")
-    result = loader.pull("s")
-    # both "_s" files match; sorted() puts the extensionless one first
-    assert result == Path("/hub-cache/longmemeval_s")
-    expected_download = (
-        "download",
-        "someone/custom-repo",
-        "longmemeval_s",
-        "dataset",
-        tmp_path / "longmemeval",
-    )
-    assert calls == [("list", "someone/custom-repo", "dataset"), expected_download]
 
 
-def test_pull_oracle_matches_oracle_token_not_markdown(tmp_path, monkeypatch):
+def test_pull_forwards_a_custom_repo_and_revision(tmp_path, monkeypatch):
     calls = []
-    files = ["longmemeval_oracle.md", "longmemeval_oracle.json", "longmemeval_s.json"]
-    _patch_hub(monkeypatch, files, calls)
-    result = LongMemEvalLoader(cache_dir=tmp_path).pull("oracle")
-    assert result == Path("/hub-cache/longmemeval_oracle.json")
-
-
-def test_pull_raises_when_variant_file_missing(tmp_path, monkeypatch):
-    _patch_hub(monkeypatch, ["longmemeval_s.json"], [])
-    loader = LongMemEvalLoader(cache_dir=tmp_path)
-    with pytest.raises(FileNotFoundError, match="variant 'm'"):
-        loader.pull("m")
+    _patch_hub(monkeypatch, calls)
+    loader = LongMemEvalLoader(
+        cache_dir=tmp_path, repo="someone/custom-repo", revision="abc123"
+    )
+    loader.pull("s")
+    assert calls[0][0] == "someone/custom-repo"
+    assert calls[0][3] == "abc123"
 
 
 def test_pull_rejects_unknown_variant_before_touching_the_hub(tmp_path, monkeypatch):
     def _no_network(*args, **kwargs):
         raise AssertionError("the hub must not be reached for an unknown variant")
 
-    monkeypatch.setattr(longmemeval, "HfApi", _no_network)
     monkeypatch.setattr(longmemeval, "hf_hub_download", _no_network)
     loader = LongMemEvalLoader(cache_dir=tmp_path)
     with pytest.raises(ValueError, match="unknown variant 'nope'"):
         loader.pull("nope")
-
-
-def test_pull_xs_shared_downloads_the_s_file(tmp_path, monkeypatch):
-    calls = []
-    files = ["longmemeval_m.json", "longmemeval_oracle.json", "longmemeval_s.json"]
-    _patch_hub(monkeypatch, files, calls)
-    result = LongMemEvalLoader(cache_dir=tmp_path).pull("xs-shared")
-    assert result == Path("/hub-cache/longmemeval_s.json")
 
 
 def _record(qid, evidence, fillers, question=None):

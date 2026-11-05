@@ -2,12 +2,17 @@ name: CI
 
 on:
   pull_request:
+  # validate and label only: fork PRs get a read-only token under
+  # pull_request, so the sticky comment and the labels would 403. This token
+  # can write — jobs on this event must never check out or run the PR's code.
+  pull_request_target:
   push:
     branches: [main]
 
-# a new push to a PR cancels the previous run
+# a new push to a PR cancels the previous run; github.ref is the base branch
+# under pull_request_target, so key PR runs on the event and number
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -17,7 +22,7 @@ permissions:
 jobs:
   validate:
     name: Validate branch name and PR title
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     # Writes the conventions sticky comment on the PR.
     steps:
@@ -123,10 +128,8 @@ jobs:
     name: Label PR
     runs-on: ubuntu-latest
     needs: validate
-    # dependabot runs get a read-only GITHUB_TOKEN regardless of the
-    # permissions block, so labeling would 403; its PRs keep dependabot's
-    # own default labels (dependencies + ecosystem) instead
-    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    # dependabot PRs keep the labels .github/dependabot.yaml gives them
+    if: github.event_name == 'pull_request_target' && github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13
         with:
@@ -171,6 +174,7 @@ jobs:
 
   lint:
     name: Pre-commit Hooks
+    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
