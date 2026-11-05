@@ -10,9 +10,11 @@ on:
 
 # one langmem benchmark run at a time; a second trigger queues rather than
 # interleaving runs/ artifacts. Other frameworks' workflows run in
-# parallel — publishing is serialized by the publish job's own group.
+# parallel, their cells queued per dataset and k by the cell group
+# below; publishing is serialized by the publish job's own group.
 concurrency:
   group: benchmark-langmem-locomo
+  queue: max
 
 permissions:
   contents: write
@@ -35,6 +37,12 @@ jobs:
     name: langmem / locomo / k${{ matrix.k }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    # one cell per dataset and k at a time across every system's
+    # workflow: a root tag queues its cells instead of pointing them
+    # all at one org's rate limit at once
+    concurrency:
+      group: benchmark-cell-locomo-k${{ matrix.k }}
+      queue: max
     strategy:
       fail-fast: false
       matrix:
@@ -89,10 +97,11 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     # every framework workflow commits to main through this one group, so
-    # two finishing together publish one after the other instead of racing
-    # the push
+    # finishers publish one after the other instead of racing the push;
+    # without `queue: max` GitHub keeps one pending and cancels the rest
     concurrency:
       group: publish-results
+      queue: max
     steps:
 
       - uses: actions/checkout@v4
