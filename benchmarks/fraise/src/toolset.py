@@ -39,7 +39,7 @@ from amb.agent.toolset import SearchToolset
 from amb.base import Memory
 from src.memory import FraiseMemory
 
-# condensed from the fraise v0.3.5 FQL docs (docs/query-language), recall only
+# condensed from the fraise v0.3.7 FQL docs (docs/query-language), recall only
 FQL_SPEC = """\
 You search this conversation's memory with the `query` tool, which runs one \
 Fraise Query Language (FQL) recall. Each stored fact is one conversation \
