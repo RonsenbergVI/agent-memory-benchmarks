@@ -38,6 +38,10 @@ Latest run per system x dataset x models. Each row's full per-question output li
 | longmemeval | xs-shared | cognee | 1.5.4 | 3 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 8.769 | 0.587 | 0.459 | 9761465.000 | 11.6863 | 145.2691 |
 | longmemeval | xs-shared | cognee | 1.5.4 | 10 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 27.777 | 0.642 | 0.575 | 9687216.000 | 6.8486 | 70.6152 |
 | longmemeval | xs-shared | cognee | 1.5.4 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 14.329 | 0.577 | 0.497 | 9774340.000 | 6.4545 | 70.2917 |
+| longmemeval | xs-shared | everos | 1.4.2 | 10 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 9.417 | 0.722 | 0.597 | 28300431.000 | 0.6250 | 1.7500 |
+| longmemeval | xs-shared | everos | 1.4.2 | 3 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 3.921 | 0.722 | 0.400 | 26543278.000 | 0.5066 | 1.6844 |
+| longmemeval | xs-shared | everos | 1.4.2 | 1 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 2.821 | 0.583 | 0.297 | 32698935.000 | 0.7023 | 2.0140 |
+| longmemeval | xs-shared | everos | 1.4.2 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 5.682 | 0.728 | 0.428 | 28160738.000 | 0.5701 | 1.4454 |
 | longmemeval | xs-shared | mem0 | 2.0.20 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 13.841 | 0.550 | 0.550 | 9824649.000 | 1.2661 | 2.6958 |
 | longmemeval | xs-shared | mem0 | 2.0.20 | 3 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 9.079 | 0.550 | 0.434 | 9855407.000 | 1.3399 | 3.2393 |
 | longmemeval | xs-shared | mem0 | 2.0.20 | 1 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 151 | 3.490 | 0.424 | 0.255 | 9845400.000 | 1.5299 | 3.8116 |
@@ -378,6 +382,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | system | version | correct with evidence | wrong with evidence | found |
 | --- | --- | --- | --- | --- |
 | memos | 2.0.33 | 0.804 | 0.196 | 0.642 |
+| everos | 1.4.2 | 0.795 | 0.205 | 0.583 |
 | mem0 | 2.0.20 | 0.616 | 0.384 | 0.570 |
 | cognee | 1.5.4 | 0.738 | 0.262 | 0.439 |
 
@@ -386,6 +391,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | system | version | correct without evidence | wrong without evidence | missed |
 | --- | --- | --- | --- | --- |
 | memos | 2.0.33 | 0.259 | 0.741 | 0.358 |
+| everos | 1.4.2 | 0.286 | 0.714 | 0.417 |
 | mem0 | 2.0.20 | 0.169 | 0.831 | 0.430 |
 | cognee | 1.5.4 | 0.193 | 0.807 | 0.561 |
 
@@ -396,6 +402,7 @@ What the memory contributed, as one number. `lift` is the accuracy the memory ad
 | system | version | found | correct with evidence | correct without evidence | gain | lift |
 | --- | --- | --- | --- | --- | --- | --- |
 | memos | 2.0.33 | 0.642 | 0.804 | 0.259 | 0.545 | 0.350 |
+| everos | 1.4.2 | 0.583 | 0.795 | 0.286 | 0.510 | 0.297 |
 | mem0 | 2.0.20 | 0.570 | 0.616 | 0.169 | 0.447 | 0.255 |
 | cognee | 1.5.4 | 0.439 | 0.738 | 0.193 | 0.546 | 0.240 |
 
@@ -433,6 +440,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | --- | --- | --- | --- | --- |
 | mem0 | 2.0.20 | 0.640 | 0.360 | 0.828 |
 | memos | 2.0.33 | 0.815 | 0.185 | 0.821 |
+| everos | 1.4.2 | 0.813 | 0.187 | 0.815 |
 | cognee | 1.5.4 | 0.760 | 0.240 | 0.727 |
 
 **Missed.** The memory failed. `correct without evidence` is the agent right anyway, from prior knowledge or a guess; `wrong without evidence` is what this memory's misses actually cost.
@@ -441,6 +449,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | --- | --- | --- | --- | --- |
 | mem0 | 2.0.20 | 0.115 | 0.885 | 0.172 |
 | memos | 2.0.33 | 0.407 | 0.593 | 0.179 |
+| everos | 1.4.2 | 0.321 | 0.679 | 0.185 |
 | cognee | 1.5.4 | 0.128 | 0.872 | 0.273 |
 
 #### longmemeval (xs-shared): memory lift (k=3)
@@ -451,6 +460,7 @@ What the memory contributed, as one number. `lift` is the accuracy the memory ad
 | --- | --- | --- | --- | --- | --- | --- |
 | cognee | 1.5.4 | 0.727 | 0.760 | 0.128 | 0.631 | 0.459 |
 | mem0 | 2.0.20 | 0.828 | 0.640 | 0.115 | 0.525 | 0.434 |
+| everos | 1.4.2 | 0.815 | 0.813 | 0.321 | 0.492 | 0.400 |
 | memos | 2.0.33 | 0.821 | 0.815 | 0.407 | 0.407 | 0.334 |
 
 #### longmemeval (xs-shared): system comparison (k=3)
@@ -486,6 +496,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | system | version | correct with evidence | wrong with evidence | found |
 | --- | --- | --- | --- | --- |
 | mem0 | 2.0.20 | 0.593 | 0.407 | 0.927 |
+| everos | 1.4.2 | 0.794 | 0.206 | 0.868 |
 | memos | 2.0.33 | 0.794 | 0.206 | 0.868 |
 | cognee | 1.5.4 | 0.677 | 0.323 | 0.832 |
 
@@ -494,6 +505,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | system | version | correct without evidence | wrong without evidence | missed |
 | --- | --- | --- | --- | --- |
 | mem0 | 2.0.20 | 0.000 | 1.000 | 0.073 |
+| everos | 1.4.2 | 0.300 | 0.700 | 0.132 |
 | memos | 2.0.33 | 0.500 | 0.500 | 0.132 |
 | cognee | 1.5.4 | 0.080 | 0.920 | 0.168 |
 
@@ -505,6 +517,7 @@ What the memory contributed, as one number. `lift` is the accuracy the memory ad
 | --- | --- | --- | --- | --- | --- | --- |
 | mem0 | 2.0.20 | 0.927 | 0.593 | 0.000 | 0.593 | 0.550 |
 | cognee | 1.5.4 | 0.832 | 0.677 | 0.080 | 0.597 | 0.497 |
+| everos | 1.4.2 | 0.868 | 0.794 | 0.300 | 0.494 | 0.428 |
 | memos | 2.0.33 | 0.868 | 0.794 | 0.500 | 0.294 | 0.255 |
 
 #### longmemeval (xs-shared): system comparison (k=5)
@@ -540,6 +553,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | system | version | correct with evidence | wrong with evidence | found |
 | --- | --- | --- | --- | --- |
 | mem0 | 2.0.20 | 0.611 | 0.389 | 0.954 |
+| everos | 1.4.2 | 0.755 | 0.245 | 0.947 |
 | memos | 2.0.33 | 0.793 | 0.207 | 0.927 |
 | cognee | 1.5.4 | 0.707 | 0.293 | 0.899 |
 
@@ -548,6 +562,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | system | version | correct without evidence | wrong without evidence | missed |
 | --- | --- | --- | --- | --- |
 | mem0 | 2.0.20 | 0.143 | 0.857 | 0.046 |
+| everos | 1.4.2 | 0.125 | 0.875 | 0.053 |
 | memos | 2.0.33 | 0.545 | 0.455 | 0.073 |
 | cognee | 1.5.4 | 0.067 | 0.933 | 0.101 |
 
@@ -557,6 +572,7 @@ What the memory contributed, as one number. `lift` is the accuracy the memory ad
 
 | system | version | found | correct with evidence | correct without evidence | gain | lift |
 | --- | --- | --- | --- | --- | --- | --- |
+| everos | 1.4.2 | 0.947 | 0.755 | 0.125 | 0.630 | 0.597 |
 | cognee | 1.5.4 | 0.899 | 0.707 | 0.067 | 0.640 | 0.575 |
 | mem0 | 2.0.20 | 0.954 | 0.611 | 0.143 | 0.468 | 0.447 |
 | memos | 2.0.33 | 0.927 | 0.793 | 0.545 | 0.247 | 0.229 |
