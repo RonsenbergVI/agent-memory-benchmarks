@@ -1,0 +1,202 @@
+[
+  {
+    "sample_id": "conv-26",
+    "ingest_s": 1176.277324362,
+    "num_turns": 419,
+    "num_sessions": 19,
+    "system_stats": {
+      "sessions": 19,
+      "extracted_sessions": 19,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 505.56822084299984,
+    "token_usage": {
+      "llm_input_tokens": 471422,
+      "llm_output_tokens": 131255,
+      "llm_calls": 91,
+      "embedding_tokens": 14035,
+      "embedding_calls": 38
+    }
+  },
+  {
+    "sample_id": "conv-30",
+    "ingest_s": 1176.280343614,
+    "num_turns": 369,
+    "num_sessions": 19,
+    "system_stats": {
+      "sessions": 19,
+      "extracted_sessions": 19,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 261.6207520569999,
+    "token_usage": {
+      "llm_input_tokens": 381139,
+      "llm_output_tokens": 118106,
+      "llm_calls": 91,
+      "embedding_tokens": 13508,
+      "embedding_calls": 45
+    }
+  },
+  {
+    "sample_id": "conv-41",
+    "ingest_s": 1776.2949851540002,
+    "num_turns": 663,
+    "num_sessions": 32,
+    "system_stats": {
+      "sessions": 32,
+      "extracted_sessions": 32,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 490.9797401420001,
+    "token_usage": {
+      "llm_input_tokens": 817673,
+      "llm_output_tokens": 214248,
+      "llm_calls": 156,
+      "embedding_tokens": 20012,
+      "embedding_calls": 62
+    }
+  },
+  {
+    "sample_id": "conv-42",
+    "ingest_s": 1718.4138347050002,
+    "num_turns": 629,
+    "num_sessions": 29,
+    "system_stats": {
+      "sessions": 29,
+      "extracted_sessions": 29,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 767.446139528,
+    "token_usage": {
+      "llm_input_tokens": 664443,
+      "llm_output_tokens": 213864,
+      "llm_calls": 144,
+      "embedding_tokens": 19648,
+      "embedding_calls": 59
+    }
+  },
+  {
+    "sample_id": "conv-43",
+    "ingest_s": 1663.30771179,
+    "num_turns": 680,
+    "num_sessions": 29,
+    "system_stats": {
+      "sessions": 29,
+      "extracted_sessions": 29,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 682.5986825049999,
+    "token_usage": {
+      "llm_input_tokens": 868050,
+      "llm_output_tokens": 244521,
+      "llm_calls": 149,
+      "embedding_tokens": 19277,
+      "embedding_calls": 59
+    }
+  },
+  {
+    "sample_id": "conv-44",
+    "ingest_s": 1669.068178809,
+    "num_turns": 675,
+    "num_sessions": 28,
+    "system_stats": {
+      "sessions": 28,
+      "extracted_sessions": 28,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 429.7513439690001,
+    "token_usage": {
+      "llm_input_tokens": 772125,
+      "llm_output_tokens": 229804,
+      "llm_calls": 138,
+      "embedding_tokens": 18573,
+      "embedding_calls": 59
+    }
+  },
+  {
+    "sample_id": "conv-47",
+    "ingest_s": 1812.6207790120002,
+    "num_turns": 689,
+    "num_sessions": 31,
+    "system_stats": {
+      "sessions": 31,
+      "extracted_sessions": 31,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 483.3279429920003,
+    "token_usage": {
+      "llm_input_tokens": 866084,
+      "llm_output_tokens": 254488,
+      "llm_calls": 156,
+      "embedding_tokens": 20994,
+      "embedding_calls": 68
+    }
+  },
+  {
+    "sample_id": "conv-48",
+    "ingest_s": 1768.4804638840005,
+    "num_turns": 681,
+    "num_sessions": 30,
+    "system_stats": {
+      "sessions": 30,
+      "extracted_sessions": 30,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 643.1606226690001,
+    "token_usage": {
+      "llm_input_tokens": 928447,
+      "llm_output_tokens": 246802,
+      "llm_calls": 151,
+      "embedding_tokens": 22184,
+      "embedding_calls": 62
+    }
+  },
+  {
+    "sample_id": "conv-49",
+    "ingest_s": 1490.2747964130003,
+    "num_turns": 509,
+    "num_sessions": 25,
+    "system_stats": {
+      "sessions": 25,
+      "extracted_sessions": 25,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 552.2673653789998,
+    "token_usage": {
+      "llm_input_tokens": 640491,
+      "llm_output_tokens": 190444,
+      "llm_calls": 123,
+      "embedding_tokens": 17581,
+      "embedding_calls": 54
+    }
+  },
+  {
+    "sample_id": "conv-50",
+    "ingest_s": 1856.6768085920012,
+    "num_turns": 568,
+    "num_sessions": 30,
+    "system_stats": {
+      "sessions": 30,
+      "extracted_sessions": 30,
+      "search_method": "hybrid",
+      "reasoning": false
+    },
+    "conversation_s": 546.6432395840002,
+    "token_usage": {
+      "llm_input_tokens": 736033,
+      "llm_output_tokens": 191895,
+      "llm_calls": 146,
+      "embedding_tokens": 19556,
+      "embedding_calls": 59
+    }
+  }
+]
