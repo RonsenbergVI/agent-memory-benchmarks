@@ -1,0 +1,236 @@
+[
+  {
+    "sample_id": "user_0",
+    "ingest_s": 2118.655371108,
+    "num_turns": 1315,
+    "num_sessions": 117,
+    "system_stats": {
+      "stored_facts": 1313,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 299.1278510770003,
+    "token_usage": {
+      "llm_input_tokens": 3597336,
+      "llm_output_tokens": 190379,
+      "llm_calls": 1315,
+      "embedding_tokens": 337792,
+      "embedding_calls": 1315
+    }
+  },
+  {
+    "sample_id": "user_1",
+    "ingest_s": 2025.895343452,
+    "num_turns": 1205,
+    "num_sessions": 109,
+    "system_stats": {
+      "stored_facts": 1205,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 268.24035727699993,
+    "token_usage": {
+      "llm_input_tokens": 3270701,
+      "llm_output_tokens": 187432,
+      "llm_calls": 1205,
+      "embedding_tokens": 309789,
+      "embedding_calls": 1205
+    }
+  },
+  {
+    "sample_id": "user_2",
+    "ingest_s": 1981.965869247,
+    "num_turns": 1226,
+    "num_sessions": 109,
+    "system_stats": {
+      "stored_facts": 1226,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 257.38274553500014,
+    "token_usage": {
+      "llm_input_tokens": 3286277,
+      "llm_output_tokens": 179283,
+      "llm_calls": 1226,
+      "embedding_tokens": 306038,
+      "embedding_calls": 1226
+    }
+  },
+  {
+    "sample_id": "19b5f2b3_abs",
+    "ingest_s": 101.49781386099994,
+    "num_turns": 62,
+    "num_sessions": 6,
+    "system_stats": {
+      "stored_facts": 62,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 5.130115783999827,
+    "token_usage": {
+      "llm_input_tokens": 150357,
+      "llm_output_tokens": 10790,
+      "llm_calls": 62,
+      "embedding_tokens": 13944,
+      "embedding_calls": 62
+    }
+  },
+  {
+    "sample_id": "29f2956b_abs",
+    "ingest_s": 107.004725925,
+    "num_turns": 66,
+    "num_sessions": 6,
+    "system_stats": {
+      "stored_facts": 66,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 2.581340541999907,
+    "token_usage": {
+      "llm_input_tokens": 157217,
+      "llm_output_tokens": 11049,
+      "llm_calls": 66,
+      "embedding_tokens": 13621,
+      "embedding_calls": 66
+    }
+  },
+  {
+    "sample_id": "eeda8a6d_abs",
+    "ingest_s": 145.94457273999978,
+    "num_turns": 80,
+    "num_sessions": 7,
+    "system_stats": {
+      "stored_facts": 80,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 6.447599697999976,
+    "token_usage": {
+      "llm_input_tokens": 206514,
+      "llm_output_tokens": 17070,
+      "llm_calls": 80,
+      "embedding_tokens": 18806,
+      "embedding_calls": 80
+    }
+  },
+  {
+    "sample_id": "edced276_abs",
+    "ingest_s": 141.85659539800008,
+    "num_turns": 100,
+    "num_sessions": 7,
+    "system_stats": {
+      "stored_facts": 99,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 7.102279442000054,
+    "token_usage": {
+      "llm_input_tokens": 209619,
+      "llm_output_tokens": 11046,
+      "llm_calls": 100,
+      "embedding_tokens": 16834,
+      "embedding_calls": 100
+    }
+  },
+  {
+    "sample_id": "ba358f49_abs",
+    "ingest_s": 120.86390536999988,
+    "num_turns": 76,
+    "num_sessions": 7,
+    "system_stats": {
+      "stored_facts": 76,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 3.669629610999891,
+    "token_usage": {
+      "llm_input_tokens": 175143,
+      "llm_output_tokens": 11109,
+      "llm_calls": 76,
+      "embedding_tokens": 16469,
+      "embedding_calls": 76
+    }
+  },
+  {
+    "sample_id": "09ba9854_abs",
+    "ingest_s": 94.96488930299984,
+    "num_turns": 66,
+    "num_sessions": 7,
+    "system_stats": {
+      "stored_facts": 66,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 4.4362405429997125,
+    "token_usage": {
+      "llm_input_tokens": 146875,
+      "llm_output_tokens": 7039,
+      "llm_calls": 66,
+      "embedding_tokens": 13942,
+      "embedding_calls": 66
+    }
+  },
+  {
+    "sample_id": "gpt4_93159ced_abs",
+    "ingest_s": 105.24757968799986,
+    "num_turns": 74,
+    "num_sessions": 7,
+    "system_stats": {
+      "stored_facts": 74,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 3.9794012300003487,
+    "token_usage": {
+      "llm_input_tokens": 181714,
+      "llm_output_tokens": 8417,
+      "llm_calls": 74,
+      "embedding_tokens": 17186,
+      "embedding_calls": 74
+    }
+  },
+  {
+    "sample_id": "gpt4_fe651585_abs",
+    "ingest_s": 130.680329368,
+    "num_turns": 83,
+    "num_sessions": 7,
+    "system_stats": {
+      "stored_facts": 83,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 7.8597363989997575,
+    "token_usage": {
+      "llm_input_tokens": 197828,
+      "llm_output_tokens": 11620,
+      "llm_calls": 83,
+      "embedding_tokens": 18168,
+      "embedding_calls": 83
+    }
+  },
+  {
+    "sample_id": "2698e78f_abs",
+    "ingest_s": 109.64522371200019,
+    "num_turns": 74,
+    "num_sessions": 7,
+    "system_stats": {
+      "stored_facts": 74,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 3.0068272429998615,
+    "token_usage": {
+      "llm_input_tokens": 153557,
+      "llm_output_tokens": 8424,
+      "llm_calls": 74,
+      "embedding_tokens": 13006,
+      "embedding_calls": 74
+    }
+  },
+  {
+    "sample_id": "0ddfec37_abs",
+    "ingest_s": 117.22980943399989,
+    "num_turns": 62,
+    "num_sessions": 7,
+    "system_stats": {
+      "stored_facts": 62,
+      "embedding_model": "openai:text-embedding-3-small"
+    },
+    "conversation_s": 7.284250621999945,
+    "token_usage": {
+      "llm_input_tokens": 182679,
+      "llm_output_tokens": 14887,
+      "llm_calls": 62,
+      "embedding_tokens": 18896,
+      "embedding_calls": 62
+    }
+  }
+]
