@@ -31,6 +31,7 @@ shared pair.
 
 import asyncio
 import os
+import threading
 from collections.abc import Coroutine
 from datetime import UTC, datetime
 from typing import Any, ClassVar
@@ -109,8 +110,13 @@ class GraphitiMemory(Memory):
         """Connect to Neo4j and build the graph indices."""
         from graphiti_core import Graphiti
 
-        # one loop for the lifecycle: async neo4j binds its pool to its first loop
+        # one loop for the lifecycle (async neo4j binds its pool to its first loop),
+        # on its own thread so the agent's parallel tool calls submit, never drive
         self._loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(
+            target=self._loop.run_forever, name="graphiti-loop", daemon=True
+        )
+        self._thread.start()
         self.client = Graphiti(
             self.neo4j_uri,
             self.neo4j_user,
@@ -145,7 +151,7 @@ class GraphitiMemory(Memory):
         return {"llm_client": llm_client, "embedder": embedder}
 
     def _await[T](self, coro: Coroutine[Any, Any, T]) -> T:
-        return self._loop.run_until_complete(coro)
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
 
     @staticmethod
     def _reference_time(session: Session) -> datetime:
@@ -219,4 +225,6 @@ class GraphitiMemory(Memory):
         try:
             self._await(self.client.close())
         finally:
+            self._loop.call_soon_threadsafe(self._loop.stop)
+            self._thread.join()
             self._loop.close()
