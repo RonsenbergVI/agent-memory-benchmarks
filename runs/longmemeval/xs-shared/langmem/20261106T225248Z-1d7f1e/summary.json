@@ -1,0 +1,162 @@
+{
+  "run_id": "20261106T225248Z-1d7f1e",
+  "system": "langmem",
+  "system_version": "0.0.30",
+  "dataset": "longmemeval",
+  "variant": "xs-shared",
+  "k": 3,
+  "model": "anthropic:claude-haiku-5-5",
+  "judge_model": "anthropic:claude-haiku-5-5",
+  "num_samples": 13,
+  "num_questions": 151,
+  "ingestion_model": "anthropic:claude-haiku-5-5",
+  "embedding_model": "openai:text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 3697.8470713999995,
+    "total_turns": 4489,
+    "total_sessions": 403
+  },
+  "conversation": {
+    "total_s": 511.813446569
+  },
+  "hits_per_query": 8.463576158940397,
+  "judge_accuracy": 0.5165562913907285,
+  "attribution": {
+    "correct": 0.5099337748344371,
+    "agent_fault": 0.3443708609271523,
+    "memory_fault": 0.1390728476821192,
+    "correct_despite_miss": 0.006622516556291391,
+    "found": 0.8543046357615894,
+    "missed": 0.1456953642384106,
+    "correct_when_found": 0.5968992248062015,
+    "correct_when_missed": 0.045454545454545456,
+    "lift": 0.47110174593618304,
+    "n": 151
+  },
+  "memory_lift": 0.47110174593618304,
+  "search_latency": {
+    "p50_s": 0.7589394649999122,
+    "p95_s": 2.1980997220000518,
+    "p99_s": 2.7121108569999706
+  },
+  "answer_latency": {
+    "p50_s": 3.217001436000146,
+    "p95_s": 5.328349404999926,
+    "p99_s": 6.929288641000085
+  },
+  "tokens": {
+    "input_per_question": 3981.072847682119,
+    "output_per_question": 317.158940397351
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 2760,
+      "embedding_tokens": 502310,
+      "llm_calls": 403,
+      "llm_input_tokens": 2315127,
+      "llm_output_tokens": 631597
+    },
+    "search_total": 2947
+  },
+  "errors": 0,
+  "memory_tokens_total": 3451981.0,
+  "by_category": {
+    "knowledge-update": {
+      "judge_accuracy": 0.625,
+      "attribution": {
+        "correct": 0.625,
+        "agent_fault": 0.2916666666666667,
+        "memory_fault": 0.08333333333333333,
+        "correct_despite_miss": 0.0,
+        "found": 0.9166666666666666,
+        "missed": 0.08333333333333333,
+        "correct_when_found": 0.6818181818181818,
+        "correct_when_missed": 0.0,
+        "lift": 0.6249999999999999,
+        "n": 24
+      },
+      "memory_lift": 0.6249999999999999
+    },
+    "multi-session": {
+      "judge_accuracy": 0.625,
+      "attribution": {
+        "correct": 0.6,
+        "agent_fault": 0.175,
+        "memory_fault": 0.2,
+        "correct_despite_miss": 0.025,
+        "found": 0.775,
+        "missed": 0.225,
+        "correct_when_found": 0.7741935483870968,
+        "correct_when_missed": 0.1111111111111111,
+        "lift": 0.5138888888888888,
+        "n": 40
+      },
+      "memory_lift": 0.5138888888888888
+    },
+    "single-session-assistant": {
+      "judge_accuracy": 0.5294117647058824,
+      "attribution": {
+        "correct": 0.5294117647058824,
+        "agent_fault": 0.47058823529411764,
+        "memory_fault": 0.0,
+        "correct_despite_miss": 0.0,
+        "found": 1.0,
+        "missed": 0.0,
+        "correct_when_found": 0.5294117647058824,
+        "correct_when_missed": 0.0,
+        "lift": 0.5294117647058824,
+        "n": 17
+      },
+      "memory_lift": 0.5294117647058824
+    },
+    "single-session-preference": {
+      "judge_accuracy": 0.0,
+      "attribution": {
+        "correct": 0.0,
+        "agent_fault": 0.7777777777777778,
+        "memory_fault": 0.2222222222222222,
+        "correct_despite_miss": 0.0,
+        "found": 0.7777777777777778,
+        "missed": 0.2222222222222222,
+        "correct_when_found": 0.0,
+        "correct_when_missed": 0.0,
+        "lift": 0.0,
+        "n": 9
+      },
+      "memory_lift": 0.0
+    },
+    "single-session-user": {
+      "judge_accuracy": 0.9047619047619048,
+      "attribution": {
+        "correct": 0.9047619047619048,
+        "agent_fault": 0.09523809523809523,
+        "memory_fault": 0.0,
+        "correct_despite_miss": 0.0,
+        "found": 1.0,
+        "missed": 0.0,
+        "correct_when_found": 0.9047619047619048,
+        "correct_when_missed": 0.0,
+        "lift": 0.9047619047619048,
+        "n": 21
+      },
+      "memory_lift": 0.9047619047619048
+    },
+    "temporal-reasoning": {
+      "judge_accuracy": 0.25,
+      "attribution": {
+        "correct": 0.25,
+        "agent_fault": 0.525,
+        "memory_fault": 0.225,
+        "correct_despite_miss": 0.0,
+        "found": 0.775,
+        "missed": 0.225,
+        "correct_when_found": 0.3225806451612903,
+        "correct_when_missed": 0.0,
+        "lift": 0.25,
+        "n": 40
+      },
+      "memory_lift": 0.25
+    }
+  }
+}
