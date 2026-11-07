@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/graphiti/v0.5.0...graphiti/v0.6.0) (2026-11-07)
+
+
+### Bug fixes
+
+* run graphiti and hindsight cells one at a time, and fix graphiti's parallel searches ([#299](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/299)) ([f445c82](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/f445c82e90a38bab107fd23f1fa627a4b3faa615))
+
+
+### Dependencies
+
+* bump graphiti-core from 0.30.2 to 0.31.1 ([#277](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/277)) ([872fe3a](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/872fe3a13425cd8b447c73b04f326e2e3ba9a125))
+
 ## [0.5.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/graphiti/v0.4.0...graphiti/v0.5.0) (2026-10-18)
 
 
