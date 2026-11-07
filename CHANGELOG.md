@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.2.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/v0.1.0...v0.2.0) (2026-11-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop retrieval metrics and score judge accuracy only ([#292](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/292))
+* score retrieval at the turn level for every system ([#284](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/284))
+* drop LongMemEval xs and deal xs-shared into 3 users with 20 fillers ([#280](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/280))
+
+### Features
+
+* date-prefix stored turns for systems with no native time channel ([#300](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/300)) ([6e52994](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/6e529948363e259f5a8649a1622299e600d99acd))
+* drop LongMemEval xs and deal xs-shared into 3 users with 20 fillers ([#280](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/280)) ([f21c439](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/f21c439b95329464bd703121229eb7304d494955))
+* drop retrieval metrics and score judge accuracy only ([#292](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/292)) ([08ee0df](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/08ee0dffdecee113052588887a79778873259629))
+* score retrieval at the turn level for every system ([#284](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/284)) ([7d9cc9a](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/7d9cc9a16614b7389e1ad00f991f26b9026c3be4))
+
+
+### Bug fixes
+
+* **everos:** parse LongMemEval session dates and keep the fallback in milliseconds ([#290](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/290)) ([d969a30](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/d969a30510969994a25f8f6836345dd8f78557f5))
+* run graphiti and hindsight cells one at a time, and fix graphiti's parallel searches ([#299](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/299)) ([f445c82](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/f445c82e90a38bab107fd23f1fa627a4b3faa615))
+
+
+### Maintenance
+
+* **fraise:** move to server v0.3.5 and SDK 0.3.0 ([#293](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/293)) ([5c1c780](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/5c1c7802fede329f578de8de0b9b15ea30218af4))
+* **fraise:** move to server v0.3.7 and SDK 0.3.1 ([#298](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/298)) ([7e2de09](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/7e2de0928107a545bc695f0dfb9a05a7067db71a))
+* **main:** release cognee 0.3.0 ([#288](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/288)) ([ca8668a](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/ca8668a8e2777c773a03c2df086281abd6511633))
+* **main:** release everos 0.5.0 ([#285](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/285)) ([fb77ee5](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/fb77ee5b0a0337ea975330ba687f0fb9bebeb3ed))
+* **main:** release everos 0.6.0 ([#291](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/291)) ([302e775](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/302e775f82daf55b52c9760333408af88122389e))
+* **main:** release fraise 0.9.0 ([#287](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/287)) ([defee50](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/defee50e3e9c14c571781558c50fff33e1471efb))
+* **main:** release hindsight 0.6.0 ([#286](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/286)) ([5b88f5c](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/5b88f5c8e8710129bf375812ba58851f229057f3))
+* **main:** release memos 0.3.0 ([#289](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/289)) ([f4b7456](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/f4b745675253d1adc522c918d8dfedb3801f7034))
+* type-check src/amb with ty in CI ([#296](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/296)) ([edd31b4](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/edd31b4540a85fc6a4c1ae032172f6c803e21e06))
+* validate and label fork pull requests ([#297](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/297)) ([ce6695f](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/ce6695f95feab45a71ca810d48e7238ff326da15))
+
 ## [0.1.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/v0.0.1...v0.1.0) (2026-10-20)
 
 
