@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/mem0/v0.3.0...mem0/v0.4.0) (2026-11-07)
+
+
+### Features
+
+* date-prefix stored turns for systems with no native time channel ([#300](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/300)) ([6e52994](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/6e529948363e259f5a8649a1622299e600d99acd))
+
 ## [0.3.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/mem0/v0.2.0...mem0/v0.3.0) (2026-10-17)
 
 
