@@ -244,7 +244,7 @@ class FraiseMemory(Memory):
         for turn in session.turns:
             self.store(
                 conversation_id,
-                f"{turn.speaker}: {turn.text}",
+                session.dated(turn),
                 session_id=session.session_id,
                 turn_ids=[turn.turn_id],
                 entities=[turn.speaker],

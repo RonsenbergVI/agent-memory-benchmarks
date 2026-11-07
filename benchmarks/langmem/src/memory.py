@@ -174,7 +174,7 @@ class LangMemMemory(Memory):
         messages = [
             {
                 "role": "user" if turn.speaker == primary else "assistant",
-                "content": f"{turn.speaker}: {turn.text}",
+                "content": session.dated(turn),
             }
             for turn in session.turns
         ]

@@ -343,7 +343,7 @@ class CogneeMemory(Memory):
             return
         self.store(
             conversation_id,
-            "\n".join(f"{turn.speaker}: {turn.text}" for turn in session.turns),
+            "\n".join(session.dated(turn) for turn in session.turns),
             session_id=session.session_id,
             turn_ids=[turn.turn_id for turn in session.turns],
         )

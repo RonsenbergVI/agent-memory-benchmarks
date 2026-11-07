@@ -53,6 +53,12 @@ class Session(BaseModel):
                 continue
         return None
 
+    def dated(self, turn: Turn) -> str:
+        """Render a turn as ``[8 May 2023] Caroline: ...``, undated when the time is unparseable."""
+        line = f"{turn.speaker}: {turn.text}"
+        time = self.time()
+        return f"[{time.day} {time:%B %Y}] {line}" if time else line
+
     def __str__(self) -> str:
         """Render the session as plain text for systems that ingest prose."""
         header = f"[session {self.session_id}"
