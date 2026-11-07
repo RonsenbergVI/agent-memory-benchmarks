@@ -151,6 +151,21 @@ def test_session_non_string_timestamp_is_rejected():
     assert exc_info.value.errors()[0]["loc"] == ("timestamp",)
 
 
+@pytest.mark.parametrize(
+    ("timestamp", "expected"),
+    [
+        ("1:56 pm on 8 May, 2023", "[8 May 2023] Caroline: hi"),
+        ("2023/05/20 (Sat) 02:21", "[20 May 2023] Caroline: hi"),
+        (None, "Caroline: hi"),
+        ("sometime", "Caroline: hi"),
+    ],
+)
+def test_session_dated_prefixes_the_session_date(timestamp, expected):
+    session = Session(session_id="s1", timestamp=timestamp)
+    turn = Turn(turn_id="t1", speaker="Caroline", text="hi")
+    assert session.dated(turn) == expected
+
+
 def test_only_conversation_id_is_required():
     conversation = Conversation(conversation_id="c1")
     assert conversation.conversation_id == "c1"
