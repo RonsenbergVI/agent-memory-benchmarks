@@ -25,6 +25,7 @@ Latest run per system x dataset x models. Each row's full per-question output li
 | locomo |  | graphiti | 0.31.1 | 1 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 3.227 | 0.268 | 0.187 | 15020617.000 | 0.5424 | 1.4852 |
 | locomo |  | graphiti | 0.31.1 | 3 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 8.076 | 0.343 | 0.230 | 15110180.000 | 0.4365 | 1.2074 |
 | locomo |  | graphiti | 0.31.1 | 10 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 25.044 | 0.349 | 0.212 | 15035663.000 | 0.6846 | 2.0233 |
+| locomo |  | graphiti | 0.31.1 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 13.307 | 0.334 | 0.224 | 15009205.000 | 0.5223 | 1.5625 |
 | locomo |  | hindsight | 1.0.0 | 10 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 14.364 | 0.661 | 0.410 | 992590.000 | 7.6171 | 26.5043 |
 | locomo |  | hindsight | 1.0.0 | 3 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 4.949 | 0.644 | 0.439 | 1001832.000 | 13.3765 | 56.3223 |
 | locomo |  | hindsight | 1.0.0 | 5 | anthropic:claude-haiku-5-5 | openai:text-embedding-3-small |  | anthropic:claude-haiku-5-5 | anthropic:claude-haiku-5-5 |  |  | 3 | 1986 | 7.809 | 0.660 | 0.462 | 983141.000 | 7.3297 | 26.8835 |
@@ -262,6 +263,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | mem0 | 2.0.20 | 0.513 | 0.487 | 0.824 |
 | langmem | 0.0.30 | 0.522 | 0.478 | 0.765 |
 | memos | 2.0.33 | 0.772 | 0.228 | 0.745 |
+| graphiti | 0.31.1 | 0.455 | 0.545 | 0.648 |
 | cognee | 1.5.4 | 0.651 | 0.349 | 0.631 |
 
 **Missed.** The memory failed. `correct without evidence` is the agent right anyway, from prior knowledge or a guess; `wrong without evidence` is what this memory's misses actually cost.
@@ -274,6 +276,7 @@ Who lost each question: the memory, or the agent it served. Each judged question
 | mem0 | 2.0.20 | 0.199 | 0.801 | 0.176 |
 | langmem | 0.0.30 | 0.207 | 0.793 | 0.235 |
 | memos | 2.0.33 | 0.204 | 0.796 | 0.255 |
+| graphiti | 0.31.1 | 0.109 | 0.891 | 0.352 |
 | cognee | 1.5.4 | 0.125 | 0.875 | 0.369 |
 
 #### locomo: memory lift (k=5)
@@ -289,6 +292,7 @@ What the memory contributed, as one number. `lift` is the accuracy the memory ad
 | cognee | 1.5.4 | 0.631 | 0.651 | 0.125 | 0.526 | 0.331 |
 | mem0 | 2.0.20 | 0.824 | 0.513 | 0.199 | 0.314 | 0.258 |
 | langmem | 0.0.30 | 0.765 | 0.522 | 0.207 | 0.315 | 0.241 |
+| graphiti | 0.31.1 | 0.648 | 0.455 | 0.109 | 0.346 | 0.224 |
 
 #### locomo: system comparison (k=5)
 

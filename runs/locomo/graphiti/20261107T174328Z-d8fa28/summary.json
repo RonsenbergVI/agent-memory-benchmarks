@@ -1,0 +1,146 @@
+{
+  "run_id": "20261107T174328Z-d8fa28",
+  "system": "graphiti",
+  "system_version": "0.31.1",
+  "dataset": "locomo",
+  "variant": null,
+  "k": 5,
+  "model": "anthropic:claude-haiku-5-5",
+  "judge_model": "anthropic:claude-haiku-5-5",
+  "num_samples": 10,
+  "num_questions": 1986,
+  "ingestion_model": "anthropic:claude-haiku-5-5",
+  "embedding_model": "openai:text-embedding-3-small",
+  "workers": 3,
+  "ingest": {
+    "total_s": 2269.0150871279993,
+    "total_turns": 5882,
+    "total_sessions": 272
+  },
+  "conversation": {
+    "total_s": 6703.903721936
+  },
+  "hits_per_query": 13.307150050352467,
+  "judge_accuracy": 0.3339818417639429,
+  "attribution": {
+    "correct": 0.2951885565669701,
+    "agent_fault": 0.3530559167750325,
+    "memory_fault": 0.31339401820546164,
+    "correct_despite_miss": 0.03836150845253576,
+    "found": 0.6482444733420026,
+    "missed": 0.3517555266579974,
+    "correct_when_found": 0.45536609829488467,
+    "correct_when_missed": 0.10905730129390019,
+    "lift": 0.2244927637256057,
+    "n": 1538
+  },
+  "memory_lift": 0.2244927637256057,
+  "search_latency": {
+    "p50_s": 0.5222558949999438,
+    "p95_s": 1.5625233490002302,
+    "p99_s": 2.5000604910005677
+  },
+  "answer_latency": {
+    "p50_s": 3.10852194600011,
+    "p95_s": 6.089034455000046,
+    "p99_s": 8.19616324399999
+  },
+  "tokens": {
+    "input_per_question": 3303.207452165156,
+    "output_per_question": 266.08056394763344
+  },
+  "memory_tokens": {
+    "ingest": {
+      "embedding_calls": 1116,
+      "embedding_tokens": 63392,
+      "llm_calls": 2191,
+      "llm_input_tokens": 14479917,
+      "llm_output_tokens": 423307
+    },
+    "search_total": 42589
+  },
+  "errors": 0,
+  "memory_tokens_total": 15009205.0,
+  "by_category": {
+    "adversarial": {
+      "judge_accuracy": 1.0,
+      "attribution": {
+        "correct": 1.0,
+        "agent_fault": 0.0,
+        "memory_fault": 0.0,
+        "correct_despite_miss": 0.0,
+        "found": 1.0,
+        "missed": 0.0,
+        "correct_when_found": 1.0,
+        "correct_when_missed": 0.0,
+        "lift": 1.0,
+        "n": 2
+      },
+      "memory_lift": 1.0
+    },
+    "multi-hop": {
+      "judge_accuracy": 0.2730496453900709,
+      "attribution": {
+        "correct": 0.15602836879432624,
+        "agent_fault": 0.1595744680851064,
+        "memory_fault": 0.5673758865248227,
+        "correct_despite_miss": 0.11702127659574468,
+        "found": 0.31560283687943264,
+        "missed": 0.6843971631205674,
+        "correct_when_found": 0.4943820224719101,
+        "correct_when_missed": 0.17098445595854922,
+        "lift": 0.1020651894315217,
+        "n": 282
+      },
+      "memory_lift": 0.1020651894315217
+    },
+    "open-domain": {
+      "judge_accuracy": 0.22916666666666666,
+      "attribution": {
+        "correct": 0.15217391304347827,
+        "agent_fault": 0.3804347826086957,
+        "memory_fault": 0.40217391304347827,
+        "correct_despite_miss": 0.06521739130434782,
+        "found": 0.532608695652174,
+        "missed": 0.4673913043478261,
+        "correct_when_found": 0.2857142857142857,
+        "correct_when_missed": 0.13953488372093023,
+        "lift": 0.07785642062689585,
+        "n": 92
+      },
+      "memory_lift": 0.07785642062689585
+    },
+    "single-hop": {
+      "judge_accuracy": 0.450653983353151,
+      "attribution": {
+        "correct": 0.4280618311533888,
+        "agent_fault": 0.29607609988109396,
+        "memory_fault": 0.25326991676575505,
+        "correct_despite_miss": 0.022592152199762187,
+        "found": 0.7241379310344828,
+        "missed": 0.27586206896551724,
+        "correct_when_found": 0.5911330049261084,
+        "correct_when_missed": 0.08189655172413793,
+        "lift": 0.36875743162901314,
+        "n": 841
+      },
+      "memory_lift": 0.36875743162901314
+    },
+    "temporal": {
+      "judge_accuracy": 0.10903426791277258,
+      "attribution": {
+        "correct": 0.1059190031152648,
+        "agent_fault": 0.6666666666666666,
+        "memory_fault": 0.22429906542056074,
+        "correct_despite_miss": 0.003115264797507788,
+        "found": 0.7725856697819314,
+        "missed": 0.22741433021806853,
+        "correct_when_found": 0.13709677419354838,
+        "correct_when_missed": 0.0136986301369863,
+        "lift": 0.09533563777578627,
+        "n": 321
+      },
+      "memory_lift": 0.09533563777578627
+    }
+  }
+}
