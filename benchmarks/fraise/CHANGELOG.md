@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.9.0...fraise/v0.10.0) (2026-11-07)
+
+
+### Features
+
+* date-prefix stored turns for systems with no native time channel ([#300](https://github.com/RonsenbergVI/agent-memory-benchmarks/issues/300)) ([6e52994](https://github.com/RonsenbergVI/agent-memory-benchmarks/commit/6e529948363e259f5a8649a1622299e600d99acd))
+
 ## [0.9.0](https://github.com/RonsenbergVI/agent-memory-benchmarks/compare/fraise/v0.8.0...fraise/v0.9.0) (2026-11-06)
 
 
